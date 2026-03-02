@@ -1,0 +1,458 @@
+.course-manage {
+  padding: var(--spacing-lg);
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 标签页样式 */
+.course-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: var(--spacing-lg);
+  gap: var(--spacing-md);
+}
+
+.course-tab {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.course-tab:hover {
+  color: var(--text-primary);
+}
+
+.course-tab.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+/* 标签页内容共享样式 */
+.course-tab-content {
+  padding: var(--spacing-lg);
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 筛选器样式 */
+.course-filter {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  white-space: nowrap;
+}
+
+.filter-group label {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  min-width: 60px;
+}
+
+.filter-group select {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-base);
+  background-color: var(--bg-primary);
+  min-width: 120px;
+}
+
+.filter-actions {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* 按钮样式 */
+.btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary {
+  background-color: #2196F3;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #1976D2;
+}
+
+.btn-secondary {
+  background-color: #607D8B;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #455A64;
+}
+
+.btn-danger {
+  background-color: #F44336;
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #D32F2F;
+}
+
+/* 课程表样式 */
+.course-table-container {
+  overflow-x: auto;
+}
+
+.course-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.course-table th,
+.course-table td {
+  padding: var(--spacing-sm);
+  text-align: center;
+  border: 1px solid var(--border-color);
+}
+
+.course-table th {
+  background-color: var(--bg-secondary);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.time-slot-header,
+.time-slot-cell {
+  background-color: var(--bg-secondary);
+  font-weight: var(--font-weight-medium);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 80px;
+}
+
+.course-cell {
+  min-width: 120px;
+  height: 80px !important;
+  vertical-align: top;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.course-cell:hover {
+  background-color: var(--bg-secondary);
+}
+
+.course-item {
+  padding: var(--spacing-xs);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-color: var(--primary-light);
+  border-radius: var(--border-radius-sm);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.course-actions {
+  position: relative;
+  z-index: 10;
+  margin-top: var(--spacing-xs);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.course-content {
+  flex: 1;
+  min-height: 0;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+}
+
+.course-content:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.course-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-teacher,
+.course-class,
+.course-classroom {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--border-radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.course-empty:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* 教师统计信息 */
+.teacher-stats {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  flex: 1;
+  min-width: 150px;
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius-sm);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--primary-color);
+  margin-bottom: var(--spacing-xs);
+}
+
+.stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+/* 教学进度样式 */
+.progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.progress-item {
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-fast);
+}
+
+.progress-item:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.progress-chapter {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.progress-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.progress-details {
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.detail-item {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.detail-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  min-width: 80px;
+}
+
+.detail-value {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.progress-bar-container {
+  margin-top: var(--spacing-sm);
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius-full);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width var(--transition-normal);
+  border-radius: var(--border-radius-full);
+}
+
+.progress-fill.status-completed {
+  background-color: #4CAF50;
+}
+
+.progress-fill.status-in-progress {
+  background-color: #2196F3;
+}
+
+.progress-fill.status-not-started {
+  background-color: #FFC107;
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-xl);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius-md);
+  border: 1px dashed var(--border-color);
+}
+
+.empty-state p {
+  margin-bottom: var(--spacing-md);
+  color: var(--text-tertiary);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .course-manage {
+    padding: var(--spacing-md);
+  }
+
+  .course-tabs {
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  .course-tab {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+  }
+
+  .course-filter {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .filter-actions {
+    margin-left: 0;
+    margin-top: var(--spacing-sm);
+  }
+
+  .teacher-stats {
+    flex-direction: row;
+  }
+
+  .stat-card {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .course-table {
+    font-size: var(--font-size-xs);
+  }
+
+  .course-cell {
+    min-width: 100px;
+    height: 80px !important;
+  }
+
+  .progress-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+
+  .progress-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .detail-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+
+  .detail-label {
+    min-width: unset;
+  }
+}
