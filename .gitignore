@@ -45,3 +45,6 @@ Thumbs.db
 
 # 本地配置文件
 *.local
+
+# Trae IDE配置
+.trae/

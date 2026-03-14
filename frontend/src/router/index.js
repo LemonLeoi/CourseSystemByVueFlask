@@ -9,6 +9,7 @@ import TeacherCoursePage from '../views/course/TeacherCoursePage.vue';
 import ProgressPage from '../views/course/ProgressPage.vue';
 import ExamAffairs from '../views/examManage/ExamAffairs.vue';
 import StudentStatus from '../views/studentManage/StudentStatus.vue';
+import GradeAnalysis from '../views/gradeAnalysis/GradeAnalysis.vue';
 
 
 const routes = [
@@ -67,6 +68,37 @@ const routes = [
     path: '/student-status',
     name: 'StudentStatus',
     component: StudentStatus
+  },
+  {
+    path: '/grade-analysis',
+    name: 'GradeAnalysis',
+    component: GradeAnalysis,
+    children: [
+      {
+        path: 'overall',
+        name: 'OverallAnalysis',
+        component: () => import('../views/gradeAnalysis/OverallAnalysis.vue')
+      },
+      {
+        path: 'individual',
+        name: 'IndividualAnalysis',
+        component: () => import('../views/gradeAnalysis/IndividualAnalysis.vue')
+      },
+      {
+        path: 'class',
+        name: 'ClassAnalysis',
+        component: () => import('../views/gradeAnalysis/ClassAnalysis.vue')
+      },
+      {
+        path: 'grade',
+        name: 'GradeLevelAnalysis',
+        component: () => import('../views/gradeAnalysis/GradeLevelAnalysis.vue')
+      },
+      {
+        path: '',
+        redirect: 'overall'
+      }
+    ]
   }
 ];
 

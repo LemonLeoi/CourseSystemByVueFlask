@@ -14,6 +14,11 @@ class Grade(db.Model):
     semester = db.Column(db.String(20))
     period = db.Column(db.String(20))
     
+    # 添加唯一约束，确保每个学生的每个学科在每种考试类型下只有一条记录
+    __table_args__ = (
+        db.UniqueConstraint('student_id', 'subject', 'exam_type', name='_student_subject_exam_uc'),
+    )
+    
     # 关联关系
     student = db.relationship('Student', backref=db.backref('grades', lazy=True))
     

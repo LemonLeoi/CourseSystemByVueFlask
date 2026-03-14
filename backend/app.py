@@ -32,6 +32,7 @@ from app.api import course_routes
 from app.api import auth_routes
 from app.api import exam_routes
 from app.api import admin_routes
+from app.api import grade_routes
 
 # 注册蓝图
 app.register_blueprint(student_routes.bp, url_prefix='/api/students')
@@ -40,6 +41,7 @@ app.register_blueprint(course_routes.bp, url_prefix='/api/courses')
 app.register_blueprint(auth_routes.bp, url_prefix='/api/auth')
 app.register_blueprint(exam_routes.bp, url_prefix='/api/exams')
 app.register_blueprint(admin_routes.bp, url_prefix='/api/admin')
+app.register_blueprint(grade_routes.grade_bp)
 
 # 根路由
 @app.route('/')

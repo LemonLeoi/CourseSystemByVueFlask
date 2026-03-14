@@ -226,7 +226,7 @@
                       v-model.number="score.score" 
                       class="score-input"
                       min="0" 
-                      max="100"
+                      :max="['语文', '数学', '英语'].includes(score.subject) ? 150 : 100"
                     >
                   </td>
                   <td :class="getGradeClass(score.score)">{{ getGrade(score.score) }}</td>
@@ -387,8 +387,9 @@ const manageScores = (student: Student) => {
     period: ''
   };
   // 初始化成绩数据
+  let scores = [];
   if (!student.scores) {
-    student.scores = [
+    scores = [
       { subject: '语文', score: 0 },
       { subject: '数学', score: 0 },
       { subject: '英语', score: 0 },
@@ -399,8 +400,22 @@ const manageScores = (student: Student) => {
       { subject: '地理', score: 0 },
       { subject: '政治', score: 0 }
     ];
+  } else {
+    // 去重处理，每个学科只保留一条记录
+    const uniqueScores = {};
+    student.scores.forEach(score => {
+      if (!uniqueScores[score.subject]) {
+        uniqueScores[score.subject] = score;
+      }
+    });
+    scores = Object.values(uniqueScores);
   }
-  studentScores.value = [...student.scores];
+  // 按照语数英物化生史政地的顺序排序
+  const subjectOrder = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '政治', '地理'];
+  scores.sort((a, b) => {
+    return subjectOrder.indexOf(a.subject) - subjectOrder.indexOf(b.subject);
+  });
+  studentScores.value = [...scores];
   showScoreModal.value = true;
 };
 
