@@ -211,57 +211,74 @@ def update_student_grades(student_id):
     
     scores = data['scores']
     
-    # 删除现有成绩
-    Grade.query.filter_by(student_id=student_id).delete()
-    
-    # 添加新成绩
-    for score_data in scores:
-        # 验证成绩数据
-        if 'subject' not in score_data or 'score' not in score_data:
-            return jsonify({'error': '成绩数据缺少必填字段'}), 400
+    try:
+        # 开始事务
+        # 删除现有成绩
+        Grade.query.filter_by(student_id=student_id).delete()
         
-        # 计算等级
-        score = score_data['score']
-        if score >= 90:
-            grade_level = 'A'
-        elif score >= 80:
-            grade_level = 'B'
-        elif score >= 70:
-            grade_level = 'C'
-        elif score >= 60:
-            grade_level = 'D'
-        else:
-            grade_level = 'E'
+        # 添加新成绩
+        for score_data in scores:
+            # 验证成绩数据
+            if 'subject' not in score_data or 'score' not in score_data:
+                return jsonify({'error': '成绩数据缺少必填字段'}), 400
+            
+            # 验证成绩范围
+            score = score_data['score']
+            subject = score_data['subject']
+            # 语文、数学、英语三科的满分是150，其他学科是100
+            if subject in ['语文', '数学', '英语']:
+                if score < 0 or score > 150:
+                    return jsonify({'error': f'{subject}成绩范围应在0-150之间'}), 400
+            else:
+                if score < 0 or score > 100:
+                    return jsonify({'error': f'{subject}成绩范围应在0-100之间'}), 400
+            
+            # 计算等级
+            if score >= 90:
+                grade_level = 'A'
+            elif score >= 80:
+                grade_level = 'B'
+            elif score >= 70:
+                grade_level = 'C'
+            elif score >= 60:
+                grade_level = 'D'
+            else:
+                grade_level = 'E'
+            
+            # 获取考试信息
+            exam_type = score_data.get('examType', '期中考试')
+            semester = score_data.get('semester')
+            period = score_data.get('period')
+            
+            # 处理考试日期
+            exam_date = None
+            if 'examDate' in score_data:
+                try:
+                    from datetime import datetime
+                    exam_date = datetime.strptime(score_data['examDate'], '%Y-%m-%d').date()
+                except ValueError:
+                    pass
+            
+            # 创建成绩记录
+            new_grade = Grade(
+                student_id=student_id,
+                exam_type=exam_type,
+                subject=score_data['subject'],
+                score=score,
+                grade_level=grade_level,
+                exam_date=exam_date,
+                semester=semester,
+                period=period
+            )
+            
+            db.session.add(new_grade)
         
-        # 获取考试信息
-        exam_type = score_data.get('examType', '期中考试')
-        semester = score_data.get('semester')
-        period = score_data.get('period')
-        
-        # 处理考试日期
-        exam_date = None
-        if 'examDate' in score_data:
-            try:
-                from datetime import datetime
-                exam_date = datetime.strptime(score_data['examDate'], '%Y-%m-%d').date()
-            except ValueError:
-                pass
-        
-        # 创建成绩记录
-        new_grade = Grade(
-            student_id=student_id,
-            exam_type=exam_type,
-            subject=score_data['subject'],
-            score=score,
-            grade_level=grade_level,
-            exam_date=exam_date,
-            semester=semester,
-            period=period
-        )
-        
-        db.session.add(new_grade)
-    
-    db.session.commit()
+        # 提交事务
+        db.session.commit()
+    except Exception as e:
+        # 回滚事务
+        db.session.rollback()
+        return jsonify({'error': f'更新成绩失败: {str(e)}'}), 500
     
     # 更新成功后返回更新后的成绩数据，便于前端直接更新视图
     updated_grades = Grade.query.filter_by(student_id=student_id).all()

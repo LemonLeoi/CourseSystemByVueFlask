@@ -21,6 +21,7 @@ export function useLayout() {
       { path: '/students', label: '学生管理', icon: 'fa-solid fa-users', isActive: activePath === '/students' },
       { path: '/teachers', label: '教师管理', icon: 'fa-solid fa-chalkboard-user', isActive: activePath === '/teachers' },
       { path: '/courses', label: '课程管理', icon: 'fa-solid fa-book-open', isActive: activePath === '/courses' },
+      { path: '/grade-analysis', label: '学生成绩分析', icon: 'fa-solid fa-chart-line', isActive: activePath === '/grade-analysis' },
       { path: '/exams', label: '考试管理', icon: 'fa-solid fa-file-invoice', isActive: activePath === '/exams' },
       { path: '/student-status', label: '学籍管理', icon: 'fa-solid fa-id-card', isActive: activePath === '/student-status' }
     ];
