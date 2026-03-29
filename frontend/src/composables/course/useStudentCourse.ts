@@ -92,11 +92,20 @@ export function useStudentCourse() {
           '周日': '星期日'
         };
         
+        // 将教师ID转换为教师姓名
+        let teacherName = course.teacher || '';
+        if (course.teacher) {
+          const teacher = teachers.value.find(t => t.id === course.teacher || t.teacher_id === course.teacher);
+          if (teacher) {
+            teacherName = teacher.name;
+          }
+        }
+        
         return {
           day: dayMap[course.day] || course.day,
           timeSlot: course.timeSlot,
           name: course.name || '',
-          teacher: course.teacher || '',
+          teacher: teacherName,
           classroom: course.classroom || ''
         };
       });
@@ -186,13 +195,26 @@ export function useStudentCourse() {
       // 课程ID获取（暂时未使用）
       // const courseId = await getCourseIdByName(course.name);
       
+      // 转换星期为数字（1-7）
+      const dayMap: { [key: string]: number } = {
+        '星期一': 1,
+        '星期二': 2,
+        '星期三': 3,
+        '星期四': 4,
+        '星期五': 5,
+        '星期六': 6,
+        '星期日': 7
+      };
+      const dayOfWeek = dayMap[course.day] || 1;
+      
       // 转换为API需要的格式
       const backendCourse = {
         name: course.name,
-        day: course.day,
-        timeSlot: course.timeSlot,
+        day_of_week: dayOfWeek,
+        period: course.timeSlot,
         classroom: course.classroom,
-        teacher: selectedTeacher.value?.name || '',
+        teacher_id: selectedTeacherId.value,
+        room_id: roomId,
         className: `${studentGrade.value}${studentClass.value}`
       };
       
@@ -232,13 +254,26 @@ export function useStudentCourse() {
       // 课程ID获取（暂时未使用）
       // const courseId = await getCourseIdByName(course.name);
       
+      // 转换星期为数字（1-7）
+      const dayMap: { [key: string]: number } = {
+        '星期一': 1,
+        '星期二': 2,
+        '星期三': 3,
+        '星期四': 4,
+        '星期五': 5,
+        '星期六': 6,
+        '星期日': 7
+      };
+      const dayOfWeek = dayMap[course.day] || 1;
+      
       // 转换为API需要的格式
       const backendCourse = {
         name: course.name,
-        day: course.day,
-        timeSlot: course.timeSlot,
+        day_of_week: dayOfWeek,
+        period: course.timeSlot,
         classroom: course.classroom,
-        teacher: selectedTeacher.value?.name || '',
+        teacher_id: selectedTeacherId.value,
+        room_id: roomId,
         className: `${studentGrade.value}${studentClass.value}`
       };
       

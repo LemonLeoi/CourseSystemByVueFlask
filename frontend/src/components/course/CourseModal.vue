@@ -21,9 +21,9 @@
       </div>
       <div class="form-group">
         <label>课程名称:</label>
-        <select v-model="formData.name" required>
+        <select v-model="(formData as any).course_id" required>
           <option value="">请选择课程</option>
-          <option v-for="course in courses" :key="course.id" :value="course.course_name">
+          <option v-for="course in courses" :key="course.id" :value="course.id">
             {{ course.course_name }} ({{ course.course_code }})
           </option>
         </select>
@@ -66,7 +66,7 @@
           </div>
           <div class="info-item">
             <span class="info-label">任教班级:</span>
-            <span class="info-value">{{ selectedTeacher.teachingClasses.join(', ') }}</span>
+            <span class="info-value">{{ selectedTeacher.teachingClasses && Array.isArray(selectedTeacher.teachingClasses) ? selectedTeacher.teachingClasses.join(', ') : '无' }}</span>
           </div>
           <div class="info-item">
             <span class="info-label">是否班主任:</span>

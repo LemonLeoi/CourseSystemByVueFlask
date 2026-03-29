@@ -6,12 +6,13 @@
     <div v-else class="overall-stats">
       <div class="stat-card">
         <h4>总体统计</h4>
-        <p>总记录数: {{ overallStats.total_count }}</p>
-        <p>平均成绩: {{ overallStats.average }}</p>
-        <p>标准差: {{ overallStats.std_deviation }}</p>
-        <p>中位数: {{ overallStats.median }}</p>
-        <p>最高分: {{ overallStats.max_score }}</p>
-        <p>最低分: {{ overallStats.min_score }}</p>
+        <p>总记录数: {{ overallStats.overall?.total_count || 0 }}</p>
+        <p>平均成绩: {{ overallStats.overall?.average || 0 }}</p>
+        <p>标准差: {{ overallStats.overall?.std_deviation || 0 }}</p>
+        <p>中位数: {{ overallStats.overall?.median || 0 }}</p>
+        <p>最高分: {{ overallStats.overall?.max_score || 0 }}</p>
+        <p>最低分: {{ overallStats.overall?.min_score || 0 }}</p>
+        
       </div>
       
       <div class="chart-container">
@@ -29,7 +30,7 @@
 
 <script>
 import * as echarts from 'echarts'
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useGradeAnalysis } from '../../composables/grade/useGradeAnalysis'
 
 export default {
@@ -50,26 +51,24 @@ export default {
     let distributionChartInstance = null
     let subjectChartInstance = null
     
-    // 初始化整体分析
-    onMounted(async () => {
-      await getOverallAnalysis()
-    })
-    
-    // 监听整体统计数据变化，更新图表
-    watch(overallStats, (newStats) => {
-      if (newStats && Object.keys(newStats).length > 0) {
-        initDistributionChart()
-        initSubjectChart()
-      }
-    }, { deep: true })
+    // 窗口大小变化时调整图表
+    const handleResize = () => {
+      distributionChartInstance?.resize()
+      subjectChartInstance?.resize()
+    }
     
     // 初始化成绩分布图表
     const initDistributionChart = () => {
-      if (distributionChart.value) {
+      console.log('initDistributionChart called')
+      console.log('distributionChart.value:', distributionChart.value)
+      console.log('overallStats.value.overall:', overallStats.value.overall)
+      if (distributionChart.value && overallStats.value.overall) {
+        console.log('Creating ECharts instance')
         if (distributionChartInstance) {
           distributionChartInstance.dispose()
         }
         distributionChartInstance = echarts.init(distributionChart.value)
+        console.log('ECharts instance created:', distributionChartInstance)
         
         const option = {
           title: {
@@ -91,11 +90,11 @@ export default {
               type: 'pie',
               radius: '50%',
               data: [
-                { value: overallStats.value.distribution.excellent, name: '优秀' },
-                { value: overallStats.value.distribution.good, name: '良好' },
-                { value: overallStats.value.distribution.average, name: '中等' },
-                { value: overallStats.value.distribution.pass, name: '及格' },
-                { value: overallStats.value.distribution.fail, name: '不及格' }
+                { value: overallStats.value.overall.distribution.excellent, name: '优秀' },
+                { value: overallStats.value.overall.distribution.good, name: '良好' },
+                { value: overallStats.value.overall.distribution.average, name: '中等' },
+                { value: overallStats.value.overall.distribution.pass, name: '及格' },
+                { value: overallStats.value.overall.distribution.fail, name: '不及格' }
               ],
               emphasis: {
                 itemStyle: {
@@ -108,7 +107,11 @@ export default {
           ]
         }
         
+        console.log('Setting option:', option)
         distributionChartInstance.setOption(option)
+        console.log('Option set')
+      } else {
+        console.log('Initialization conditions not met')
       }
     }
     
@@ -160,15 +163,28 @@ export default {
       }
     }
     
-    // 窗口大小变化时调整图表
-    const handleResize = () => {
-      distributionChartInstance?.resize()
-      subjectChartInstance?.resize()
-    }
-    
-    onMounted(() => {
+    // 初始化整体分析
+    onMounted(async () => {
+      await getOverallAnalysis()
+      // 使用nextTick确保DOM已经渲染完成
+      nextTick(() => {
+        initDistributionChart()
+        initSubjectChart()
+      })
+      // 添加窗口大小变化监听
       window.addEventListener('resize', handleResize)
     })
+    
+    // 监听整体统计数据变化，更新图表
+    watch(overallStats, (newStats) => {
+      if (newStats && Object.keys(newStats).length > 0) {
+        // 使用nextTick确保DOM已经渲染完成
+        nextTick(() => {
+          initDistributionChart()
+          initSubjectChart()
+        })
+      }
+    }, { deep: true })
     
     onUnmounted(() => {
       window.removeEventListener('resize', handleResize)
@@ -255,6 +271,10 @@ h3 {
 .chart {
   width: 100%;
   height: 400px;
+  min-width: 400px;
+  min-height: 400px;
+  border: 1px solid #eee;
+  background-color: white;
 }
 
 @media (max-width: 768px) {

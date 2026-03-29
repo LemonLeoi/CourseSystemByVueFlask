@@ -15,6 +15,7 @@ class StudentCourse(db.Model):
     period = db.Column(db.Integer, nullable=False)
     classroom = db.Column(db.String(50), nullable=False)
     room_id = db.Column(db.String(10), nullable=True)  # 新添加的字段
+    name = db.Column(db.String(100), nullable=False)  # 添加课程名称字段
     status = db.Column(db.String(20), nullable=False, default='active')
     
     # 关联关系
@@ -27,7 +28,7 @@ class StudentCourse(db.Model):
             'id': self.id,
             'day': week_days[self.day_of_week - 1] if 1 <= self.day_of_week <= 7 else str(self.day_of_week),
             'timeSlot': self.period,
-            'name': self.course.course_name if self.course else '',
+            'name': self.name or (self.course.course_name if self.course else ''),
             'teacher': self.teacher_id if self.teacher_id else '',
             'classroom': self.classroom,
             'grade': self.grade,

@@ -1,5 +1,5 @@
 // API基础配置
-const API_BASE_URL = '/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 // 导入类型定义
 import type { Student, Teacher, Course, Score, ApiResponse } from '@/types';

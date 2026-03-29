@@ -21,7 +21,7 @@ export class GradeService extends BaseService {
       throw error;
     }
   }
-
+  
   // 获取个人成绩分析
   async getStudentAnalysis(studentId: string) {
     try {
@@ -36,7 +36,7 @@ export class GradeService extends BaseService {
       throw error;
     }
   }
-
+  
   // 获取班级成绩分析
   async getClassAnalysis(className: string) {
     try {
@@ -51,7 +51,7 @@ export class GradeService extends BaseService {
       throw error;
     }
   }
-
+  
   // 获取年级成绩分析
   async getGradeAnalysis(gradeName: string) {
     try {

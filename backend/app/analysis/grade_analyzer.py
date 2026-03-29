@@ -165,6 +165,11 @@ def analyze_class_performance(class_name, grade):
     conn = sqlite3.connect('e:/A_Course/backend/data/database.db')
     cursor = conn.cursor()
     
+    # 处理班级格式，确保与数据库匹配
+    # 如果class_name是数字，添加"班"字
+    if class_name.isdigit():
+        class_name = f"{class_name}班"
+    
     # 查询班级学生
     cursor.execute("SELECT student_id, name FROM students WHERE class = ? AND grade = ?", (class_name, grade))
     students = cursor.fetchall()

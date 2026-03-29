@@ -197,19 +197,34 @@ export function useTeacherCourse() {
         return false;
       }
       
+      // 验证教师是否已选择
+      if (!selectedTeacher.value) {
+        error.value = '请选择任课教师';
+        return false;
+      }
+      
       // 课程ID获取（暂时未使用）
       // const courseId = await getCourseIdByName(course.name);
       
-      // className拆分（暂时未使用）
-      // const { grade, class: class_ } = splitClassName(course.className);
+      // 转换星期为数字（1-7）
+      const dayMap: { [key: string]: number } = {
+        '星期一': 1,
+        '星期二': 2,
+        '星期三': 3,
+        '星期四': 4,
+        '星期五': 5,
+        '星期六': 6,
+        '星期日': 7
+      };
+      const dayOfWeek = dayMap[course.day] || 1;
       
       // 转换为API需要的格式
       const backendCourse = {
-        name: course.name,
-        day: course.day,
-        timeSlot: course.timeSlot,
-        classroom: course.classroom,
-        teacher: selectedTeacherName.value,
+        course_id: (course as any).course_id,
+        day_of_week: dayOfWeek,
+        period: course.timeSlot,
+        classroom: (course as any).room_id || course.classroom,
+        teacher: selectedTeacher.value,
         className: course.className
       };
       
@@ -241,19 +256,34 @@ export function useTeacherCourse() {
         return false;
       }
       
+      // 验证教师是否已选择
+      if (!selectedTeacher.value) {
+        error.value = '请选择任课教师';
+        return false;
+      }
+      
       // 课程ID获取（暂时未使用）
       // const courseId = await getCourseIdByName(course.name);
       
-      // className拆分（暂时未使用）
-      // const { grade, class: class_ } = splitClassName(course.className);
+      // 转换星期为数字（1-7）
+      const dayMap: { [key: string]: number } = {
+        '星期一': 1,
+        '星期二': 2,
+        '星期三': 3,
+        '星期四': 4,
+        '星期五': 5,
+        '星期六': 6,
+        '星期日': 7
+      };
+      const dayOfWeek = dayMap[course.day] || 1;
       
       // 转换为API需要的格式
       const backendCourse = {
-        name: course.name,
-        day: course.day,
-        timeSlot: course.timeSlot,
-        classroom: course.classroom,
-        teacher: selectedTeacherName.value,
+        course_id: (course as any).course_id,
+        day_of_week: dayOfWeek,
+        period: course.timeSlot,
+        classroom: (course as any).room_id || course.classroom,
+        teacher: selectedTeacher.value,
         className: course.className
       };
       
@@ -337,10 +367,10 @@ export function useTeacherCourse() {
   };
 
   // 模态框相关方法
-  const openAddTeacherCourseModal = (weekDays: string[]) => {
+  const openAddTeacherCourseModal = () => {
     editingTeacherCourse.value = false;
     teacherCourseForm.value = {
-      day: weekDays[0] || '星期一',
+      day: '星期一',
       timeSlot: 1,
       name: '',
       className: '',

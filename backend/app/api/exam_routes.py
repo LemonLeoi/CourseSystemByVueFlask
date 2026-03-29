@@ -54,11 +54,20 @@ def create_exam():
     for field in required_fields:
         if field not in data:
             return jsonify({'error': f'缺少必填字段: {field}'}), 400
+        if not data[field]:
+            return jsonify({'error': f'字段 {field} 不能为空'}), 400
     
     # 检查考试代码是否已存在
     existing_exam = Exam.query.filter_by(exam_code=data['code']).first()
     if existing_exam:
         return jsonify({'error': '考试代码已存在'}), 400
+    
+    # 验证日期格式
+    try:
+        start_date = datetime.strptime(data['startDate'], '%Y-%m-%d').date()
+        end_date = datetime.strptime(data['endDate'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': '日期格式不正确，请使用 YYYY-MM-DD 格式'}), 400
     
     # 创建考试
     new_exam = Exam(
@@ -66,8 +75,8 @@ def create_exam():
         exam_name=data['name'],
         exam_type=data['type'],
         grade=data['grade'],
-        start_date=datetime.strptime(data['startDate'], '%Y-%m-%d').date(),
-        end_date=datetime.strptime(data['endDate'], '%Y-%m-%d').date(),
+        start_date=start_date,
+        end_date=end_date,
         status=data['status']
     )
     
@@ -88,17 +97,41 @@ def update_exam(exam_code):
     
     # 更新字段
     if 'name' in data:
-        exam.exam_name = data['name']
+        if data['name']:
+            exam.exam_name = data['name']
+        else:
+            return jsonify({'error': '考试名称不能为空'}), 400
     if 'type' in data:
-        exam.exam_type = data['type']
+        if data['type']:
+            exam.exam_type = data['type']
+        else:
+            return jsonify({'error': '考试类型不能为空'}), 400
     if 'grade' in data:
-        exam.grade = data['grade']
+        if data['grade']:
+            exam.grade = data['grade']
+        else:
+            return jsonify({'error': '年级不能为空'}), 400
     if 'startDate' in data:
-        exam.start_date = datetime.strptime(data['startDate'], '%Y-%m-%d').date()
+        if data['startDate']:
+            try:
+                exam.start_date = datetime.strptime(data['startDate'], '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({'error': '开始日期格式不正确，请使用 YYYY-MM-DD 格式'}), 400
+        else:
+            return jsonify({'error': '开始日期不能为空'}), 400
     if 'endDate' in data:
-        exam.end_date = datetime.strptime(data['endDate'], '%Y-%m-%d').date()
+        if data['endDate']:
+            try:
+                exam.end_date = datetime.strptime(data['endDate'], '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({'error': '结束日期格式不正确，请使用 YYYY-MM-DD 格式'}), 400
+        else:
+            return jsonify({'error': '结束日期不能为空'}), 400
     if 'status' in data:
-        exam.status = data['status']
+        if data['status']:
+            exam.status = data['status']
+        else:
+            return jsonify({'error': '状态不能为空'}), 400
     
     # 保存更改
     db.session.commit()

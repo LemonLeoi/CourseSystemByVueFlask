@@ -18,6 +18,10 @@ const routes = [
     redirect: '/login'
   },
   {
+    path: '/overall',
+    redirect: '/grade-analysis/overall'
+  },
+  {
     path: '/login',
     name: 'Login',
     component: Login
@@ -56,6 +60,10 @@ const routes = [
         path: 'progress',
         name: 'TeachingProgress',
         component: ProgressPage
+      },
+      {
+        path: 'overall',
+        redirect: '/grade-analysis/overall'
       }
     ]
   },

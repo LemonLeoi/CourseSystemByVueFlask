@@ -75,11 +75,14 @@ export default {
           grades.value = data.grades || []
           classes.value = data.classes || []
           
-          // 生成完整的班级名称（如：高一(1)）
+          // 生成完整的班级名称（如：高三1班）
           const fullClasses = []
           grades.value.forEach(grade => {
             classes.value.forEach(classNum => {
-              fullClasses.push(`${grade}(${classNum})`)
+              // 提取班级数字，如 '1班' -> '1'
+              const classNumMatch = classNum.match(/\d+/)
+              const num = classNumMatch ? classNumMatch[0] : classNum
+              fullClasses.push(`${grade}${num}班`)
             })
           })
           classes.value = fullClasses
@@ -90,14 +93,14 @@ export default {
         grades.value = ['高一', '高二', '高三']
         classes.value = ['1班', '2班', '3班', '4班', '5班']
         
-        // 生成完整的班级名称（如：高一(1)）
+        // 生成完整的班级名称（如：高三1班）
         const fullClasses = []
         grades.value.forEach(grade => {
           classes.value.forEach(classNum => {
             // 提取班级数字，如 '1班' -> '1'
             const classNumMatch = classNum.match(/\d+/)
             const num = classNumMatch ? classNumMatch[0] : classNum
-            fullClasses.push(`${grade}(${num})`)
+            fullClasses.push(`${grade}${num}班`)
           })
         })
         classes.value = fullClasses

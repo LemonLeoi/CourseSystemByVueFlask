@@ -36,9 +36,9 @@ class Teacher(db.Model):
             'subject': self.department,  # 添加subject字段，与department值相同
             'contact': self.contact or '',
             'status': self.status,
-            'teaching_classes': teaching_classes_list,
-            'is_homeroom_teacher': is_homeroom_teacher,
-            'homeroom_class': homeroom_class,
+            'teachingClasses': teaching_classes_list,
+            'isHomeroomTeacher': is_homeroom_teacher,
+            'homeroomClass': homeroom_class,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

@@ -40,12 +40,12 @@ def get_student_analysis(student_id):
 @grade_bp.route('/analysis/class/<class_name>', methods=['GET'])
 def get_class_analysis(class_name):
     try:
-        # 从班级名称中提取年级信息（例如：高一(1)班 -> 年级：高一，班级：1）
-        # 这里简化处理，假设班级名称格式为"高一(1)"这样的形式
+        # 从班级名称中提取年级信息（例如：高三1班 -> 年级：高三，班级：1）
+        # 这里简化处理，假设班级名称格式为"高三1班"这样的形式
         import re
-        match = re.match(r'(.*?)\((\d+)\)', class_name)
+        match = re.match(r'(.*?)(\d+)班', class_name)
         if not match:
-            return jsonify({"error": "班级名称格式不正确，应为'高一(1)'这样的形式"}), 400
+            return jsonify({"error": "班级名称格式不正确，应为'高三1班'这样的形式"}), 400
         
         grade = match.group(1)
         class_num = match.group(2)

@@ -175,10 +175,34 @@ def create_student_course():
     data = request.get_json()
     
     # 验证数据
-    required_fields = ['grade', 'class', 'course_id', 'teacher_id', 'day_of_week', 'period', 'room_id']
+    required_fields = ['name', 'teacher_id', 'day_of_week', 'period', 'room_id']
     for field in required_fields:
         if field not in data:
             return jsonify({'error': f'缺少必填字段: {field}'}), 400
+    
+    # 处理className字段，从其中提取年级和班级
+    grade = data.get('grade')
+    class_ = data.get('class')
+    
+    # 如果提供了className，则从其中提取年级和班级
+    if 'className' in data:
+        class_name = data['className']
+        # 提取年级（如“高一”、“高二”、“高三”）
+        if '高一' in class_name:
+            grade = '高一'
+            class_ = class_name.replace('高一', '')
+        elif '高二' in class_name:
+            grade = '高二'
+            class_ = class_name.replace('高二', '')
+        elif '高三' in class_name:
+            grade = '高三'
+            class_ = class_name.replace('高三', '')
+    
+    # 验证年级和班级
+    if not grade:
+        return jsonify({'error': '缺少必填字段: grade'}), 400
+    if not class_:
+        return jsonify({'error': '缺少必填字段: class'}), 400
     
     # 验证room_id是否存在
     room = db.session.query(Classroom).filter_by(room_id=data['room_id']).first()
@@ -187,14 +211,15 @@ def create_student_course():
     
     # 创建学生课程
     new_course = StudentCourse(
-        grade=data['grade'],
-        class_=data['class'],
-        course_id=data['course_id'],
+        grade=grade,
+        class_=class_,
+        course_id=data.get('course_id'),
         teacher_id=data['teacher_id'],
         day_of_week=data['day_of_week'],
         period=data['period'],
         classroom=room.room_id,  # 使用room_id作为classroom字段的值
         room_id=data['room_id'],  # 设置新的room_id字段
+        name=data['name'],  # 设置课程名称
         status=data.get('status', 'active')
     )
     
@@ -214,6 +239,8 @@ def update_student_course(id):
     data = request.get_json()
     
     # 更新字段
+    if 'name' in data:
+        course.name = data['name']
     if 'grade' in data:
         course.grade = data['grade']
     if 'class' in data:
@@ -288,17 +315,39 @@ def create_teacher_course():
     data = request.get_json()
     
     # 验证数据
-    required_fields = ['teacher_id', 'course_id', 'grade', 'class', 'day_of_week', 'period', 'classroom']
+    required_fields = ['teacher', 'day_of_week', 'period', 'classroom', 'className']
     for field in required_fields:
         if field not in data:
             return jsonify({'error': f'缺少必填字段: {field}'}), 400
     
+    # 处理className字段，从其中提取年级和班级
+    class_name = data['className']
+    grade = ''
+    class_ = ''
+    
+    # 提取年级（如“高一”、“高二”、“高三”）
+    if '高一' in class_name:
+        grade = '高一'
+        class_ = class_name.replace('高一', '')
+    elif '高二' in class_name:
+        grade = '高二'
+        class_ = class_name.replace('高二', '')
+    elif '高三' in class_name:
+        grade = '高三'
+        class_ = class_name.replace('高三', '')
+    
+    # 验证年级和班级
+    if not grade:
+        return jsonify({'error': '缺少必填字段: grade'}), 400
+    if not class_:
+        return jsonify({'error': '缺少必填字段: class'}), 400
+    
     # 创建教师课程
     new_course = TeacherCourse(
-        teacher_id=data['teacher_id'],
-        course_id=data['course_id'],
-        grade=data['grade'],
-        class_=data['class'],
+        teacher_id=data['teacher'],
+        course_id=data.get('course_id'),
+        grade=grade,
+        class_=class_,
         day_of_week=data['day_of_week'],
         period=data['period'],
         classroom=data['classroom'],

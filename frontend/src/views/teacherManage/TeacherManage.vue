@@ -72,7 +72,7 @@
                 <td>{{ teacher.subject }}</td>
                 <td>{{ teacher.title }}</td>
                 <td>{{ teacher.contact }}</td>
-                <td>{{ teacher.teachingClasses.join(', ') }}</td>
+                <td>{{ teacher.teachingClasses && Array.isArray(teacher.teachingClasses) ? teacher.teachingClasses.join(', ') : '无' }}</td>
                 <td>{{ teacher.isHomeroomTeacher ? teacher.homeroomClass + '班主任' : '无' }}</td>
                 <td>
                   <button class="btn btn-primary btn-sm mr-2" @click="editTeacher(teacher)">编辑</button>

@@ -58,7 +58,7 @@
           </div>
           <div class="info-item">
             <span class="info-label">任教班级:</span>
-            <span class="info-value">{{ selectedTeacher.teachingClasses.join(', ') }}</span>
+            <span class="info-value">{{ selectedTeacher.teachingClasses && Array.isArray(selectedTeacher.teachingClasses) ? selectedTeacher.teachingClasses.join(', ') : '无' }}</span>
           </div>
           <div class="info-item">
             <span class="info-label">是否班主任:</span>

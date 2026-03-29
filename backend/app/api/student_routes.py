@@ -302,7 +302,29 @@ def update_student_grades(student_id):
 @bp.route('/classes', methods=['GET'])
 def get_classes():
     """获取所有有效班级和年级列表"""
-    return jsonify({
-        'classes': VALID_CLASSES,
-        'grades': VALID_GRADES
-    })
+    # 从数据库中获取真实的班级和年级数据
+    try:
+        # 获取所有独特的年级
+        grades = db.session.query(Student.grade).distinct().all()
+        grade_list = [grade[0] for grade in grades]
+        
+        # 获取所有独特的班级
+        classes = db.session.query(Student.class_).distinct().all()
+        class_list = [class_[0] for class_ in classes]
+        
+        # 如果数据库中没有数据，使用默认值
+        if not grade_list:
+            grade_list = VALID_GRADES
+        if not class_list:
+            class_list = VALID_CLASSES
+        
+        return jsonify({
+            'classes': class_list,
+            'grades': grade_list
+        })
+    except Exception as e:
+        # 出错时使用默认值
+        return jsonify({
+            'classes': VALID_CLASSES,
+            'grades': VALID_GRADES
+        })

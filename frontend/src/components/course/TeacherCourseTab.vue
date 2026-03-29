@@ -10,6 +10,11 @@
             {{ teacher.name }} ({{ teacher.subject || teacher.department }})
           </option>
         </select>
+        <!-- 显示任教班级 -->
+        <div class="teacher-classes" v-if="selectedTeacherClasses.length > 0">
+          <span class="classes-label">任教班级:</span>
+          <span class="classes-list">{{ selectedTeacherClasses.join(', ') }}</span>
+        </div>
       </div>
       <div class="filter-actions">
         <button class="btn btn-primary" @click="$emit('refreshTeacherSchedule')">
@@ -171,6 +176,13 @@ const showDeleteConfirm = ref(false);
 const deleteDay = ref('');
 const deleteTimeSlot = ref(0);
 
+// 获取当前选中教师的任教班级
+const selectedTeacherClasses = computed(() => {
+  if (!localSelectedTeacher.value) return [];
+  const teacher = props.teachers.find(t => t.id === localSelectedTeacher.value || t.teacher_id === localSelectedTeacher.value);
+  return teacher?.teachingClasses || [];
+});
+
 // 监听 props 变化
 watch(() => props.selectedTeacher, (newValue) => {
   localSelectedTeacher.value = newValue;
@@ -218,6 +230,25 @@ const performDelete = () => {
 /* 教师选择器特殊样式 */
 .filter-group select {
   min-width: 180px;
+}
+
+/* 任教班级显示样式 */
+.teacher-classes {
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.classes-label {
+  font-weight: var(--font-weight-medium);
+  margin-right: var(--spacing-xs);
+  color: var(--text-secondary);
+}
+
+.classes-list {
+  color: var(--text-primary);
 }
 
 /* 课程内容和操作区域样式 */
