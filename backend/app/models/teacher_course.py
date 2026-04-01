@@ -7,7 +7,7 @@ class TeacherCourse(db.Model):
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     teacher_id = db.Column(db.String(20), db.ForeignKey('teachers.teacher_id'), nullable=True)
-    course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=True)
+    course_code = db.Column(db.String(20), db.ForeignKey('courses.course_code'), nullable=True)
     grade = db.Column(db.String(20), nullable=False)
     class_ = db.Column(db.String(20), nullable=False, name='class')
     day_of_week = db.Column(db.Integer, nullable=False)
@@ -17,7 +17,7 @@ class TeacherCourse(db.Model):
     
     # 关联关系
     teacher = db.relationship('Teacher', backref=db.backref('teaching_courses', lazy=True))
-    course = db.relationship('Course', backref=db.backref('teaching_teachers', lazy=True))
+    course = db.relationship('Course', backref=db.backref('teaching_teachers', lazy=True), primaryjoin='TeacherCourse.course_code == Course.course_code')
     
     def to_dict(self):
         week_days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']

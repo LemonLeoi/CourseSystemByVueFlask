@@ -22,7 +22,7 @@ export function useTeacherCourse() {
 
   // 当前选中教师的名称
   const selectedTeacherName = computed(() => {
-    const teacher = teachers.value.find(t => t.id === selectedTeacher.value);
+    const teacher = teachers.value.find(t => t.teacher_id === selectedTeacher.value);
     return teacher?.name || '';
   });
 
@@ -79,9 +79,9 @@ export function useTeacherCourse() {
       teachers.value = teacherData;
       teacherStore.initializeTeachers(teacherData);
       
-      // 如果有教师，默认选择第一个
+      // 如果有教师，默认选择第一个（使用teacher_id而不是id）
       if (teachers.value.length > 0) {
-        selectedTeacher.value = teachers.value[0].id;
+        selectedTeacher.value = teachers.value[0].teacher_id;
         await loadTeacherCourses();
       }
     } catch (err) {
@@ -220,7 +220,7 @@ export function useTeacherCourse() {
       
       // 转换为API需要的格式
       const backendCourse = {
-        course_id: (course as any).course_id,
+        course_code: (course as any).course_code,
         day_of_week: dayOfWeek,
         period: course.timeSlot,
         classroom: (course as any).room_id || course.classroom,
@@ -279,7 +279,7 @@ export function useTeacherCourse() {
       
       // 转换为API需要的格式
       const backendCourse = {
-        course_id: (course as any).course_id,
+        course_code: (course as any).course_code,
         day_of_week: dayOfWeek,
         period: course.timeSlot,
         classroom: (course as any).room_id || course.classroom,

@@ -5,6 +5,36 @@ from app.models import Course, StudentCourse, TeacherCourse, TeachingProgress, C
 # 创建Blueprint
 bp = Blueprint('courses', __name__)
 
+# 年级到代码的映射
+GRADE_CODES = {
+    '高一': '10',
+    '高二': '20',
+    '高三': '30'
+}
+
+# 特殊科目年级代码映射
+SPECIAL_GRADE_SUBJECT_CODES = {
+    ('高一', '体育'): '11',
+    ('高二', '体育'): '21',
+    ('高三', '体育'): '31',
+    ('高一', '美术'): '12',
+    ('高二', '美术'): '22',
+    ('高三', '美术'): '32'
+}
+
+# 科目到代码的映射
+SUBJECT_CODES = {
+    '语文': '01',
+    '数学': '02',
+    '英语': '03',
+    '物理': '14',
+    '化学': '15',
+    '生物': '16',
+    '历史': '24',
+    '政治': '25',
+    '地理': '26'
+}
+
 # 课程管理API
 @bp.route('/', methods=['GET'])
 def get_courses():
@@ -61,20 +91,46 @@ def create_course():
     data = request.get_json()
     
     # 验证数据
-    required_fields = ['course_name', 'course_code', 'teacher_id', 'subject', 'grade', 'semester', 'year']
+    required_fields = ['course_name', 'teacher_id', 'subject', 'grade', 'semester', 'year']
     for field in required_fields:
         if field not in data:
             return jsonify({'error': f'缺少必填字段: {field}'}), 400
     
+    # 生成课程代码
+    grade = data['grade']
+    subject = data['subject']
+    
+    # 检查年级是否有效
+    if grade not in GRADE_CODES:
+        return jsonify({'error': '无效的年级'}), 400
+    
+    # 检查科目是否有效
+    if subject not in SUBJECT_CODES and subject not in ['体育', '美术']:
+        return jsonify({'error': '无效的科目'}), 400
+    
+    # 生成前两位代码
+    if (grade, subject) in SPECIAL_GRADE_SUBJECT_CODES:
+        # 特殊科目（体育、美术）
+        first_two = SPECIAL_GRADE_SUBJECT_CODES[(grade, subject)]
+        # 特殊科目不需要后两位代码
+        course_code = first_two
+    else:
+        # 普通科目
+        first_two = GRADE_CODES[grade]
+        second_two = SUBJECT_CODES.get(subject, '')
+        if not second_two:
+            return jsonify({'error': '无效的科目'}), 400
+        course_code = first_two + second_two
+    
     # 检查课程代码是否已存在
-    existing_course = Course.query.filter_by(course_code=data['course_code']).first()
+    existing_course = Course.query.filter_by(course_code=course_code).first()
     if existing_course:
         return jsonify({'error': '课程代码已存在'}), 400
     
     # 创建课程
     new_course = Course(
         course_name=data['course_name'],
-        course_code=data['course_code'],
+        course_code=course_code,
         teacher_id=data['teacher_id'],
         subject=data['subject'],
         grade=data['grade'],
@@ -213,13 +269,12 @@ def create_student_course():
     new_course = StudentCourse(
         grade=grade,
         class_=class_,
-        course_id=data.get('course_id'),
+        course_code=data.get('course_code'),
         teacher_id=data['teacher_id'],
         day_of_week=data['day_of_week'],
         period=data['period'],
         classroom=room.room_id,  # 使用room_id作为classroom字段的值
         room_id=data['room_id'],  # 设置新的room_id字段
-        name=data['name'],  # 设置课程名称
         status=data.get('status', 'active')
     )
     
@@ -239,14 +294,12 @@ def update_student_course(id):
     data = request.get_json()
     
     # 更新字段
-    if 'name' in data:
-        course.name = data['name']
     if 'grade' in data:
         course.grade = data['grade']
     if 'class' in data:
         course.class_ = data['class']
-    if 'course_id' in data:
-        course.course_id = data['course_id']
+    if 'course_code' in data:
+        course.course_code = data['course_code']
     if 'teacher_id' in data:
         course.teacher_id = data['teacher_id']
     if 'day_of_week' in data:
@@ -345,7 +398,7 @@ def create_teacher_course():
     # 创建教师课程
     new_course = TeacherCourse(
         teacher_id=data['teacher'],
-        course_id=data.get('course_id'),
+        course_code=data.get('course_code'),
         grade=grade,
         class_=class_,
         day_of_week=data['day_of_week'],
@@ -372,8 +425,8 @@ def update_teacher_course(id):
     # 更新字段
     if 'teacher_id' in data:
         course.teacher_id = data['teacher_id']
-    if 'course_id' in data:
-        course.course_id = data['course_id']
+    if 'course_code' in data:
+        course.course_code = data['course_code']
     if 'grade' in data:
         course.grade = data['grade']
     if 'class' in data:

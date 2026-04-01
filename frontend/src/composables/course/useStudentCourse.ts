@@ -168,7 +168,7 @@ export function useStudentCourse() {
   // 处理教师选择变化
   const handleTeacherSelect = (teacherId: string) => {
     selectedTeacherId.value = teacherId;
-    const teacher = teachers.value.find(t => t.id === teacherId);
+    const teacher = teachers.value.find(t => t.teacher_id === teacherId);
     selectedTeacher.value = teacher || null;
     console.log('选择的教师:', selectedTeacher.value);
   };
