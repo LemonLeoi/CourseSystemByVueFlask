@@ -50,6 +50,8 @@ export interface Course {
 export interface Exam {
   code: string;
   name: string;
+  academicYear: string;
+  semester: string;
   type: string;
   grade: string;
   startDate: string;

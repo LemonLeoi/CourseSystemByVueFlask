@@ -6,7 +6,7 @@
         <label>教师:</label>
         <select v-model="localSelectedTeacher" @change="handleTeacherChange">
           <option value="">请选择教师</option>
-          <option v-for="teacher in teachers" :key="teacher.id || teacher.teacher_id" :value="teacher.id || teacher.teacher_id">
+          <option v-for="teacher in teachers" :key="teacher.teacher_id" :value="teacher.teacher_id">
             {{ teacher.name }} ({{ teacher.subject || teacher.department }})
           </option>
         </select>
@@ -179,7 +179,7 @@ const deleteTimeSlot = ref(0);
 // 获取当前选中教师的任教班级
 const selectedTeacherClasses = computed(() => {
   if (!localSelectedTeacher.value) return [];
-  const teacher = props.teachers.find(t => t.id === localSelectedTeacher.value || t.teacher_id === localSelectedTeacher.value);
+  const teacher = props.teachers.find(t => t.teacher_id === localSelectedTeacher.value);
   return teacher?.teachingClasses || [];
 });
 

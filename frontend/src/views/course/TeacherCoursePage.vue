@@ -48,7 +48,7 @@ import CourseModal from '@/components/course/CourseModal.vue';
 import { useTeacherCourse } from '@/composables/course/useTeacherCourse';
 import { useCourseCommon } from '@/composables/course/useCourseCommon';
 import { ref, onMounted } from 'vue';
-import { courseApi } from '@/services/api/apiService';
+import { courseApi, teacherApi } from '@/services/api/apiService';
 
 // 使用课程公共composable
 const { timeSlots, weekDays } = useCourseCommon();

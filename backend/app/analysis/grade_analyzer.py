@@ -1,63 +1,10 @@
 # Grade analysis core logic
-import sqlite3
-import os
-
-# 从数据库获取学生个人成绩
-def get_student_grades(student_id):
-    # 连接数据库
-    conn = sqlite3.connect('e:/A_Course/backend/data/database.db')
-    cursor = conn.cursor()
-    
-    # 查询学生信息
-    cursor.execute("SELECT name, gender, class, grade FROM students WHERE student_id = ?", (student_id,))
-    student_info = cursor.fetchone()
-    
-    if not student_info:
-        conn.close()
-        return None, None
-    
-    # 查询学生成绩
-    query = """
-    SELECT g.exam_type, g.subject, g.score, g.grade_level
-    FROM student_grades g
-    WHERE g.student_id = ?
-    ORDER BY g.exam_type, g.subject
-    """
-    
-    cursor.execute(query, (student_id,))
-    grades = cursor.fetchall()
-    conn.close()
-    
-    return student_info, grades
-
-# 获取班级平均成绩
-def get_class_average(student_class, student_grade):
-    conn = sqlite3.connect('e:/A_Course/backend/data/database.db')
-    cursor = conn.cursor()
-    
-    query = """
-    SELECT g.subject, AVG(g.score) as avg_score
-    FROM student_grades g
-    JOIN students s ON g.student_id = s.student_id
-    WHERE s.class = ? AND s.grade = ?
-    GROUP BY g.subject
-    """
-    
-    cursor.execute(query, (student_class, student_grade))
-    class_averages = cursor.fetchall()
-    conn.close()
-    
-    # 转换为字典
-    avg_dict = {}
-    for subject, avg_score in class_averages:
-        avg_dict[subject] = round(avg_score, 2)
-    
-    return avg_dict
+from ..data_access.grade_data_access import GradeDataAccess
 
 # 分析学生成绩
 def analyze_student_performance(student_id):
     # 获取学生信息和成绩
-    student_info, grades = get_student_grades(student_id)
+    student_info, grades = GradeDataAccess.get_student_grades(student_id)
     
     if not student_info:
         return {"error": f"未找到学号为 {student_id} 的学生"}
@@ -75,17 +22,23 @@ def analyze_student_performance(student_id):
             "error": "该学生暂无成绩记录"
         }
     
-    # 按考试类型和学科整理成绩
+    # 按考试名称和学科整理成绩
     exam_grades = {}
-    for exam_type, subject, score, grade_level in grades:
-        if exam_type not in exam_grades:
-            exam_grades[exam_type] = {}
-        exam_grades[exam_type][subject] = (score, grade_level)
+    for exam_name, academic_year, semester, grade, exam_type, subject, score, grade_level in grades:
+        if exam_name not in exam_grades:
+            exam_grades[exam_name] = {
+                'academic_year': academic_year,
+                'semester': semester,
+                'grade': grade,
+                'exam_type': exam_type,
+                'subjects': {}
+            }
+        exam_grades[exam_name]['subjects'][subject] = (score, grade_level)
     
     # 计算各学科平均成绩
     subject_averages = {}
-    for exam_type, subjects in exam_grades.items():
-        for subject, (score, _) in subjects.items():
+    for exam_data in exam_grades.values():
+        for subject, (score, _) in exam_data['subjects'].items():
             if subject not in subject_averages:
                 subject_averages[subject] = []
             subject_averages[subject].append(score)
@@ -95,7 +48,7 @@ def analyze_student_performance(student_id):
         subject_averages[subject] = round(sum(scores) / len(scores), 2)
     
     # 获取班级平均成绩
-    class_averages = get_class_average(student_class, student_grade)
+    class_averages = GradeDataAccess.get_class_average(student_class, student_grade)
     
     # 分析学科强弱项
     strengths = []
@@ -162,49 +115,39 @@ def analyze_student_performance(student_id):
 
 # 分析班级成绩
 def analyze_class_performance(class_name, grade):
-    conn = sqlite3.connect('e:/A_Course/backend/data/database.db')
-    cursor = conn.cursor()
-    
     # 处理班级格式，确保与数据库匹配
     # 如果class_name是数字，添加"班"字
     if class_name.isdigit():
         class_name = f"{class_name}班"
     
     # 查询班级学生
-    cursor.execute("SELECT student_id, name FROM students WHERE class = ? AND grade = ?", (class_name, grade))
-    students = cursor.fetchall()
+    students = GradeDataAccess.get_class_students(class_name, grade)
     
     if not students:
-        conn.close()
         return {"error": f"未找到 {grade}{class_name} 班级的学生"}
     
     # 查询班级所有成绩
-    query = """
-    SELECT g.student_id, g.exam_type, g.subject, g.score, g.grade_level
-    FROM student_grades g
-    JOIN students s ON g.student_id = s.student_id
-    WHERE s.class = ? AND s.grade = ?
-    ORDER BY g.student_id, g.exam_type, g.subject
-    """
-    
-    cursor.execute(query, (class_name, grade))
-    grades = cursor.fetchall()
-    conn.close()
+    grades = GradeDataAccess.get_class_grades(class_name, grade)
     
     # 整理成绩数据
     student_grades = {}
-    for student_id, exam_type, subject, score, grade_level in grades:
+    for student_id, exam_name, academic_year, semester, exam_type, subject, score, grade_level in grades:
         if student_id not in student_grades:
             student_grades[student_id] = {}
-        if exam_type not in student_grades[student_id]:
-            student_grades[student_id][exam_type] = {}
-        student_grades[student_id][exam_type][subject] = (score, grade_level)
+        if exam_name not in student_grades[student_id]:
+            student_grades[student_id][exam_name] = {
+                'academic_year': academic_year,
+                'semester': semester,
+                'exam_type': exam_type,
+                'subjects': {}
+            }
+        student_grades[student_id][exam_name]['subjects'][subject] = (score, grade_level)
     
     # 计算班级学科平均
     class_subject_avgs = {}
     for student_id, exam_data in student_grades.items():
-        for exam_type, subjects in exam_data.items():
-            for subject, (score, _) in subjects.items():
+        for exam_info in exam_data.values():
+            for subject, (score, _) in exam_info['subjects'].items():
                 if subject not in class_subject_avgs:
                     class_subject_avgs[subject] = []
                 class_subject_avgs[subject].append(score)
@@ -234,47 +177,37 @@ def analyze_class_performance(class_name, grade):
 
 # 分析年级成绩
 def analyze_grade_performance(grade):
-    conn = sqlite3.connect('e:/A_Course/backend/data/database.db')
-    cursor = conn.cursor()
-    
     # 查询年级所有班级
-    cursor.execute("SELECT DISTINCT class FROM students WHERE grade = ?", (grade,))
-    classes = cursor.fetchall()
+    classes = GradeDataAccess.get_grade_classes(grade)
     
     if not classes:
-        conn.close()
         return {"error": f"未找到 {grade} 年级的班级"}
     
     # 查询年级所有成绩
-    query = """
-    SELECT s.class, g.exam_type, g.subject, g.score, g.grade_level
-    FROM student_grades g
-    JOIN students s ON g.student_id = s.student_id
-    WHERE s.grade = ?
-    ORDER BY s.class, g.exam_type, g.subject
-    """
-    
-    cursor.execute(query, (grade,))
-    grades = cursor.fetchall()
-    conn.close()
+    grades = GradeDataAccess.get_grade_grades(grade)
     
     # 整理成绩数据
     class_grades = {}
-    for class_name, exam_type, subject, score, grade_level in grades:
+    for class_name, exam_name, academic_year, semester, exam_type, subject, score, grade_level in grades:
         if class_name not in class_grades:
             class_grades[class_name] = {}
-        if exam_type not in class_grades[class_name]:
-            class_grades[class_name][exam_type] = {}
-        if subject not in class_grades[class_name][exam_type]:
-            class_grades[class_name][exam_type][subject] = []
-        class_grades[class_name][exam_type][subject].append(score)
+        if exam_name not in class_grades[class_name]:
+            class_grades[class_name][exam_name] = {
+                'academic_year': academic_year,
+                'semester': semester,
+                'exam_type': exam_type,
+                'subjects': {}
+            }
+        if subject not in class_grades[class_name][exam_name]['subjects']:
+            class_grades[class_name][exam_name]['subjects'][subject] = []
+        class_grades[class_name][exam_name]['subjects'][subject].append(score)
     
     # 计算各班级学科平均
     class_subject_avgs = {}
     for class_name, exam_data in class_grades.items():
         class_subject_avgs[class_name] = {}
-        for exam_type, subjects in exam_data.items():
-            for subject, scores in subjects.items():
+        for exam_info in exam_data.values():
+            for subject, scores in exam_info['subjects'].items():
                 if subject not in class_subject_avgs[class_name]:
                     class_subject_avgs[class_name][subject] = []
                 class_subject_avgs[class_name][subject].extend(scores)

@@ -2,6 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 import os
 from dotenv import load_dotenv
+from flask_restx import Api
 
 # 加载环境变量
 load_dotenv()
@@ -25,6 +26,15 @@ from app import db
 # 初始化数据库
 db.init_app(app)
 
+# 初始化Swagger API
+api = Api(
+    app,
+    version='1.0',
+    title='学校管理系统API',
+    description='学校管理系统的API接口文档',
+    doc='/swagger'
+)
+
 # 导入路由
 from app.api import student_routes
 from app.api import teacher_routes
@@ -33,6 +43,9 @@ from app.api import auth_routes
 from app.api import exam_routes
 from app.api import admin_routes
 from app.api import grade_routes
+
+# 注册命名空间到API
+api.add_namespace(exam_routes.exam_ns, path='/api/exams')
 
 # 注册蓝图
 app.register_blueprint(student_routes.bp, url_prefix='/api/students')

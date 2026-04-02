@@ -126,21 +126,35 @@
                 type="text" 
                 id="examName" 
                 v-model="formData.name" 
+                readonly
                 required
               >
             </div>
             <div class="form-group">
-              <label for="examType">考试类型</label>
+              <label for="academicYear">学年</label>
               <select 
-                id="examType" 
-                v-model="formData.type" 
+                id="academicYear" 
+                v-model="formData.academicYear" 
+                @change="handleFormChange"
                 required
               >
                 <option value="">请选择</option>
-                <option value="期中考试">期中考试</option>
-                <option value="期末考试">期末考试</option>
-                <option value="模拟考试">模拟考试</option>
-                <option value="月考">月考</option>
+                <option value="2024-2025学年">2024-2025学年</option>
+                <option value="2025-2026学年">2025-2026学年</option>
+                <option value="2026-2027学年">2026-2027学年</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="semester">学期</label>
+              <select 
+                id="semester" 
+                v-model="formData.semester" 
+                @change="handleFormChange"
+                required
+              >
+                <option value="">请选择</option>
+                <option value="第一学期">第一学期</option>
+                <option value="第二学期">第二学期</option>
               </select>
             </div>
             <div class="form-group">
@@ -148,12 +162,28 @@
               <select 
                 id="examGrade" 
                 v-model="formData.grade" 
+                @change="handleFormChange"
                 required
               >
                 <option value="">请选择</option>
                 <option value="高一">高一</option>
                 <option value="高二">高二</option>
                 <option value="高三">高三</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="examType">考试类型</label>
+              <select 
+                id="examType" 
+                v-model="formData.type" 
+                @change="handleFormChange"
+                required
+              >
+                <option value="">请选择</option>
+                <option value="期中考试">期中考试</option>
+                <option value="期末考试">期末考试</option>
+                <option value="模拟考试">模拟考试</option>
+                <option value="月考">月考</option>
               </select>
             </div>
             <div class="form-group">
@@ -269,12 +299,68 @@ const editingExam = ref<Exam | null>(null);
 const formData = ref<Exam>({
   code: '',
   name: '',
-  type: '',
+  academicYear: '',
+  semester: '',
   grade: '',
+  type: '',
   startDate: '',
   endDate: '',
   status: '准备中'
 });
+
+// 生成考试名称
+const generateExamName = () => {
+  const { academicYear, semester, grade, type } = formData.value;
+  if (academicYear && semester && grade && type) {
+    formData.value.name = `${academicYear}${grade}${semester}${type}`;
+  }
+};
+
+// 生成考试代码
+const generateExamCode = () => {
+  const { academicYear, semester, grade, type } = formData.value;
+  if (academicYear && semester && grade && type) {
+    // 提取学年的起始年份
+    const year = academicYear.substring(0, 4);
+    
+    // 转换学期为数字
+    const semesterNum = semester === '第一学期' ? '1' : '2';
+    
+    // 转换年级为数字
+    const gradeNum = grade === '高一' ? '1' : grade === '高二' ? '2' : '3';
+    
+    // 转换考试类型为缩写
+    let typeCode = '';
+    switch (type) {
+      case '期中考试':
+        typeCode = 'MID';
+        break;
+      case '期末考试':
+        typeCode = 'FIN';
+        break;
+      case '模拟考试':
+        typeCode = 'SIM';
+        break;
+      case '月考':
+        typeCode = 'MON';
+        break;
+      default:
+        typeCode = 'OTH';
+    }
+    
+    // 生成序号（简单起见，使用时间戳的后4位）
+    const sequence = String(Date.now()).slice(-4);
+    
+    // 组合生成考试代码
+    formData.value.code = `${year}${semesterNum}${gradeNum}${typeCode}${sequence}`;
+  }
+};
+
+// 处理表单变化
+const handleFormChange = () => {
+  generateExamName();
+  generateExamCode();
+};
 
 // 详情模态框
 const showDetailModal = ref(false);
@@ -285,8 +371,10 @@ const openAddModal = () => {
   formData.value = {
     code: '',
     name: '',
-    type: '',
+    academicYear: '',
+    semester: '',
     grade: '',
+    type: '',
     startDate: '',
     endDate: '',
     status: '准备中'
