@@ -243,7 +243,7 @@ def create_student_course():
     # 如果提供了className，则从其中提取年级和班级
     if 'className' in data:
         class_name = data['className']
-        # 提取年级（如“高一”、“高二”、“高三”）
+        # 提取年级（如"高一"、"高二"、"高三"）
         if '高一' in class_name:
             grade = '高一'
             class_ = class_name.replace('高一', '')
@@ -280,6 +280,35 @@ def create_student_course():
     
     # 保存到数据库
     db.session.add(new_course)
+    
+    # 同时创建或更新教师课程
+    teacher_course = TeacherCourse.query.filter_by(
+        teacher_id=data['teacher_id'],
+        grade=grade,
+        class_=class_,
+        day_of_week=data['day_of_week'],
+        period=data['period']
+    ).first()
+    
+    if not teacher_course:
+        # 创建新的教师课程
+        teacher_course = TeacherCourse(
+            teacher_id=data['teacher_id'],
+            course_code=data.get('course_code'),
+            grade=grade,
+            class_=class_,
+            day_of_week=data['day_of_week'],
+            period=data['period'],
+            classroom=room.room_id,
+            status=data.get('status', 'active')
+        )
+        db.session.add(teacher_course)
+    else:
+        # 更新现有的教师课程
+        teacher_course.course_code = data.get('course_code')
+        teacher_course.classroom = room.room_id
+        teacher_course.status = data.get('status', 'active')
+    
     db.session.commit()
     
     return jsonify(new_course.to_dict()), 201
@@ -292,6 +321,13 @@ def update_student_course(id):
         return jsonify({'error': '课程不存在'}), 404
     
     data = request.get_json()
+    
+    # 保存原始值，用于后续更新教师课程
+    original_teacher_id = course.teacher_id
+    original_grade = course.grade
+    original_class = course.class_
+    original_day_of_week = course.day_of_week
+    original_period = course.period
     
     # 更新字段
     if 'grade' in data:
@@ -319,6 +355,53 @@ def update_student_course(id):
     # 保存更改
     db.session.commit()
     
+    # 更新或创建教师课程
+    # 首先删除可能存在的旧教师课程（如果教师、班级或时间发生了变化）
+    if (original_teacher_id != course.teacher_id or 
+        original_grade != course.grade or 
+        original_class != course.class_ or 
+        original_day_of_week != course.day_of_week or 
+        original_period != course.period):
+        old_teacher_course = TeacherCourse.query.filter_by(
+            teacher_id=original_teacher_id,
+            grade=original_grade,
+            class_=original_class,
+            day_of_week=original_day_of_week,
+            period=original_period
+        ).first()
+        if old_teacher_course:
+            db.session.delete(old_teacher_course)
+    
+    # 查找或创建新的教师课程
+    teacher_course = TeacherCourse.query.filter_by(
+        teacher_id=course.teacher_id,
+        grade=course.grade,
+        class_=course.class_,
+        day_of_week=course.day_of_week,
+        period=course.period
+    ).first()
+    
+    if not teacher_course:
+        # 创建新的教师课程
+        teacher_course = TeacherCourse(
+            teacher_id=course.teacher_id,
+            course_code=course.course_code,
+            grade=course.grade,
+            class_=course.class_,
+            day_of_week=course.day_of_week,
+            period=course.period,
+            classroom=course.classroom,
+            status=course.status
+        )
+        db.session.add(teacher_course)
+    else:
+        # 更新现有的教师课程
+        teacher_course.course_code = course.course_code
+        teacher_course.classroom = course.classroom
+        teacher_course.status = course.status
+    
+    db.session.commit()
+    
     return jsonify(course.to_dict())
 
 @bp.route('/student-courses/<int:id>', methods=['DELETE'])
@@ -328,8 +411,28 @@ def delete_student_course(id):
     if not course:
         return jsonify({'error': '课程不存在'}), 404
     
-    # 从数据库中删除
+    # 保存课程信息，用于删除对应的教师课程
+    teacher_id = course.teacher_id
+    grade = course.grade
+    class_ = course.class_
+    day_of_week = course.day_of_week
+    period = course.period
+    
+    # 从数据库中删除学生课程
     db.session.delete(course)
+    
+    # 同时删除对应的教师课程
+    teacher_course = TeacherCourse.query.filter_by(
+        teacher_id=teacher_id,
+        grade=grade,
+        class_=class_,
+        day_of_week=day_of_week,
+        period=period
+    ).first()
+    
+    if teacher_course:
+        db.session.delete(teacher_course)
+    
     db.session.commit()
     
     return jsonify({'message': '课程删除成功'})

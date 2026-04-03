@@ -12,6 +12,7 @@ export function useStudentCourse() {
   
   // 教师相关状态
   const teachers = ref<Teacher[]>([]);
+  const filteredTeachers = ref<Teacher[]>([]);
   const selectedTeacherId = ref('');
   const selectedTeacher = ref<Teacher | null>(null);
   
@@ -26,21 +27,38 @@ export function useStudentCourse() {
   // 模态框状态
   const showStudentCourseModal = ref(false);
   const editingStudentCourse = ref(false);
-  const studentCourseForm = ref<StudentCourse>({
+  const studentCourseForm = ref<any>({
     day: '',
     timeSlot: 1,
     name: '',
     teacher: '',
-    classroom: ''
+    classroom: '',
+    course_id: '',
+    room_id: ''
   });
 
-  // 监听年级和班级变化，自动更新课程表
+  // 根据年级和班级过滤教师列表
+  const filterTeachersByClass = () => {
+    const currentClass = `${studentGrade.value}${studentClass.value}`;
+    filteredTeachers.value = teachers.value.filter(teacher => {
+      // 检查教师是否有任教班级信息
+      if (teacher.teachingClasses && Array.isArray(teacher.teachingClasses)) {
+        return teacher.teachingClasses.includes(currentClass);
+      }
+      // 如果没有任教班级信息，返回所有教师（作为后备）
+      return true;
+    });
+    console.log('过滤后的教师列表:', filteredTeachers.value);
+  };
+
+  // 监听年级和班级变化，自动更新课程表和过滤教师
   watch(
     [studentGrade, studentClass],
     async () => {
       console.log('=== 年级或班级变化，更新课程表 ===');
       console.log('新年级:', studentGrade.value);
       console.log('新班级:', studentClass.value);
+      filterTeachersByClass();
       await loadStudentCourses();
     },
     { immediate: false }
@@ -59,10 +77,14 @@ export function useStudentCourse() {
       
       teachers.value = teacherData;
       teacherStore.initializeTeachers(teacherData);
+      
+      // 加载教师数据后过滤教师列表
+      filterTeachersByClass();
     } catch (err) {
       error.value = '加载教师数据失败';
       console.error('Error loading teachers:', err);
       teachers.value = [];
+      filteredTeachers.value = [];
     } finally {
       isLoading.value = false;
     }
@@ -185,15 +207,28 @@ export function useStudentCourse() {
         return false;
       }
       
-      // 验证教室是否已选择
-      const roomId = (course as any).room_id;
-      if (!roomId) {
-        error.value = '请选择教室';
+      // 验证课程是否已选择
+      const courseId = (course as any).course_id;
+      if (!courseId) {
+        error.value = '请选择课程';
         return false;
       }
       
-      // 课程ID获取（暂时未使用）
-      // const courseId = await getCourseIdByName(course.name);
+      // 获取课程信息
+      const selectedCourse = courses.value.find(c => c.id === courseId);
+      if (!selectedCourse) {
+        error.value = '课程信息不存在';
+        return false;
+      }
+      
+      // 根据年级和班级自动选择教室
+      const classroom = classrooms.value.find(room => 
+        room.grade === studentGrade.value && room.class === studentClass.value
+      );
+      if (!classroom) {
+        error.value = '未找到对应班级的教室';
+        return false;
+      }
       
       // 转换星期为数字（1-7）
       const dayMap: { [key: string]: number } = {
@@ -209,12 +244,13 @@ export function useStudentCourse() {
       
       // 转换为API需要的格式
       const backendCourse = {
-        name: course.name,
+        name: selectedCourse.course_name,
+        course_code: selectedCourse.course_code,
         day_of_week: dayOfWeek,
         period: course.timeSlot,
-        classroom: course.classroom,
+        classroom: classroom.room_id,
         teacher_id: selectedTeacherId.value,
-        room_id: roomId,
+        room_id: classroom.room_id,
         className: `${studentGrade.value}${studentClass.value}`
       };
       
@@ -244,15 +280,28 @@ export function useStudentCourse() {
         return false;
       }
       
-      // 验证教室是否已选择
-      const roomId = (course as any).room_id;
-      if (!roomId) {
-        error.value = '请选择教室';
+      // 验证课程是否已选择
+      const courseId = (course as any).course_id;
+      if (!courseId) {
+        error.value = '请选择课程';
         return false;
       }
       
-      // 课程ID获取（暂时未使用）
-      // const courseId = await getCourseIdByName(course.name);
+      // 获取课程信息
+      const selectedCourse = courses.value.find(c => c.id === courseId);
+      if (!selectedCourse) {
+        error.value = '课程信息不存在';
+        return false;
+      }
+      
+      // 根据年级和班级自动选择教室
+      const classroom = classrooms.value.find(room => 
+        room.grade === studentGrade.value && room.class === studentClass.value
+      );
+      if (!classroom) {
+        error.value = '未找到对应班级的教室';
+        return false;
+      }
       
       // 转换星期为数字（1-7）
       const dayMap: { [key: string]: number } = {
@@ -268,12 +317,13 @@ export function useStudentCourse() {
       
       // 转换为API需要的格式
       const backendCourse = {
-        name: course.name,
+        name: selectedCourse.course_name,
+        course_code: selectedCourse.course_code,
         day_of_week: dayOfWeek,
         period: course.timeSlot,
-        classroom: course.classroom,
+        classroom: classroom.room_id,
         teacher_id: selectedTeacherId.value,
-        room_id: roomId,
+        room_id: classroom.room_id,
         className: `${studentGrade.value}${studentClass.value}`
       };
       
@@ -355,14 +405,16 @@ export function useStudentCourse() {
   };
 
   // 模态框相关方法
-  const openAddStudentCourseModal = (weekDays: string[]) => {
+  const openAddStudentCourseModal = () => {
     editingStudentCourse.value = false;
     studentCourseForm.value = {
-      day: weekDays[0] || '星期一',
+      day: '星期一',
       timeSlot: 1,
       name: '',
       teacher: '',
-      classroom: ''
+      classroom: '',
+      course_id: '',
+      room_id: ''
     };
     showStudentCourseModal.value = true;
   };
@@ -370,7 +422,11 @@ export function useStudentCourse() {
   const openEditStudentCourseModal = (day: string, timeSlot: number) => {
     const existingCourse = getStudentCourse(day, timeSlot);
     if (existingCourse) {
-      studentCourseForm.value = { ...existingCourse };
+      studentCourseForm.value = { 
+        ...existingCourse,
+        course_id: '', // 需要重新选择课程
+        room_id: '' // 需要重新选择教室
+      };
       editingStudentCourse.value = true;
     } else {
       studentCourseForm.value = {
@@ -378,7 +434,9 @@ export function useStudentCourse() {
         timeSlot,
         name: '',
         teacher: '',
-        classroom: ''
+        classroom: '',
+        course_id: '',
+        room_id: ''
       };
       editingStudentCourse.value = false;
     }
@@ -417,6 +475,7 @@ export function useStudentCourse() {
     
     // 教师相关状态
     teachers,
+    filteredTeachers,
     selectedTeacherId,
     selectedTeacher,
     

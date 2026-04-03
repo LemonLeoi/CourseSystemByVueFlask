@@ -367,11 +367,11 @@ export function useTeacherCourse() {
   };
 
   // 模态框相关方法
-  const openAddTeacherCourseModal = () => {
+  const openAddTeacherCourseModal = (day: string = '星期一', timeSlot: number = 1) => {
     editingTeacherCourse.value = false;
     teacherCourseForm.value = {
-      day: '星期一',
-      timeSlot: 1,
+      day: day,
+      timeSlot: timeSlot,
       name: '',
       className: '',
       classroom: ''

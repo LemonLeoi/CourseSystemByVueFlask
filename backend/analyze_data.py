@@ -1,13 +1,8 @@
 import sqlite3
 import pandas as pd
-import os
-
-# 获取项目根目录
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_PATH = os.path.join(BASE_DIR, 'data', 'database.db')
 
 # 连接数据库
-conn = sqlite3.connect(DATABASE_PATH)
+conn = sqlite3.connect('e:\\A_Course\\backend\\data\\database.db')
 
 # 查看学生表数据
 print("学生表数据:")

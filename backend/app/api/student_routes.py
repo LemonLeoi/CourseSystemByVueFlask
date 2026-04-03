@@ -36,18 +36,19 @@ def get_students():
     students_data = []
     for student in students:
         student_data = student.to_dict()
-        # 获取学生成绩
+        # 获取学生成绩，通过JOIN exams表获取考试信息
         scores = []
-        grade_records = Grade.query.filter_by(student_id=student.student_id).all()
-        for grade_record in grade_records:
+        from ..models import Exam
+        grade_records = db.session.query(Grade, Exam).join(Exam, Grade.exam_id == Exam.id).filter(Grade.student_id == student.student_id).all()
+        for grade_record, exam in grade_records:
             scores.append({
                 'subject': grade_record.subject,
                 'score': grade_record.score,
                 'grade': grade_record.grade_level,
-                'examType': grade_record.exam_type,
-                'semester': grade_record.semester,
+                'examType': exam.exam_type if exam else None,
+                'semester': exam.semester if exam else None,
                 'examDate': grade_record.exam_date.isoformat() if grade_record.exam_date else None,
-                'period': grade_record.period
+                'period': exam.academic_year if exam else None
             })
         student_data['scores'] = scores
         students_data.append(student_data)
@@ -65,18 +66,19 @@ def get_student(student_id):
     # 获取学生数据
     student_data = student.to_dict()
     
-    # 直接查询Grade表获取学生成绩，确保获取最新数据
+    # 直接查询Grade表获取学生成绩，通过JOIN exams表获取考试信息
     scores = []
-    grade_records = Grade.query.filter_by(student_id=student_id).all()
-    for grade_record in grade_records:
+    from ..models import Exam
+    grade_records = db.session.query(Grade, Exam).join(Exam, Grade.exam_id == Exam.id).filter(Grade.student_id == student_id).all()
+    for grade_record, exam in grade_records:
         scores.append({
             'subject': grade_record.subject,
             'score': grade_record.score,
             'grade': grade_record.grade_level,
-            'examType': grade_record.exam_type,
-            'semester': grade_record.semester,
+            'examType': exam.exam_type if exam else None,
+            'semester': exam.semester if exam else None,
             'examDate': grade_record.exam_date.isoformat() if grade_record.exam_date else None,
-            'period': grade_record.period
+            'period': exam.academic_year if exam else None
         })
     
     student_data['scores'] = scores
@@ -245,11 +247,6 @@ def update_student_grades(student_id):
             else:
                 grade_level = 'E'
             
-            # 获取考试信息
-            exam_type = score_data.get('examType', '期中考试')
-            semester = score_data.get('semester')
-            period = score_data.get('period')
-            
             # 处理考试日期
             exam_date = None
             if 'examDate' in score_data:
@@ -259,16 +256,47 @@ def update_student_grades(student_id):
                 except ValueError:
                     pass
             
+            # 获取或创建考试记录
+            exam_type = score_data.get('examType', '期中考试')
+            semester = score_data.get('semester', '第一学期')
+            academic_year = score_data.get('period', '2024-2025学年')
+            grade_level_str = student.grade
+            
+            # 查找对应的考试记录
+            exam = Exam.query.filter_by(
+                exam_type=exam_type,
+                semester=semester,
+                academic_year=academic_year,
+                grade=grade_level_str
+            ).first()
+            
+            # 如果没有找到考试记录，创建一个默认的
+            if not exam:
+                from datetime import datetime
+                exam_code = f"EXAM-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                exam_name = f"{academic_year}{grade_level_str}{semester}{exam_type}"
+                exam = Exam(
+                    exam_code=exam_code,
+                    exam_name=exam_name,
+                    exam_type=exam_type,
+                    semester=semester,
+                    academic_year=academic_year,
+                    grade=grade_level_str,
+                    start_date=exam_date or datetime.now().date(),
+                    end_date=exam_date or datetime.now().date(),
+                    status='已发布'
+                )
+                db.session.add(exam)
+                db.session.flush()  # 获取exam.id
+            
             # 创建成绩记录
             new_grade = Grade(
                 student_id=student_id,
-                exam_type=exam_type,
+                exam_id=exam.id,
                 subject=score_data['subject'],
                 score=score,
                 grade_level=grade_level,
-                exam_date=exam_date,
-                semester=semester,
-                period=period
+                exam_date=exam_date
             )
             
             db.session.add(new_grade)
@@ -281,17 +309,18 @@ def update_student_grades(student_id):
         return jsonify({'error': f'更新成绩失败: {str(e)}'}), 500
     
     # 更新成功后返回更新后的成绩数据，便于前端直接更新视图
-    updated_grades = Grade.query.filter_by(student_id=student_id).all()
+    from ..models import Exam
+    updated_grades = db.session.query(Grade, Exam).join(Exam, Grade.exam_id == Exam.id).filter(Grade.student_id == student_id).all()
     updated_scores = []
-    for grade in updated_grades:
+    for grade, exam in updated_grades:
         updated_scores.append({
             'subject': grade.subject,
             'score': grade.score,
             'grade': grade.grade_level,
-            'examType': grade.exam_type,
-            'semester': grade.semester,
+            'examType': exam.exam_type if exam else None,
+            'semester': exam.semester if exam else None,
             'examDate': grade.exam_date.isoformat() if grade.exam_date else None,
-            'period': grade.period
+            'period': exam.academic_year if exam else None
         })
     
     return jsonify({

@@ -13,11 +13,30 @@
     <form @submit.prevent="$emit('save', formData)">
       <div class="form-group">
         <label>星期:</label>
-        <input type="text" v-model="formData.day" disabled>
+        <select v-model="formData.day" required>
+          <option value="">请选择星期</option>
+          <option value="星期一">星期一</option>
+          <option value="星期二">星期二</option>
+          <option value="星期三">星期三</option>
+          <option value="星期四">星期四</option>
+          <option value="星期五">星期五</option>
+          <option value="星期六">星期六</option>
+          <option value="星期日">星期日</option>
+        </select>
       </div>
       <div class="form-group">
         <label>节次:</label>
-        <input type="text" :value="getSlotName(formData.timeSlot)" disabled>
+        <select v-model="formData.timeSlot" required>
+          <option value="">请选择节次</option>
+          <option value="1">第一节</option>
+          <option value="2">第二节</option>
+          <option value="3">第三节</option>
+          <option value="4">第四节</option>
+          <option value="5">第五节</option>
+          <option value="6">第六节</option>
+          <option value="7">第七节</option>
+          <option value="8">第八节</option>
+        </select>
       </div>
       <div class="form-group">
         <label>课程名称:</label>
@@ -90,7 +109,8 @@
         </select>
       </div>
       
-      <div class="form-group">
+      <!-- 教室选择 - 只在教师课程中显示 -->
+      <div v-if="type === 'teacher'" class="form-group">
         <label>教室:</label>
         <select v-model="(formData as any).room_id" required>
           <option value="">请选择教室</option>

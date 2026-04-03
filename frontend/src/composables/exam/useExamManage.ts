@@ -22,8 +22,12 @@ export function useExamManage() {
       if (!response.ok) {
         throw new Error('Failed to fetch exams');
       }
-      const exams = await response.json();
-      examStore.initializeExams(exams);
+      const responseData = await response.json();
+      // 从响应中提取 data 字段
+      const exams = responseData.data || [];
+      // 确保 exams 是一个数组
+      const examsArray = Array.isArray(exams) ? exams : [];
+      examStore.initializeExams(examsArray);
     } catch (err) {
       error.value = '加载考试数据失败';
       console.error('Error loading exams:', err);
@@ -37,7 +41,7 @@ export function useExamManage() {
 
   // 筛选和搜索考试
   const filteredExams = computed(() => {
-    let result = allExams.value;
+    let result = Array.isArray(allExams.value) ? allExams.value : [];
 
     // 按考试类型筛选
     if (examTypeFilter.value) {
@@ -67,11 +71,11 @@ export function useExamManage() {
   const paginatedExams = computed(() => {
     const startIndex = (currentPage.value - 1) * itemsPerPage.value;
     const endIndex = startIndex + itemsPerPage.value;
-    return filteredExams.value.slice(startIndex, endIndex);
+    return Array.isArray(filteredExams.value) ? filteredExams.value.slice(startIndex, endIndex) : [];
   });
 
   // 总考试数
-  const totalExams = computed(() => filteredExams.value.length);
+  const totalExams = computed(() => Array.isArray(filteredExams.value) ? filteredExams.value.length : 0);
 
   // 添加考试
   const addExam = async (exam: Exam) => {

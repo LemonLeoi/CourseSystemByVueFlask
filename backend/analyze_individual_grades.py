@@ -5,14 +5,10 @@ import os
 # 添加当前目录到系统路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# 获取项目根目录
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATABASE_PATH = os.path.join(BASE_DIR, 'data', 'database.db')
-
 # 从数据库获取学生个人成绩
 def get_student_grades(student_id):
     # 连接数据库
-    conn = sqlite3.connect(DATABASE_PATH)
+    conn = sqlite3.connect('e:\\A_Course\\backend\\data\\database.db')
     cursor = conn.cursor()
     
     # 查询学生信息
@@ -39,7 +35,7 @@ def get_student_grades(student_id):
 
 # 获取班级平均成绩
 def get_class_average(student_class, student_grade):
-    conn = sqlite3.connect(DATABASE_PATH)
+    conn = sqlite3.connect('e:\\A_Course\\backend\\data\\database.db')
     cursor = conn.cursor()
     
     query = """

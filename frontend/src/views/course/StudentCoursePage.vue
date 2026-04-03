@@ -31,7 +31,7 @@
       :editingCourse="editingStudentCourse"
       :formData="studentCourseForm"
       :type="'student'"
-      :teachers="teachers"
+      :teachers="filteredTeachers"
       :courses="courses"
       :classrooms="classrooms"
       @close="closeStudentCourseModal"
@@ -59,6 +59,7 @@ const {
   studentClass,
   studentCourses,
   teachers,
+  filteredTeachers,
   
   // 模态框状态
   showStudentCourseModal,
