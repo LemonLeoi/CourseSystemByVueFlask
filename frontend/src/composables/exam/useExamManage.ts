@@ -15,19 +15,26 @@ export function useExamManage() {
   // 初始化考试数据
   const initializeExams = async () => {
     try {
+      console.log('=== 开始加载考试数据 ===');
       loading.value = true;
       error.value = null;
       // 从API获取数据
+      console.log('=== 调用考试API ===');
       const response = await fetch('http://localhost:5000/api/exams/');
+      console.log('API响应状态:', response.status);
       if (!response.ok) {
         throw new Error('Failed to fetch exams');
       }
       const responseData = await response.json();
+      console.log('API响应数据:', responseData);
       // 从响应中提取 data 字段
       const exams = responseData.data || [];
+      console.log('提取的考试数据:', exams);
       // 确保 exams 是一个数组
       const examsArray = Array.isArray(exams) ? exams : [];
+      console.log('处理后的考试数组:', examsArray);
       examStore.initializeExams(examsArray);
+      console.log('=== 考试数据加载成功 ===');
     } catch (err) {
       error.value = '加载考试数据失败';
       console.error('Error loading exams:', err);

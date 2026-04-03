@@ -40,7 +40,6 @@ bp = Blueprint('exams', __name__)
 @exam_ns.route('/')
 class ExamList(Resource):
     @exam_ns.doc('获取所有考试')
-    @exam_ns.marshal_list_with(exam_response_model)
     def get(self):
         """获取所有考试数据，支持搜索和筛选"""
         # 获取查询参数
@@ -75,7 +74,6 @@ class ExamList(Resource):
     
     @exam_ns.doc('创建考试')
     @exam_ns.expect(exam_model)
-    @exam_ns.marshal_with(exam_response_model, code=201)
     def post(self):
         """创建新考试"""
         data = request.get_json()
@@ -128,7 +126,6 @@ class ExamList(Resource):
 @exam_ns.route('/<string:exam_code>')
 class ExamDetail(Resource):
     @exam_ns.doc('获取单个考试')
-    @exam_ns.marshal_with(exam_response_model)
     def get(self, exam_code):
         """获取单个考试数据"""
         exam = Exam.query.filter_by(exam_code=exam_code).first()
@@ -142,7 +139,6 @@ class ExamDetail(Resource):
     
     @exam_ns.doc('更新考试')
     @exam_ns.expect(exam_model)
-    @exam_ns.marshal_with(exam_response_model)
     def put(self, exam_code):
         """更新考试数据"""
         exam = Exam.query.filter_by(exam_code=exam_code).first()
