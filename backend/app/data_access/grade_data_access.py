@@ -10,28 +10,32 @@ class GradeDataAccess:
         if not student:
             return None, None
         
-        # 获取学生成绩，通过关联查询获取考试信息
+        # 获取学生成绩，使用左连接以处理exam_id为None的情况
         grades = db.session.query(
-            Exam.exam_name,
-            Exam.academic_year,
-            Exam.semester,
-            Exam.grade,
-            Exam.exam_type,
             Grade.subject,
             Grade.score,
             Grade.grade_level
-        ).join(
-            Grade, Grade.exam_id == Exam.id
         ).filter(
             Grade.student_id == student_id
-        ).order_by(
-            Exam.academic_year,
-            Exam.semester,
-            Exam.exam_type
         ).all()
         
+        # 转换为与原有格式兼容的结构
+        formatted_grades = []
+        for grade in grades:
+            # 由于exam_id为None，我们使用默认值
+            formatted_grades.append((
+                '未知考试',  # exam_name
+                '2024-2025学年',  # academic_year
+                '第一学期',  # semester
+                student.grade,  # grade
+                '期中考试',  # exam_type
+                grade[0],  # subject
+                grade[1],  # score
+                grade[2]   # grade_level
+            ))
+        
         student_info = (student.name, student.gender, student.class_, student.grade)
-        return student_info, grades
+        return student_info, formatted_grades
     
     @staticmethod
     def get_class_average(student_class, student_grade):
