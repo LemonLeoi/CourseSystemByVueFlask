@@ -176,31 +176,12 @@
           <div class="exam-info-section">
             <h4>考试信息</h4>
             <div class="form-row">
-              <div class="form-group">
-                <label for="examType">考试类型</label>
-                <select v-model="examInfo.examType" id="examType" class="form-control" required>
-                  <option value="">请选择考试类型</option>
-                  <option value="期中考试">期中考试</option>
-                  <option value="期末考试">期末考试</option>
-                  <option value="月考">月考</option>
-                  <option value="模拟考试">模拟考试</option>
+              <div class="form-group" style="flex: 1 1 100%;">
+                <label for="examSelect">选择考试</label>
+                <select v-model="selectedExam" id="examSelect" class="form-control" required @change="onExamChange">
+                  <option value="">请选择考试</option>
+                  <option v-for="exam in exams" :key="exam.id" :value="exam">{{ exam.name }} ({{ exam.code }}) - {{ exam.grade }} - {{ exam.semester }}</option>
                 </select>
-              </div>
-              <div class="form-group">
-                <label for="semester">学期</label>
-                <select v-model="examInfo.semester" id="semester" class="form-control" required>
-                  <option value="">请选择学期</option>
-                  <option value="上学期">上学期</option>
-                  <option value="下学期">下学期</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="examDate">考试日期</label>
-                <input type="date" v-model="examInfo.examDate" id="examDate" class="form-control" required>
-              </div>
-              <div class="form-group">
-                <label for="period">考试周期</label>
-                <input type="text" v-model="examInfo.period" id="period" class="form-control" placeholder="例如：2024-2025学年第一学期">
               </div>
             </div>
           </div>
@@ -370,22 +351,39 @@ const saveStudent = async () => {
 const showScoreModal = ref(false);
 const selectedStudent = ref<Student | null>(null);
 const studentScores = ref<Score[]>([]);
-const examInfo = ref({
-  examType: '',
-  semester: '',
-  examDate: '',
-  period: ''
-});
+const exams = ref<any[]>([]);
+const selectedExam = ref<any>(null);
+const isLoadingExams = ref(false);
 
-const manageScores = (student: Student) => {
+// 加载考试列表
+const loadExams = async () => {
+  try {
+    isLoadingExams.value = true;
+    console.log('=== 开始加载考试列表 ===');
+    const response = await fetch('/api/exams/');
+    if (!response.ok) {
+      throw new Error('获取考试列表失败');
+    }
+    const data = await response.json();
+    console.log('=== 考试列表加载成功 ===');
+    console.log('考试数据:', data);
+    exams.value = data.data || [];
+  } catch (error) {
+    console.error('=== 加载考试列表失败 ===');
+    console.error('错误信息:', error);
+    exams.value = [];
+  } finally {
+    isLoadingExams.value = false;
+  }
+};
+
+const manageScores = async (student: Student) => {
   selectedStudent.value = student;
-  // 初始化考试信息
-  examInfo.value = {
-    examType: '期中考试',
-    semester: '上学期',
-    examDate: new Date().toISOString().split('T')[0],
-    period: ''
-  };
+  selectedExam.value = null;
+  
+  // 加载考试列表
+  await loadExams();
+  
   // 初始化成绩数据
   let scores = [];
   if (!student.scores) {
@@ -422,13 +420,7 @@ const manageScores = (student: Student) => {
 const closeScoreModal = () => {
   showScoreModal.value = false;
   selectedStudent.value = null;
-  // 重置考试信息
-  examInfo.value = {
-    examType: '',
-    semester: '',
-    examDate: '',
-    period: ''
-  };
+  selectedExam.value = null;
 };
 
 const getGrade = (score: number): string => {
@@ -448,36 +440,42 @@ const getGradeClass = (score: number): string => {
 };
 
 const saveScore = (score: Score) => {
-  if (selectedStudent.value) {
+  if (selectedStudent.value && selectedExam.value) {
     const student = getStudentById(selectedStudent.value.id);
     if (student) {
       const existingScore = student.scores?.find(s => s.subject === score.subject);
       if (existingScore) {
         existingScore.score = score.score;
         // 添加考试信息
-        existingScore.examType = examInfo.value.examType;
-        existingScore.semester = examInfo.value.semester;
-        existingScore.examDate = examInfo.value.examDate;
-        existingScore.period = examInfo.value.period;
+        existingScore.examType = selectedExam.value.type;
+        existingScore.semester = selectedExam.value.semester;
+        existingScore.examDate = selectedExam.value.startDate;
+        existingScore.period = selectedExam.value.academicYear;
       }
     }
   }
 };
 
+const onExamChange = () => {
+  console.log('=== 考试选择变化 ===');
+  console.log('选中的考试:', selectedExam.value);
+};
+
 const saveAllScores = async () => {
-  if (selectedStudent.value) {
+  if (selectedStudent.value && selectedExam.value) {
     console.log('=== 开始保存所有成绩 ===');
     console.log('学生ID:', selectedStudent.value.id);
-    console.log('考试信息:', examInfo.value);
+    console.log('选中的考试:', selectedExam.value);
     console.log('成绩数据:', studentScores.value);
     
     // 为每个成绩添加考试信息
     const scoresWithExamInfo = studentScores.value.map(score => ({
       ...score,
-      examType: examInfo.value.examType,
-      semester: examInfo.value.semester,
-      examDate: examInfo.value.examDate,
-      period: examInfo.value.period
+      exam_id: selectedExam.value.id,
+      examType: selectedExam.value.type,
+      semester: selectedExam.value.semester,
+      examDate: selectedExam.value.startDate,
+      period: selectedExam.value.academicYear
     }));
     
     // 等待成绩更新完成
@@ -496,6 +494,8 @@ const saveAllScores = async () => {
         console.log('=== 前端状态更新完成 ===');
       }
     }
+  } else {
+    alert('请选择考试');
   }
   closeScoreModal();
 };

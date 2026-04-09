@@ -221,12 +221,14 @@ def update_student_grades(student_id):
         # 添加新成绩
         for score_data in scores:
             # 验证成绩数据
-            if 'subject' not in score_data or 'score' not in score_data:
+            if 'subject' not in score_data or 'score' not in score_data or 'exam_id' not in score_data:
                 return jsonify({'error': '成绩数据缺少必填字段'}), 400
             
             # 验证成绩范围
             score = score_data['score']
             subject = score_data['subject']
+            exam_id = score_data['exam_id']
+            
             # 语文、数学、英语三科的满分是150，其他学科是100
             if subject in ['语文', '数学', '英语']:
                 if score < 0 or score > 150:
@@ -256,44 +258,16 @@ def update_student_grades(student_id):
                 except ValueError:
                     pass
             
-            # 获取或创建考试记录
-            exam_type = score_data.get('examType', '期中考试')
-            semester = score_data.get('semester', '第一学期')
-            academic_year = score_data.get('period', '2024-2025学年')
-            grade_level_str = student.grade
-            
-            # 查找对应的考试记录
-            exam = Exam.query.filter_by(
-                exam_type=exam_type,
-                semester=semester,
-                academic_year=academic_year,
-                grade=grade_level_str
-            ).first()
-            
-            # 如果没有找到考试记录，创建一个默认的
+            # 验证考试是否存在
+            exam = Exam.query.get(exam_id)
             if not exam:
-                from datetime import datetime
-                exam_code = f"EXAM-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                exam_name = f"{academic_year}{grade_level_str}{semester}{exam_type}"
-                exam = Exam(
-                    exam_code=exam_code,
-                    exam_name=exam_name,
-                    exam_type=exam_type,
-                    semester=semester,
-                    academic_year=academic_year,
-                    grade=grade_level_str,
-                    start_date=exam_date or datetime.now().date(),
-                    end_date=exam_date or datetime.now().date(),
-                    status='已发布'
-                )
-                db.session.add(exam)
-                db.session.flush()  # 获取exam.id
+                return jsonify({'error': f'考试ID {exam_id} 不存在'}), 400
             
             # 创建成绩记录
             new_grade = Grade(
                 student_id=student_id,
-                exam_id=exam.id,
-                subject=score_data['subject'],
+                exam_id=exam_id,
+                subject=subject,
                 score=score,
                 grade_level=grade_level,
                 exam_date=exam_date
@@ -320,7 +294,8 @@ def update_student_grades(student_id):
             'examType': exam.exam_type if exam else None,
             'semester': exam.semester if exam else None,
             'examDate': grade.exam_date.isoformat() if grade.exam_date else None,
-            'period': exam.academic_year if exam else None
+            'period': exam.academic_year if exam else None,
+            'exam_id': exam.id if exam else None
         })
     
     return jsonify({

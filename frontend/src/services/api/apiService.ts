@@ -32,7 +32,7 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error || `API请求失败: ${response.status}`;
+      const errorMessage = errorData.message || errorData.error || `API请求失败: ${response.status}`;
       notificationService.error(errorMessage);
       throw new Error(errorMessage);
     }
@@ -42,10 +42,17 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
     
     // 对于成功的POST、PUT、DELETE请求显示成功消息
     if (['POST', 'PUT', 'DELETE'].includes(mergedOptions.method || '')) {
-      notificationService.success('操作成功');
+      notificationService.success(data.message || '操作成功');
     }
     
-    return data;
+    // 检查响应数据是否包含data字段
+    if (data && typeof data === 'object' && 'data' in data) {
+      // 返回响应数据中的data字段
+      return data.data;
+    } else {
+      // 直接返回响应数据
+      return data;
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : '网络请求失败，请稍后重试';
     notificationService.error(errorMessage);

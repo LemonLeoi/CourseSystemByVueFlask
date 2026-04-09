@@ -8,6 +8,7 @@ export interface Score {
   semester?: string;
   examDate?: string;
   period?: string;
+  exam_id?: number;
 }
 
 // 学生数据类型
