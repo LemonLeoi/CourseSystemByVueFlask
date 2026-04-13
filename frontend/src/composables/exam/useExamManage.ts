@@ -100,7 +100,9 @@ export function useExamManage() {
       if (!response.ok) {
         throw new Error('Failed to add exam');
       }
-      const newExam = await response.json();
+      const responseData = await response.json();
+      // 从响应中提取 data 字段
+      const newExam = responseData.data;
       // 更新本地存储
       examStore.addExam(newExam);
       return true;
@@ -129,7 +131,9 @@ export function useExamManage() {
       if (!response.ok) {
         throw new Error('Failed to update exam');
       }
-      const updatedExam = await response.json();
+      const responseData = await response.json();
+      // 从响应中提取 data 字段
+      const updatedExam = responseData.data;
       // 更新本地存储
       examStore.updateExam(updatedExam);
       return true;

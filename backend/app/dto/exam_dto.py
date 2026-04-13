@@ -91,7 +91,7 @@ class ExamResponseDTO:
     def from_model(cls, exam):
         """从模型创建DTO"""
         return cls(
-            id=exam.id,
+            id=exam.exam_code,
             code=exam.exam_code,
             name=exam.exam_name,
             academicYear=exam.academic_year,

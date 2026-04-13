@@ -7,6 +7,9 @@ export function useClassGrade() {
   const subjectAverages = ref({})
   const overallAverage = ref(0)
   const studentCount = ref(0)
+  const subjectAnalysis = ref(null)
+  const examTrend = ref(null)
+  const scheduleAnalysis = ref(null)
   const loading = ref(false)
   const error = ref('')
   
@@ -28,12 +31,60 @@ export function useClassGrade() {
     }
   }
   
+  // 获取班级科目分析
+  const getClassSubjectAnalysis = async (className: string, subject: string) => {
+    loading.value = true
+    error.value = ''
+    try {
+      const response = await gradeService.getClassSubjectAnalysis(className, subject)
+      subjectAnalysis.value = response
+    } catch (err) {
+      error.value = err.message || '获取班级科目分析失败'
+      subjectAnalysis.value = null
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // 获取班级考试趋势
+  const getClassTrend = async (className: string) => {
+    loading.value = true
+    error.value = ''
+    try {
+      const response = await gradeService.getClassTrend(className)
+      examTrend.value = response
+    } catch (err) {
+      error.value = err.message || '获取班级考试趋势失败'
+      examTrend.value = null
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // 获取班级课程安排与成绩关系
+  const getClassScheduleAnalysis = async (className: string) => {
+    loading.value = true
+    error.value = ''
+    try {
+      const response = await gradeService.getClassScheduleAnalysis(className)
+      scheduleAnalysis.value = response
+    } catch (err) {
+      error.value = err.message || '获取班级课程安排与成绩关系失败'
+      scheduleAnalysis.value = null
+    } finally {
+      loading.value = false
+    }
+  }
+  
   // 重置数据
   const resetData = () => {
     classInfo.value = null
     subjectAverages.value = {}
     overallAverage.value = 0
     studentCount.value = 0
+    subjectAnalysis.value = null
+    examTrend.value = null
+    scheduleAnalysis.value = null
   }
   
   // 获取学科平均成绩排名
@@ -66,9 +117,15 @@ export function useClassGrade() {
     subjectAverages,
     overallAverage,
     studentCount,
+    subjectAnalysis,
+    examTrend,
+    scheduleAnalysis,
     loading,
     error,
     getClassAnalysis,
+    getClassSubjectAnalysis,
+    getClassTrend,
+    getClassScheduleAnalysis,
     resetData,
     getSubjectRanking,
     getClassEvaluation,

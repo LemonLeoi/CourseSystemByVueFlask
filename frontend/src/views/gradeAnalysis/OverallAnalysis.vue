@@ -165,12 +165,20 @@ export default {
     
     // 初始化整体分析
     onMounted(async () => {
-      await getOverallAnalysis()
-      // 使用nextTick确保DOM已经渲染完成
-      nextTick(() => {
-        initDistributionChart()
-        initSubjectChart()
-      })
+      console.log('onMounted called')
+      try {
+        await getOverallAnalysis()
+        console.log('getOverallAnalysis completed')
+        console.log('overallStats.value:', overallStats.value)
+        // 使用nextTick确保DOM已经渲染完成
+        nextTick(() => {
+          console.log('nextTick called')
+          initDistributionChart()
+          initSubjectChart()
+        })
+      } catch (error) {
+        console.error('Error in onMounted:', error)
+      }
       // 添加窗口大小变化监听
       window.addEventListener('resize', handleResize)
     })
@@ -275,6 +283,8 @@ h3 {
   min-height: 400px;
   border: 1px solid #eee;
   background-color: white;
+  display: block;
+  position: relative;
 }
 
 @media (max-width: 768px) {

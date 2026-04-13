@@ -150,13 +150,14 @@ def get_exam_type_statistics():
     conn = sqlite3.connect('e:/A_Course/backend/data/database.db')
     cursor = conn.cursor()
     
-    # 查询所有考试类型
-    cursor.execute("SELECT DISTINCT exam_type FROM student_grades")
+    # 查询所有考试类型（通过连接exams表）
+    cursor.execute("SELECT DISTINCT exams.exam_type FROM student_grades JOIN exams ON student_grades.exam_code = exams.exam_code")
     exam_types = [row[0] for row in cursor.fetchall()]
     
     exam_stats = {}
     for exam_type in exam_types:
-        cursor.execute("SELECT score FROM student_grades WHERE exam_type = ?", (exam_type,))
+        # 查询该考试类型的所有成绩（通过连接exams表）
+        cursor.execute("SELECT student_grades.score FROM student_grades JOIN exams ON student_grades.exam_code = exams.exam_code WHERE exams.exam_type = ?", (exam_type,))
         scores = [row[0] for row in cursor.fetchall()]
         
         if scores:

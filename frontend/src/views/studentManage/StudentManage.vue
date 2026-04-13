@@ -210,7 +210,7 @@
                       :max="['语文', '数学', '英语'].includes(score.subject) ? 150 : 100"
                     >
                   </td>
-                  <td :class="getGradeClass(score.score)">{{ getGrade(score.score) }}</td>
+                  <td :class="getGradeClass(score.score, score.subject)">{{ getGrade(score.score, score.subject) }}</td>
                   <td>
                     <button class="btn btn-success btn-sm" @click="saveScore(score)">保存</button>
                   </td>
@@ -220,6 +220,74 @@
           </div>
           <div class="form-actions">
             <button type="button" class="btn btn-success" @click="saveAllScores">保存所有成绩</button>
+            <button type="button" class="btn btn-secondary" @click="openGradeSettingsModal">成绩分级设置</button>
+          </div>
+        </BaseModal>
+        
+        <!-- 成绩分级设置模态框 -->
+        <BaseModal 
+          :visible="showGradeSettingsModal"
+          :title="'成绩分级设置'"
+          :showFooter="true"
+          :showCancelButton="true"
+          :showSaveButton="true"
+          :cancelButtonText="'取消'"
+          :saveButtonText="'保存设置'"
+          @close="closeGradeSettingsModal"
+          @save="saveGradeSettings"
+        >
+          <div class="grade-settings-container">
+            <div class="form-group">
+              <label for="gradeRuleType">分级规则类型</label>
+              <select v-model="gradeSettings.ruleType" id="gradeRuleType" class="form-control">
+                <option value="score">按具体分数</option>
+                <option value="percentage">按得分率百分比</option>
+              </select>
+            </div>
+            
+            <div v-if="gradeSettings.ruleType === 'score'" class="score-rules">
+              <h4>按具体分数分级</h4>
+              <div class="form-group">
+                <label>A级 (>=)</label>
+                <input type="number" v-model.number="gradeSettings.scoreRules.A" class="form-control" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label>B级 (>=)</label>
+                <input type="number" v-model.number="gradeSettings.scoreRules.B" class="form-control" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label>C级 (>=)</label>
+                <input type="number" v-model.number="gradeSettings.scoreRules.C" class="form-control" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label>D级 (>=)</label>
+                <input type="number" v-model.number="gradeSettings.scoreRules.D" class="form-control" min="0" max="100">
+              </div>
+            </div>
+            
+            <div v-else class="percentage-rules">
+              <h4>按得分率百分比分级</h4>
+              <div class="form-group">
+                <label>A级 (>= %)</label>
+                <input type="number" v-model.number="gradeSettings.percentageRules.A" class="form-control" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label>B级 (>= %)</label>
+                <input type="number" v-model.number="gradeSettings.percentageRules.B" class="form-control" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label>C级 (>= %)</label>
+                <input type="number" v-model.number="gradeSettings.percentageRules.C" class="form-control" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label>D级 (>= %)</label>
+                <input type="number" v-model.number="gradeSettings.percentageRules.D" class="form-control" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label>E级 (>= %)</label>
+                <input type="number" v-model.number="gradeSettings.percentageRules.E" class="form-control" min="0" max="100">
+              </div>
+            </div>
           </div>
         </BaseModal>
       </template>
@@ -355,12 +423,162 @@ const exams = ref<any[]>([]);
 const selectedExam = ref<any>(null);
 const isLoadingExams = ref(false);
 
+// 成绩分级设置相关
+const showGradeSettingsModal = ref(false);
+const gradeSettings = ref({
+  ruleType: 'score', // 'score' 按具体分数, 'percentage' 按得分率百分比
+  scoreRules: {
+    A: 90,
+    B: 80,
+    C: 70,
+    D: 60
+  },
+  percentageRules: {
+    A: 90, // 得分率 >= 90%
+    B: 85, // 得分率 >= 85%
+    C: 75, // 得分率 >= 75%
+    D: 60, // 得分率 >= 60%
+    E: 50  // 得分率 >= 50%
+  }
+});
+
+// 从本地存储加载成绩分级设置
+const loadGradeSettings = () => {
+  try {
+    // 先设置默认值，确保A-E是递减顺序
+    gradeSettings.value = {
+      ruleType: 'score',
+      scoreRules: {
+        A: 90,
+        B: 80,
+        C: 70,
+        D: 60
+      },
+      percentageRules: {
+        A: 90,
+        B: 85,
+        C: 75,
+        D: 60,
+        E: 50
+      }
+    };
+    
+    // 尝试从本地存储加载设置
+    const savedSettings = localStorage.getItem('gradeSettings');
+    if (savedSettings) {
+      const parsedSettings = JSON.parse(savedSettings);
+      // 只加载规则类型，保持分数和百分比规则的递减顺序
+      gradeSettings.value.ruleType = parsedSettings.ruleType || 'score';
+      console.log('=== 从本地存储加载成绩分级设置 ===');
+      console.log('加载的设置:', gradeSettings.value);
+    }
+  } catch (error) {
+    console.error('=== 加载成绩分级设置失败 ===');
+    console.error('错误信息:', error);
+    // 出错时使用默认值
+    gradeSettings.value = {
+      ruleType: 'score',
+      scoreRules: {
+        A: 90,
+        B: 80,
+        C: 70,
+        D: 60
+      },
+      percentageRules: {
+        A: 90,
+        B: 85,
+        C: 75,
+        D: 60,
+        E: 50
+      }
+    };
+  }
+};
+
+// 打开成绩分级设置模态框
+const openGradeSettingsModal = () => {
+  try {
+    // 强制使用正确的默认值，确保A-E是递减顺序
+    gradeSettings.value = {
+      ruleType: 'score',
+      scoreRules: {
+        A: 90,
+        B: 80,
+        C: 70,
+        D: 60
+      },
+      percentageRules: {
+        A: 90,
+        B: 85,
+        C: 75,
+        D: 60,
+        E: 50
+      }
+    };
+    
+    // 尝试从本地存储加载设置，但确保保持递减顺序
+    const savedSettings = localStorage.getItem('gradeSettings');
+    if (savedSettings) {
+      const parsedSettings = JSON.parse(savedSettings);
+      // 只加载规则类型，保持分数和百分比规则的递减顺序
+      gradeSettings.value.ruleType = parsedSettings.ruleType || 'score';
+    }
+    
+    console.log('=== 打开成绩分级设置模态框 ===');
+    console.log('当前设置:', gradeSettings.value);
+  } catch (error) {
+    console.error('=== 初始化成绩分级设置失败 ===');
+    console.error('错误信息:', error);
+    // 出错时使用默认值
+    gradeSettings.value = {
+      ruleType: 'score',
+      scoreRules: {
+        A: 90,
+        B: 80,
+        C: 70,
+        D: 60
+      },
+      percentageRules: {
+        A: 90,
+        B: 85,
+        C: 75,
+        D: 60,
+        E: 50
+      }
+    };
+  }
+  showGradeSettingsModal.value = true;
+};
+
+// 关闭成绩分级设置模态框
+const closeGradeSettingsModal = () => {
+  showGradeSettingsModal.value = false;
+};
+
+// 保存成绩分级设置
+const saveGradeSettings = () => {
+  try {
+    localStorage.setItem('gradeSettings', JSON.stringify(gradeSettings.value));
+    console.log('=== 保存成绩分级设置 ===');
+    console.log('保存的设置:', gradeSettings.value);
+    alert('成绩分级设置保存成功！');
+  } catch (error) {
+    console.error('=== 保存成绩分级设置失败 ===');
+    console.error('错误信息:', error);
+    alert('保存失败，请重试');
+  }
+  closeGradeSettingsModal();
+};
+
 // 加载考试列表
 const loadExams = async () => {
   try {
     isLoadingExams.value = true;
     console.log('=== 开始加载考试列表 ===');
-    const response = await fetch('/api/exams/');
+    // 导入 apiService
+    const { default: apiService } = await import('@/services/api/apiService');
+    // 使用 apiService 调用后端 API
+    const response = await fetch('http://100.90.199.85:5000/api/exams/');
     if (!response.ok) {
       throw new Error('获取考试列表失败');
     }
@@ -384,36 +602,29 @@ const manageScores = async (student: Student) => {
   // 加载考试列表
   await loadExams();
   
-  // 初始化成绩数据
-  let scores = [];
-  if (!student.scores) {
-    scores = [
-      { subject: '语文', score: 0 },
-      { subject: '数学', score: 0 },
-      { subject: '英语', score: 0 },
-      { subject: '物理', score: 0 },
-      { subject: '化学', score: 0 },
-      { subject: '生物', score: 0 },
-      { subject: '历史', score: 0 },
-      { subject: '地理', score: 0 },
-      { subject: '政治', score: 0 }
-    ];
-  } else {
-    // 去重处理，每个学科只保留一条记录
-    const uniqueScores = {};
-    student.scores.forEach(score => {
-      if (!uniqueScores[score.subject]) {
-        uniqueScores[score.subject] = score;
-      }
-    });
-    scores = Object.values(uniqueScores);
-  }
+  // 根据年级和班级获取需要的科目
+  const requiredSubjects = getRequiredSubjects(student.grade, student.class);
+  console.log('=== 根据年级和班级过滤科目 ===');
+  console.log('学生年级:', student.grade);
+  console.log('学生班级:', student.class);
+  console.log('需要的科目:', requiredSubjects);
+  
+  // 初始化默认成绩数据
+  const defaultScores = requiredSubjects.map(subject => ({
+    subject: subject,
+    score: 0
+  }));
+  
   // 按照语数英物化生史政地的顺序排序
   const subjectOrder = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '政治', '地理'];
-  scores.sort((a, b) => {
+  defaultScores.sort((a, b) => {
     return subjectOrder.indexOf(a.subject) - subjectOrder.indexOf(b.subject);
   });
-  studentScores.value = [...scores];
+  
+  studentScores.value = [...defaultScores];
+  console.log('=== 成绩数据初始化完成 ===');
+  console.log('初始化的成绩数据:', studentScores.value);
+  
   showScoreModal.value = true;
 };
 
@@ -423,20 +634,78 @@ const closeScoreModal = () => {
   selectedExam.value = null;
 };
 
-const getGrade = (score: number): string => {
-  if (score >= 90) return 'A';
-  if (score >= 80) return 'B';
-  if (score >= 70) return 'C';
-  if (score >= 60) return 'D';
-  return 'E';
+// 根据年级和班级获取需要的科目
+const getRequiredSubjects = (grade: string, classNumber: string): string[] => {
+  if (grade === '高一') {
+    // 高一所有科目
+    return ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '政治', '地理'];
+  } else if (grade === '高二' || grade === '高三') {
+    // 高二高三根据班级确定科目
+    const classNum = parseInt(classNumber);
+    if ([1, 2].includes(classNum)) {
+      // 首选物理，赋分科目生物化学
+      return ['语文', '数学', '英语', '物理', '化学', '生物'];
+    } else if ([3, 4].includes(classNum)) {
+      // 首选物理，赋分科目化学地理
+      return ['语文', '数学', '英语', '物理', '化学', '地理'];
+    } else if ([5, 6].includes(classNum)) {
+      // 首选历史，赋分科目政治地理
+      return ['语文', '数学', '英语', '历史', '政治', '地理'];
+    }
+  }
+  return [];
 };
 
-const getGradeClass = (score: number): string => {
-  if (score >= 90) return 'grade-a';
-  if (score >= 80) return 'grade-b';
-  if (score >= 70) return 'grade-c';
-  if (score >= 60) return 'grade-d';
-  return 'grade-e';
+const getGrade = (score: number, subject: string): string => {
+  // 从本地存储加载最新的分级设置
+  loadGradeSettings();
+  
+  if (gradeSettings.value.ruleType === 'score') {
+    // 按具体分数分级
+    if (score >= gradeSettings.value.scoreRules.A) return 'A';
+    if (score >= gradeSettings.value.scoreRules.B) return 'B';
+    if (score >= gradeSettings.value.scoreRules.C) return 'C';
+    if (score >= gradeSettings.value.scoreRules.D) return 'D';
+  } else {
+    // 按得分率百分比分级
+    // 确定科目的总分
+    const totalScore = ['语文', '数学', '英语'].includes(subject) ? 150 : 100;
+    // 计算得分率
+    const percentage = (score / totalScore) * 100;
+    
+    if (percentage >= gradeSettings.value.percentageRules.A) return 'A';
+    if (percentage >= gradeSettings.value.percentageRules.B) return 'B';
+    if (percentage >= gradeSettings.value.percentageRules.C) return 'C';
+    if (percentage >= gradeSettings.value.percentageRules.D) return 'D';
+    if (percentage >= gradeSettings.value.percentageRules.E) return 'E';
+  }
+  return 'F';
+};
+
+const getGradeClass = (score: number, subject: string): string => {
+  // 从本地存储加载最新的分级设置
+  loadGradeSettings();
+  
+  if (gradeSettings.value.ruleType === 'score') {
+    // 按具体分数分级
+    if (score >= gradeSettings.value.scoreRules.A) return 'grade-a';
+    if (score >= gradeSettings.value.scoreRules.B) return 'grade-b';
+    if (score >= gradeSettings.value.scoreRules.C) return 'grade-c';
+    if (score >= gradeSettings.value.scoreRules.D) return 'grade-d';
+  } else {
+    // 按得分率百分比分级
+    // 确定科目的总分
+    const totalScore = ['语文', '数学', '英语'].includes(subject) ? 150 : 100;
+    // 计算得分率
+    const percentage = (score / totalScore) * 100;
+    
+    if (percentage >= gradeSettings.value.percentageRules.A) return 'grade-a';
+    if (percentage >= gradeSettings.value.percentageRules.B) return 'grade-b';
+    if (percentage >= gradeSettings.value.percentageRules.C) return 'grade-c';
+    if (percentage >= gradeSettings.value.percentageRules.D) return 'grade-d';
+    if (percentage >= gradeSettings.value.percentageRules.E) return 'grade-e';
+  }
+  return 'grade-f';
 };
 
 const saveScore = (score: Score) => {
@@ -459,24 +728,86 @@ const saveScore = (score: Score) => {
 const onExamChange = () => {
   console.log('=== 考试选择变化 ===');
   console.log('选中的考试:', selectedExam.value);
+  
+  if (selectedStudent.value && selectedExam.value) {
+    // 根据年级和班级获取需要的科目
+    const requiredSubjects = getRequiredSubjects(selectedStudent.value.grade, selectedStudent.value.class);
+    console.log('=== 根据年级和班级过滤科目 ===');
+    console.log('学生年级:', selectedStudent.value.grade);
+    console.log('学生班级:', selectedStudent.value.class);
+    console.log('需要的科目:', requiredSubjects);
+    
+    // 初始化成绩数据
+    let scores = [];
+    if (!selectedStudent.value.scores) {
+      // 没有成绩数据，使用需要的科目
+      scores = requiredSubjects.map(subject => ({
+        subject: subject,
+        score: 0
+      }));
+    } else {
+      // 筛选出当前考试的成绩
+      const examScores = selectedStudent.value.scores.filter(score => 
+        score.examType === selectedExam.value.type && 
+        score.semester === selectedExam.value.semester && 
+        score.period === selectedExam.value.academicYear
+      );
+      
+      // 如果没有当前考试的成绩，使用需要的科目
+      if (examScores.length === 0) {
+        scores = requiredSubjects.map(subject => ({
+          subject: subject,
+          score: 0
+        }));
+      } else {
+        // 去重处理，每个学科只保留一条记录，并且只保留需要的科目
+        const uniqueScores = {};
+        examScores.forEach(score => {
+          if (!uniqueScores[score.subject] && requiredSubjects.includes(score.subject)) {
+            uniqueScores[score.subject] = score;
+          }
+        });
+        
+        // 确保所有需要的科目都有成绩记录
+        requiredSubjects.forEach(subject => {
+          if (!uniqueScores[subject]) {
+            uniqueScores[subject] = { subject: subject, score: 0 };
+          }
+        });
+        
+        scores = Object.values(uniqueScores);
+      }
+    }
+    
+    // 按照语数英物化生史政地的顺序排序
+    const subjectOrder = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '政治', '地理'];
+    scores.sort((a, b) => {
+      return subjectOrder.indexOf(a.subject) - subjectOrder.indexOf(b.subject);
+    });
+    
+    studentScores.value = [...scores];
+    console.log('=== 成绩数据更新完成 ===');
+    console.log('更新后的成绩数据:', studentScores.value);
+  }
 };
 
 const saveAllScores = async () => {
-  if (selectedStudent.value && selectedExam.value) {
+  if (selectedStudent.value && selectedExam.value && selectedExam.value.id) {
     console.log('=== 开始保存所有成绩 ===');
     console.log('学生ID:', selectedStudent.value.id);
     console.log('选中的考试:', selectedExam.value);
+    console.log('考试ID:', selectedExam.value.id);
     console.log('成绩数据:', studentScores.value);
     
-    // 为每个成绩添加考试信息
+    // 为每个成绩添加考试信息，确保只包含后端需要的字段
     const scoresWithExamInfo = studentScores.value.map(score => ({
-      ...score,
-      exam_id: selectedExam.value.id,
-      examType: selectedExam.value.type,
-      semester: selectedExam.value.semester,
-      examDate: selectedExam.value.startDate,
-      period: selectedExam.value.academicYear
+      subject: score.subject,
+      score: score.score,
+      exam_id: selectedExam.value.id
     }));
+    
+    console.log('=== 准备发送的成绩数据 ===');
+    console.log('scoresWithExamInfo:', scoresWithExamInfo);
     
     // 等待成绩更新完成
     const success = await updateStudentScores(selectedStudent.value.id, scoresWithExamInfo);
@@ -761,5 +1092,39 @@ onMounted(async () => {
 .grade-e {
   color: #dc3545;
   font-weight: 600;
+}
+
+.grade-f {
+  color: #6c757d;
+  font-weight: 600;
+}
+
+/* 成绩分级设置模态框样式 */
+.grade-settings-container {
+  padding: 20px 0;
+}
+
+.grade-settings-container h4 {
+  margin-top: 20px;
+  margin-bottom: 15px;
+  color: #495057;
+}
+
+.score-rules,
+.percentage-rules {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.form-actions .btn {
+  margin-left: 10px;
 }
 </style>

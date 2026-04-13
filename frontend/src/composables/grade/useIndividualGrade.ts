@@ -10,6 +10,9 @@ export function useIndividualGrade() {
   const strengths = ref([])
   const weaknesses = ref([])
   const overall = ref({})
+  const subjectAnalysis = ref(null)
+  const examTrend = ref(null)
+  const scheduleAnalysis = ref(null)
   const loading = ref(false)
   const error = ref('')
   
@@ -34,6 +37,51 @@ export function useIndividualGrade() {
     }
   }
   
+  // 获取个人科目分析
+  const getStudentSubjectAnalysis = async (studentId: string, subject: string) => {
+    loading.value = true
+    error.value = ''
+    try {
+      const response = await gradeService.getStudentSubjectAnalysis(studentId, subject)
+      subjectAnalysis.value = response
+    } catch (err) {
+      error.value = err.message || '获取个人科目分析失败'
+      subjectAnalysis.value = null
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // 获取个人考试趋势
+  const getStudentTrend = async (studentId: string) => {
+    loading.value = true
+    error.value = ''
+    try {
+      const response = await gradeService.getStudentTrend(studentId)
+      examTrend.value = response
+    } catch (err) {
+      error.value = err.message || '获取个人考试趋势失败'
+      examTrend.value = null
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // 获取个人课程安排与成绩关系
+  const getStudentScheduleAnalysis = async (studentId: string) => {
+    loading.value = true
+    error.value = ''
+    try {
+      const response = await gradeService.getStudentScheduleAnalysis(studentId)
+      scheduleAnalysis.value = response
+    } catch (err) {
+      error.value = err.message || '获取个人课程安排与成绩关系失败'
+      scheduleAnalysis.value = null
+    } finally {
+      loading.value = false
+    }
+  }
+  
   // 重置数据
   const resetData = () => {
     studentInfo.value = null
@@ -43,6 +91,9 @@ export function useIndividualGrade() {
     strengths.value = []
     weaknesses.value = []
     overall.value = {}
+    subjectAnalysis.value = null
+    examTrend.value = null
+    scheduleAnalysis.value = null
   }
   
   // 计算学科差异
@@ -70,9 +121,15 @@ export function useIndividualGrade() {
     strengths,
     weaknesses,
     overall,
+    subjectAnalysis,
+    examTrend,
+    scheduleAnalysis,
     loading,
     error,
     getStudentAnalysis,
+    getStudentSubjectAnalysis,
+    getStudentTrend,
+    getStudentScheduleAnalysis,
     resetData,
     calculateSubjectDifference,
     getSubjectLevel
