@@ -313,11 +313,10 @@ const loadClassOptions = async () => {
   try {
     isLoadingOptions.value = true;
     console.log('=== 开始获取班级和年级列表 ===');
-    const response = await fetch('/api/students/classes');
-    if (!response.ok) {
-      throw new Error('获取班级和年级列表失败');
-    }
-    const data = await response.json();
+    // 导入 apiService
+    const { default: apiService } = await import('@/services/api/apiService');
+    // 使用 apiService 调用后端 API
+    const data = await apiService.student.getClasses();
     console.log('=== API响应成功 ===');
     console.log('获取到的班级和年级列表:', data);
     grades.value = data.grades || [];
@@ -578,14 +577,10 @@ const loadExams = async () => {
     // 导入 apiService
     const { default: apiService } = await import('@/services/api/apiService');
     // 使用 apiService 调用后端 API
-    const response = await fetch('http://100.90.199.85:5000/api/exams/');
-    if (!response.ok) {
-      throw new Error('获取考试列表失败');
-    }
-    const data = await response.json();
+    const examsData = await apiService.course.getExams();
     console.log('=== 考试列表加载成功 ===');
-    console.log('考试数据:', data);
-    exams.value = data.data || [];
+    console.log('考试数据:', examsData);
+    exams.value = examsData || [];
   } catch (error) {
     console.error('=== 加载考试列表失败 ===');
     console.error('错误信息:', error);

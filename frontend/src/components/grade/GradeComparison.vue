@@ -1,11 +1,16 @@
 <template>
   <div class="grade-comparison">
     <h3>成绩对比分析</h3>
-    <div v-if="loading" class="loading">加载中...</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else-if="data" class="analysis-content">
+    <div v-if="data" class="analysis-content">
       <div class="chart-container">
-        <div ref="comparisonChart" class="chart"></div>
+        <BaseECharts
+          :chart-type="chartType"
+          :data="chartData"
+          :options="chartOptions"
+          :loading="loading"
+          :error="error"
+          height="400px"
+        />
       </div>
       <div class="comparison-stats">
         <div class="stat-item">
@@ -26,11 +31,14 @@
 </template>
 
 <script>
-import * as echarts from 'echarts'
-import { ref, onMounted, onUnmounted, computed, defineProps } from 'vue'
+import BaseECharts from '../common/BaseECharts.vue'
+import { computed, defineProps } from 'vue'
 
 export default {
   name: 'GradeComparison',
+  components: {
+    BaseECharts
+  },
   props: {
     data: {
       type: Object,
@@ -50,9 +58,6 @@ export default {
     }
   },
   setup(props) {
-    const comparisonChart = ref(null)
-    let chartInstance = null
-    
     // 计算参与数量
     const participantCount = computed(() => {
       if (!props.data) return 0
@@ -74,114 +79,104 @@ export default {
       return 'N/A'
     })
     
-    // 初始化对比图表
-    const initComparisonChart = () => {
-      if (comparisonChart.value && props.data) {
-        if (chartInstance) {
-          chartInstance.dispose()
-        }
-        chartInstance = echarts.init(comparisonChart.value)
-        
-        if (props.comparisonType === '班级' && props.data.class_averages) {
-          const classes = Object.keys(props.data.class_averages)
-          const subjects = props.data.subject_averages ? Object.keys(props.data.subject_averages) : []
-          
-          const series = subjects.map((subject, index) => {
-            const data = classes.map(className => {
-              return props.data.class_averages[className][subject] || 0
-            })
-            
-            return {
-              name: subject,
-              type: 'radar',
-              data: [{
-                value: data,
-                name: subject
-              }]
-            }
-          })
-          
-          const option = {
-            title: {
-              text: '班级成绩对比',
-              left: 'center'
-            },
-            tooltip: {},
-            legend: {
-              data: subjects,
-              bottom: 0
-            },
-            radar: {
-              indicator: classes.map(className => ({
-                name: className,
-                max: 100
-              }))
-            },
-            series: series
-          }
-          
-          chartInstance.setOption(option)
-        } else if (props.comparisonType === '学科' && props.data.subject_averages) {
-          const subjects = Object.keys(props.data.subject_averages)
-          const averages = subjects.map(subject => props.data.subject_averages[subject])
-          
-          const option = {
-            title: {
-              text: '学科平均成绩对比',
-              left: 'center'
-            },
-            tooltip: {
-              trigger: 'axis',
-              axisPointer: {
-                type: 'shadow'
-              }
-            },
-            xAxis: {
-              type: 'category',
-              data: subjects,
-              axisLabel: {
-                rotate: 45
-              }
-            },
-            yAxis: {
-              type: 'value',
-              name: '平均分',
-              min: 0,
-              max: 100
-            },
-            series: [{
-              data: averages,
-              type: 'bar',
-              itemStyle: {
-                color: '#5470c6'
-              }
-            }]
-          }
-          
-          chartInstance.setOption(option)
-        }
-      }
-    }
-    
-    // 窗口大小变化时调整图表
-    const handleResize = () => {
-      chartInstance?.resize()
-    }
-    
-    onMounted(() => {
-      initComparisonChart()
-      window.addEventListener('resize', handleResize)
+    // 计算图表类型
+    const chartType = computed(() => {
+      return props.comparisonType === '班级' ? 'radar' : 'bar'
     })
     
-    onUnmounted(() => {
-      window.removeEventListener('resize', handleResize)
-      chartInstance?.dispose()
+    // 计算图表数据
+    const chartData = computed(() => {
+      return props.data || {}
+    })
+    
+    // 计算图表配置
+    const chartOptions = computed(() => {
+      if (!props.data) return {}
+      
+      if (props.comparisonType === '班级' && props.data.class_averages) {
+        const classes = Object.keys(props.data.class_averages)
+        const subjects = props.data.subject_averages ? Object.keys(props.data.subject_averages) : []
+        
+        const series = subjects.map((subject) => {
+          const data = classes.map(className => {
+            return props.data.class_averages[className][subject] || 0
+          })
+          
+          return {
+            name: subject,
+            type: 'radar',
+            data: [{
+              value: data,
+              name: subject
+            }]
+          }
+        })
+        
+        return {
+          title: {
+            text: '班级成绩对比',
+            left: 'center'
+          },
+          tooltip: {},
+          legend: {
+            data: subjects,
+            bottom: 0
+          },
+          radar: {
+            indicator: classes.map(className => ({
+              name: className,
+              max: 100
+            }))
+          },
+          series: series
+        }
+      } else if (props.comparisonType === '学科' && props.data.subject_averages) {
+        const subjects = Object.keys(props.data.subject_averages)
+        const averages = subjects.map(subject => props.data.subject_averages[subject])
+        
+        return {
+          title: {
+            text: '学科平均成绩对比',
+            left: 'center'
+          },
+          tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+              type: 'shadow'
+            }
+          },
+          xAxis: {
+            type: 'category',
+            data: subjects,
+            axisLabel: {
+              rotate: 45
+            }
+          },
+          yAxis: {
+            type: 'value',
+            name: '平均分',
+            min: 0,
+            max: 100
+          },
+          series: [{
+            data: averages,
+            type: 'bar',
+            itemStyle: {
+              color: '#5470c6'
+            }
+          }]
+        }
+      }
+      
+      return {}
     })
     
     return {
-      comparisonChart,
       participantCount,
       averageLevel,
+      chartType,
+      chartData,
+      chartOptions,
       comparisonType: props.comparisonType
     }
   }

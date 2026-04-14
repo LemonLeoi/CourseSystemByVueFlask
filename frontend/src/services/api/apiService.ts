@@ -1,5 +1,5 @@
 // API基础配置
-const API_BASE_URL = 'http://100.90.199.85:5000/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 // 导入类型定义
 import type { Student, Teacher, Course, Score, ApiResponse } from '@/types';
@@ -114,6 +114,11 @@ export const studentApi = {
       method: 'PUT',
       body: JSON.stringify({ scores }),
     });
+  },
+  
+  // 获取班级和年级列表
+  getClasses: async (): Promise<{ grades: string[], classes: string[] }> => {
+    return await fetchApi<{ grades: string[], classes: string[] }>('/students/classes');
   },
 };
 
@@ -344,6 +349,11 @@ export const courseApi = {
       console.error('getSubjects错误:', error);
       throw error;
     }
+  },
+  
+  // 获取考试列表
+  getExams: async (): Promise<any[]> => {
+    return await fetchApi<any[]>('/exams');
   },
 };
 

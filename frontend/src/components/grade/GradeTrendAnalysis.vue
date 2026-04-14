@@ -1,11 +1,16 @@
 <template>
   <div class="grade-trend-analysis">
     <h3>成绩趋势分析</h3>
-    <div v-if="loading" class="loading">加载中...</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else-if="data" class="analysis-content">
+    <div v-if="data" class="analysis-content">
       <div class="chart-container">
-        <div ref="trendChart" class="chart"></div>
+        <BaseECharts
+          chart-type="line"
+          :data="chartData"
+          :options="chartOptions"
+          :loading="loading"
+          :error="error"
+          height="400px"
+        />
       </div>
       <div class="trend-stats">
         <div class="stat-item">
@@ -26,11 +31,14 @@
 </template>
 
 <script>
-import * as echarts from 'echarts'
-import { ref, onMounted, onUnmounted, computed, defineProps } from 'vue'
+import BaseECharts from '../common/BaseECharts.vue'
+import { computed, defineProps } from 'vue'
 
 export default {
   name: 'GradeTrendAnalysis',
+  components: {
+    BaseECharts
+  },
   props: {
     data: {
       type: Object,
@@ -46,9 +54,6 @@ export default {
     }
   },
   setup(props) {
-    const trendChart = ref(null)
-    let chartInstance = null
-    
     // 计算最近成绩
     const latestScore = computed(() => {
       if (!props.data || !props.data.exam_grades) return 'N/A'
@@ -141,90 +146,74 @@ export default {
       return '稳定'
     })
     
-    // 初始化趋势图表
-    const initTrendChart = () => {
-      if (trendChart.value && props.data && props.data.exam_grades) {
-        if (chartInstance) {
-          chartInstance.dispose()
-        }
-        chartInstance = echarts.init(trendChart.value)
-        
-        const examTypes = Object.keys(props.data.exam_grades)
-        const subjects = new Set()
-        
-        // 收集所有学科
-        examTypes.forEach(exam => {
-          Object.keys(props.data.exam_grades[exam]).forEach(subject => {
-            subjects.add(subject)
-          })
-        })
-        
-        const subjectList = Array.from(subjects)
-        
-        // 准备数据
-        const series = subjectList.map(subject => {
-          const data = examTypes.map(exam => {
-            return props.data.exam_grades[exam][subject] ? props.data.exam_grades[exam][subject][0] : 0
-          })
-          
-          return {
-            name: subject,
-            type: 'line',
-            data: data,
-            smooth: true
-          }
-        })
-        
-        const option = {
-          title: {
-            text: '成绩趋势',
-            left: 'center'
-          },
-          tooltip: {
-            trigger: 'axis'
-          },
-          legend: {
-            data: subjectList,
-            bottom: 0
-          },
-          xAxis: {
-            type: 'category',
-            data: examTypes
-          },
-          yAxis: {
-            type: 'value',
-            name: '分数',
-            min: 0,
-            max: 100
-          },
-          series: series
-        }
-        
-        chartInstance.setOption(option)
-      }
-    }
-    
-    // 窗口大小变化时调整图表
-    const handleResize = () => {
-      chartInstance?.resize()
-    }
-    
-    onMounted(() => {
-      initTrendChart()
-      window.addEventListener('resize', handleResize)
+    // 计算图表数据
+    const chartData = computed(() => {
+      return props.data || {}
     })
     
-    onUnmounted(() => {
-      window.removeEventListener('resize', handleResize)
-      chartInstance?.dispose()
+    // 计算图表配置
+    const chartOptions = computed(() => {
+      if (!props.data || !props.data.exam_grades) return {}
+      
+      const examTypes = Object.keys(props.data.exam_grades)
+      const subjects = new Set()
+      
+      // 收集所有学科
+      examTypes.forEach(exam => {
+        Object.keys(props.data.exam_grades[exam]).forEach(subject => {
+          subjects.add(subject)
+        })
+      })
+      
+      const subjectList = Array.from(subjects)
+      
+      // 准备数据
+      const series = subjectList.map(subject => {
+        const data = examTypes.map(exam => {
+          return props.data.exam_grades[exam][subject] ? props.data.exam_grades[exam][subject][0] : 0
+        })
+        
+        return {
+          name: subject,
+          type: 'line',
+          data: data,
+          smooth: true
+        }
+      })
+      
+      return {
+        title: {
+          text: '成绩趋势',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis'
+        },
+        legend: {
+          data: subjectList,
+          bottom: 0
+        },
+        xAxis: {
+          type: 'category',
+          data: examTypes
+        },
+        yAxis: {
+          type: 'value',
+          name: '分数',
+          min: 0,
+          max: 100
+        },
+        series: series
+      }
     })
     
     return {
-      trendChart,
       latestScore,
       averageScore,
       trendClass,
-      trendText
+      trendText,
+      chartData,
+      chartOptions
     }
   }
 }

@@ -3,16 +3,24 @@
     <div class="chart-header">
       <h3>{{ title }}</h3>
     </div>
-    <div ref="chartRef" class="chart"></div>
+    <BaseECharts
+      :chart-type="chartType"
+      :data="data"
+      :options="chartOptions"
+      height="400px"
+    />
   </div>
 </template>
 
 <script>
-import * as echarts from 'echarts'
-import { ref, onMounted, onUnmounted, watch, defineProps } from 'vue'
+import BaseECharts from '../common/BaseECharts.vue'
+import { computed, defineProps } from 'vue'
 
 export default {
   name: 'GradeChart',
+  components: {
+    BaseECharts
+  },
   props: {
     title: {
       type: String,
@@ -33,24 +41,8 @@ export default {
     }
   },
   setup(props) {
-    const chartRef = ref(null)
-    let chartInstance = null
-    
-    // 初始化图表
-    const initChart = () => {
-      if (chartRef.value) {
-        if (chartInstance) {
-          chartInstance.dispose()
-        }
-        chartInstance = echarts.init(chartRef.value)
-        
-        const option = getChartOption()
-        chartInstance.setOption(option)
-      }
-    }
-    
-    // 获取图表配置
-    const getChartOption = () => {
+    // 计算图表配置
+    const chartOptions = computed(() => {
       const baseOption = {
         title: {
           text: props.title,
@@ -120,35 +112,10 @@ export default {
         default:
           return baseOption
       }
-    }
-    
-    // 监听数据变化
-    watch(() => props.data, () => {
-      initChart()
-    }, { deep: true })
-    
-    // 监听图表类型变化
-    watch(() => props.chartType, () => {
-      initChart()
-    })
-    
-    // 窗口大小变化时调整图表
-    const handleResize = () => {
-      chartInstance?.resize()
-    }
-    
-    onMounted(() => {
-      initChart()
-      window.addEventListener('resize', handleResize)
-    })
-    
-    onUnmounted(() => {
-      window.removeEventListener('resize', handleResize)
-      chartInstance?.dispose()
     })
     
     return {
-      chartRef
+      chartOptions
     }
   }
 }
