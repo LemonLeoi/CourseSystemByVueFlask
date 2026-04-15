@@ -212,7 +212,8 @@
                   </td>
                   <td :class="getGradeClass(score.score, score.subject)">{{ getGrade(score.score, score.subject) }}</td>
                   <td>
-                    <button class="btn btn-success btn-sm" @click="saveScore(score)">保存</button>
+                    <button class="btn btn-success btn-sm mr-2" @click="saveScore(score)">保存</button>
+                    <button class="btn btn-error btn-sm" @click="deleteScore(score)">删除</button>
                   </td>
                 </tr>
               </tbody>
@@ -220,6 +221,7 @@
           </div>
           <div class="form-actions">
             <button type="button" class="btn btn-success" @click="saveAllScores">保存所有成绩</button>
+            <button type="button" class="btn btn-error mr-2" @click="deleteCurrentExamScores">删除当前考试成绩</button>
             <button type="button" class="btn btn-secondary" @click="openGradeSettingsModal">成绩分级设置</button>
           </div>
         </BaseModal>
@@ -823,7 +825,75 @@ const saveAllScores = async () => {
   } else {
     alert('请选择考试');
   }
-  closeScoreModal();
+};
+
+// 删除单个科目成绩
+const deleteScore = async (score: any) => {
+  if (!selectedStudent.value || !selectedExam.value) {
+    alert('请先选择考试');
+    return;
+  }
+  
+  if (confirm(`确定要删除 ${selectedStudent.value.name} 的 ${score.subject} 成绩吗？此操作不可恢复。`)) {
+    try {
+      const { default: apiService } = await import('@/services/api/apiService');
+      await apiService.student.deleteStudentGrade(
+        selectedStudent.value.id,
+        selectedExam.value.code,
+        score.subject
+      );
+      
+      // 从studentScores中移除该科目
+      studentScores.value = studentScores.value.filter(s => s.subject !== score.subject);
+      
+      // 重新加载学生数据
+      await loadStudents();
+      const updatedStudent = await getStudentById(selectedStudent.value.id);
+      if (updatedStudent) {
+        selectedStudent.value = updatedStudent;
+      }
+      
+      alert('删除成功！');
+    } catch (error) {
+      console.error('删除成绩失败:', error);
+      alert('删除失败，请重试');
+    }
+  }
+};
+
+// 删除当前考试的所有成绩
+const deleteCurrentExamScores = async () => {
+  if (!selectedStudent.value || !selectedExam.value) {
+    alert('请先选择考试');
+    return;
+  }
+  
+  if (confirm(`确定要删除 ${selectedStudent.value.name} 在 ${selectedExam.value.name} 中的所有成绩吗？此操作不可恢复。`)) {
+    try {
+      const { default: apiService } = await import('@/services/api/apiService');
+      await apiService.student.deleteStudentExamGrades(
+        selectedStudent.value.id,
+        selectedExam.value.code
+      );
+      
+      // 清空studentScores
+      studentScores.value = [];
+      
+      // 重新加载学生数据
+      await loadStudents();
+      const updatedStudent = await getStudentById(selectedStudent.value.id);
+      if (updatedStudent) {
+        selectedStudent.value = updatedStudent;
+        // 重新初始化成绩数据
+        onExamChange();
+      }
+      
+      alert('删除成功！');
+    } catch (error) {
+      console.error('删除考试成绩失败:', error);
+      alert('删除失败，请重试');
+    }
+  }
 };
 
 // 处理删除操作，添加二次确认

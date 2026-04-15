@@ -1,5 +1,5 @@
 # Grade analysis API routes
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from app.analysis.grade_analyzer import (
     analyze_student_performance, 
     analyze_class_performance, 
@@ -15,6 +15,7 @@ from app.analysis.grade_analyzer import (
     analyze_class_schedule
 )
 from app.analysis.statistical_analysis import get_overall_statistics, get_subject_statistics, get_exam_type_statistics
+from app.data_access.grade_data_access import GradeDataAccess
 
 # 创建蓝图
 grade_bp = Blueprint('grade', __name__, url_prefix='/api/grades')
@@ -204,3 +205,39 @@ def get_class_schedule_analysis(class_name):
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# 删除学生指定考试的指定科目成绩
+@grade_bp.route('/<student_id>/<exam_code>/<subject>', methods=['DELETE'])
+def delete_student_grade(student_id, exam_code, subject):
+    try:
+        success, message = GradeDataAccess.delete_student_grade(student_id, exam_code, subject)
+        if success:
+            return jsonify({"success": True, "message": message}), 200
+        else:
+            return jsonify({"success": False, "message": message}), 404
+    except Exception as e:
+        return jsonify({"success": False, "message": f"删除失败: {str(e)}"}), 500
+
+# 删除学生指定考试的所有科目成绩
+@grade_bp.route('/<student_id>/<exam_code>', methods=['DELETE'])
+def delete_student_exam_grades(student_id, exam_code):
+    try:
+        success, message = GradeDataAccess.delete_student_exam_grades(student_id, exam_code)
+        if success:
+            return jsonify({"success": True, "message": message}), 200
+        else:
+            return jsonify({"success": False, "message": message}), 404
+    except Exception as e:
+        return jsonify({"success": False, "message": f"删除失败: {str(e)}"}), 500
+
+# 删除指定考试的所有学生成绩
+@grade_bp.route('/exam/<exam_code>', methods=['DELETE'])
+def delete_exam_all_grades(exam_code):
+    try:
+        success, message = GradeDataAccess.delete_exam_all_grades(exam_code)
+        if success:
+            return jsonify({"success": True, "message": message}), 200
+        else:
+            return jsonify({"success": False, "message": message}), 404
+    except Exception as e:
+        return jsonify({"success": False, "message": f"删除失败: {str(e)}"}), 500

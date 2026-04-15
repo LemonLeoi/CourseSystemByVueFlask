@@ -32,7 +32,12 @@
           <h4>学科平均成绩</h4>
           <div class="info-icon">📊</div>
         </div>
-        <div ref="gradeSubjectChart" class="chart"></div>
+        <BaseECharts
+          chart-type="bar"
+          :data="gradeSubjectData"
+          :options="gradeSubjectOptions"
+          height="400px"
+        />
       </div>
       
       <div class="chart-container">
@@ -40,7 +45,12 @@
           <h4>班级平均成绩对比</h4>
           <div class="info-icon">📈</div>
         </div>
-        <div ref="classComparisonChart" class="chart"></div>
+        <BaseECharts
+          chart-type="bar"
+          :data="classComparisonData"
+          :options="classComparisonOptions"
+          height="400px"
+        />
       </div>
       
       <!-- 新增：科目选择下拉菜单 -->
@@ -80,8 +90,18 @@
             <span class="stat-value">{{ subjectAnalysis.statistics.min_score }}</span>
           </div>
         </div>
-        <div ref="subjectDistributionChart" class="chart"></div>
-        <div ref="subjectBoxPlotChart" class="chart"></div>
+        <BaseECharts
+          chart-type="bar"
+          :data="subjectDistributionData"
+          :options="subjectDistributionOptions"
+          height="400px"
+        />
+        <BaseECharts
+          chart-type="boxplot"
+          :data="subjectBoxPlotData"
+          :options="subjectBoxPlotOptions"
+          height="400px"
+        />
       </div>
       
       <!-- 新增：历次考试趋势图表 -->
@@ -90,7 +110,12 @@
           <h4>年级历次考试趋势</h4>
           <div class="info-icon">📈</div>
         </div>
-        <div ref="examTrendChart" class="chart"></div>
+        <BaseECharts
+          chart-type="line"
+          :data="examTrendData"
+          :options="examTrendOptions"
+          height="400px"
+        />
       </div>
       
       <!-- 新增：教师成绩对比模块 -->
@@ -99,7 +124,12 @@
           <h4>教师成绩对比</h4>
           <div class="info-icon">👨‍🏫</div>
         </div>
-        <div ref="teacherComparisonChart" class="chart"></div>
+        <BaseECharts
+          chart-type="bar"
+          :data="teacherComparisonData"
+          :options="teacherComparisonOptions"
+          height="400px"
+        />
       </div>
       
       <!-- 新增：教师与成绩关系热力图 -->
@@ -108,19 +138,27 @@
           <h4>教师与成绩关系热力图</h4>
           <div class="info-icon">🔥</div>
         </div>
-        <div ref="teacherHeatmapChart" class="chart"></div>
+        <BaseECharts
+          chart-type="heatmap"
+          :data="teacherHeatmapData"
+          :options="teacherHeatmapOptions"
+          height="400px"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import * as echarts from 'echarts'
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import BaseECharts from '../../components/common/BaseECharts.vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useGradeAnalysis } from '../../composables/grade/useGradeAnalysis'
 
 export default {
   name: 'GradeLevelAnalysis',
+  components: {
+    BaseECharts
+  },
   setup() {
     const { 
       gradeAnalysis, 
@@ -143,24 +181,6 @@ export default {
     const isLoadingOptions = ref(false)
     const selectedSubject = ref('')
     const subjects = ref([])
-    
-    // 图表引用
-    const gradeSubjectChart = ref(null)
-    const classComparisonChart = ref(null)
-    const subjectDistributionChart = ref(null)
-    const subjectBoxPlotChart = ref(null)
-    const examTrendChart = ref(null)
-    const teacherComparisonChart = ref(null)
-    const teacherHeatmapChart = ref(null)
-    
-    // 图表实例
-    let gradeSubjectChartInstance = null
-    let classComparisonChartInstance = null
-    let subjectDistributionChartInstance = null
-    let subjectBoxPlotChartInstance = null
-    let examTrendChartInstance = null
-    let teacherComparisonChartInstance = null
-    let teacherHeatmapChartInstance = null
     
     // 加载年级列表
     const loadGradeOptions = async () => {
@@ -195,495 +215,422 @@ export default {
     const analyzeSubject = async () => {
       if (gradeName.value && selectedSubject.value) {
         await getGradeSubjectAnalysis(gradeName.value, selectedSubject.value)
-        // 加载教师成绩对比
-        await getTeacherPerformance(selectedSubject.value)
+        // 加载教师成绩对比，即使失败也不影响页面显示
+        try {
+          await getTeacherPerformance(selectedSubject.value)
+        } catch (error) {
+          console.log('教师成绩对比数据暂时不可用，将继续显示其他分析结果')
+        }
       }
     }
     
-    // 监听年级分析数据变化，更新图表
-    watch(gradeAnalysis, (newAnalysis) => {
-      if (newAnalysis && Object.keys(newAnalysis).length > 0) {
-        // 使用nextTick确保DOM渲染完成后再初始化图表
-        setTimeout(() => {
-          initGradeSubjectChart()
-          initClassComparisonChart()
-        }, 0)
-      }
-    }, { deep: true })
-    
-    // 监听科目分析数据变化，更新图表
-    watch(subjectAnalysis, () => {
-      if (subjectAnalysis.value) {
-        setTimeout(() => {
-          initSubjectDistributionChart()
-          initSubjectBoxPlotChart()
-        }, 0)
-      }
-    }, { deep: true })
-    
-    // 监听考试趋势数据变化，更新图表
-    watch(examTrend, () => {
-      if (examTrend.value) {
-        setTimeout(() => {
-          initExamTrendChart()
-        }, 0)
-      }
-    }, { deep: true })
-    
-    // 监听教师成绩对比数据变化，更新图表
-    watch(teacherPerformance, () => {
-      if (teacherPerformance.value) {
-        setTimeout(() => {
-          initTeacherComparisonChart()
-          initTeacherHeatmapChart()
-        }, 0)
-      }
-    }, { deep: true })
-    
-    // 初始化年级学科成绩图表
-    const initGradeSubjectChart = () => {
-      if (gradeSubjectChart.value && gradeAnalysis.value) {
-        if (gradeSubjectChartInstance) {
-          gradeSubjectChartInstance.dispose()
-        }
-        gradeSubjectChartInstance = echarts.init(gradeSubjectChart.value)
-        
-        const subjects = Object.keys(gradeAnalysis.value.subject_averages)
-        const averages = subjects.map(subject => gradeAnalysis.value.subject_averages[subject])
-        
-        const option = {
-          title: {
-            text: '年级各学科平均成绩',
-            left: 'center'
-          },
-          tooltip: {
-            trigger: 'axis',
-            axisPointer: {
-              type: 'shadow'
-            }
-          },
-          xAxis: {
-            type: 'category',
-            data: subjects,
-            axisLabel: {
-              rotate: 45
-            }
-          },
-          yAxis: {
-            type: 'value',
-            name: '平均分'
-          },
-          series: [
-            {
-              data: averages,
-              type: 'bar',
-              itemStyle: {
-                color: '#ee6666'
-              }
-            }
-          ]
-        }
-        
-        gradeSubjectChartInstance.setOption(option)
-      }
-    }
-    
-    // 初始化班级对比图表
-    const initClassComparisonChart = () => {
-      if (classComparisonChart.value && gradeAnalysis.value) {
-        if (classComparisonChartInstance) {
-          classComparisonChartInstance.dispose()
-        }
-        classComparisonChartInstance = echarts.init(classComparisonChart.value)
-        
-        const classes = Object.keys(gradeAnalysis.value.class_averages)
-        const subjects = Object.keys(gradeAnalysis.value.subject_averages)
-        
-        // 使用柱状图展示班级间的成绩对比
-        const series = classes.map((className, index) => {
-          const data = subjects.map(subject => {
-            return gradeAnalysis.value.class_averages[className][subject] || 0
-          })
-          
-          return {
-            name: className,
-            type: 'bar',
-            data: data,
-            barWidth: '15%'
-          }
-        })
-        
-        const option = {
-          title: {
-            text: '班级成绩对比',
-            left: 'center'
-          },
-          tooltip: {
-            trigger: 'axis',
-            axisPointer: {
-              type: 'shadow'
-            }
-          },
-          legend: {
-            data: classes,
-            bottom: 0
-          },
-          xAxis: {
-            type: 'category',
-            data: subjects,
-            axisLabel: {
-              rotate: 45
-            }
-          },
-          yAxis: {
-            type: 'value',
-            name: '平均分'
-          },
-          series: series
-        }
-        
-        classComparisonChartInstance.setOption(option)
-      }
-    }
-    
-    // 初始化科目分布图表
-    const initSubjectDistributionChart = () => {
-      if (subjectDistributionChart.value && subjectAnalysis.value) {
-        if (subjectDistributionChartInstance) {
-          subjectDistributionChartInstance.dispose()
-        }
-        subjectDistributionChartInstance = echarts.init(subjectDistributionChart.value)
-        
-        const distribution = subjectAnalysis.value.statistics.distribution
-        const categories = ['优秀', '良好', '中等', '及格', '不及格']
-        const data = [
-          distribution.excellent,
-          distribution.good,
-          distribution.average,
-          distribution.pass,
-          distribution.fail
-        ]
-        
-        const option = {
-          title: {
-            text: '成绩分布',
-            left: 'center'
-          },
-          tooltip: {
-            trigger: 'axis',
-            axisPointer: {
-              type: 'shadow'
-            }
-          },
-          xAxis: {
-            type: 'category',
-            data: categories
-          },
-          yAxis: {
-            type: 'value',
-            name: '人数'
-          },
-          series: [
-            {
-              name: '人数',
-              type: 'bar',
-              data: data,
-              itemStyle: {
-                color: '#5470c6'
-              }
-            }
-          ]
-        }
-        
-        subjectDistributionChartInstance.setOption(option)
-      }
-    }
-    
-    // 初始化科目箱线图
-    const initSubjectBoxPlotChart = () => {
-      if (subjectBoxPlotChart.value && subjectAnalysis.value) {
-        if (subjectBoxPlotChartInstance) {
-          subjectBoxPlotChartInstance.dispose()
-        }
-        subjectBoxPlotChartInstance = echarts.init(subjectBoxPlotChart.value)
-        
-        // 模拟箱线图数据（实际项目中应该从API获取）
-        const boxData = [
-          [subjectAnalysis.value.statistics.min_score, 
-           subjectAnalysis.value.statistics.min_score + 10, 
-           subjectAnalysis.value.statistics.median, 
-           subjectAnalysis.value.statistics.median + 10, 
-           subjectAnalysis.value.statistics.max_score]
-        ]
-        
-        const option = {
-          title: {
-            text: '成绩分布箱线图',
-            left: 'center'
-          },
-          tooltip: {
-            trigger: 'item',
-            axisPointer: {
-              type: 'shadow'
-            }
-          },
-          grid: {
-            left: '10%',
-            right: '10%',
-            bottom: '15%'
-          },
-          xAxis: {
-            type: 'category',
-            data: [subjectAnalysis.value.subject],
-            boundaryGap: true,
-            nameGap: 30,
-            splitArea: {
-              show: false
-            },
-            splitLine: {
-              show: false
-            }
-          },
-          yAxis: {
-            type: 'value',
-            name: '分数',
-            splitArea: {
-              show: true
-            }
-          },
-          series: [
-            {
-              name: '成绩分布',
-              type: 'boxplot',
-              data: boxData,
-              itemStyle: {
-                color: '#5470c6'
-              }
-            }
-          ]
-        }
-        
-        subjectBoxPlotChartInstance.setOption(option)
-      }
-    }
-    
-    // 初始化考试趋势图表
-    const initExamTrendChart = () => {
-      if (examTrendChart.value && examTrend.value) {
-        if (examTrendChartInstance) {
-          examTrendChartInstance.dispose()
-        }
-        examTrendChartInstance = echarts.init(examTrendChart.value)
-        
-        const examNames = examTrend.value.exam_trend.exam_names
-        const averages = examTrend.value.exam_trend.averages
-        
-        const option = {
-          title: {
-            text: '年级历次考试趋势',
-            left: 'center'
-          },
-          tooltip: {
-            trigger: 'axis'
-          },
-          xAxis: {
-            type: 'category',
-            data: examNames,
-            axisLabel: {
-              rotate: 45
-            }
-          },
-          yAxis: {
-            type: 'value',
-            name: '平均分数'
-          },
-          series: [
-            {
-              name: '平均分数',
-              type: 'line',
-              data: averages,
-              smooth: true,
-              itemStyle: {
-                color: '#5470c6'
-              },
-              areaStyle: {
-                color: {
-                  type: 'linear',
-                  x: 0,
-                  y: 0,
-                  x2: 0,
-                  y2: 1,
-                  colorStops: [{
-                    offset: 0, color: 'rgba(84, 112, 198, 0.3)'
-                  }, {
-                    offset: 1, color: 'rgba(84, 112, 198, 0.1)'
-                  }]
-                }
-              }
-            }
-          ]
-        }
-        
-        examTrendChartInstance.setOption(option)
-      }
-    }
-    
-    // 初始化教师对比图表
-    const initTeacherComparisonChart = () => {
-      if (teacherComparisonChart.value && teacherPerformance.value) {
-        if (teacherComparisonChartInstance) {
-          teacherComparisonChartInstance.dispose()
-        }
-        teacherComparisonChartInstance = echarts.init(teacherComparisonChart.value)
-        
-        const teachers = Object.keys(teacherPerformance.value.teacher_performance)
-        const data = teachers.map(teacher => teacherPerformance.value.teacher_performance[teacher].average)
-        
-        const option = {
-          title: {
-            text: '教师成绩对比',
-            left: 'center'
-          },
-          tooltip: {
-            trigger: 'axis',
-            axisPointer: {
-              type: 'shadow'
-            }
-          },
-          xAxis: {
-            type: 'category',
-            data: teachers,
-            axisLabel: {
-              rotate: 45
-            }
-          },
-          yAxis: {
-            type: 'value',
-            name: '平均分数'
-          },
-          series: [
-            {
-              name: '平均分数',
-              type: 'bar',
-              data: data,
-              itemStyle: {
-                color: '#91cc75'
-              }
-            }
-          ]
-        }
-        
-        teacherComparisonChartInstance.setOption(option)
-      }
-    }
-    
-    // 初始化教师与成绩关系热力图
-    const initTeacherHeatmapChart = () => {
-      if (teacherHeatmapChart.value && teacherPerformance.value) {
-        if (teacherHeatmapChartInstance) {
-          teacherHeatmapChartInstance.dispose()
-        }
-        teacherHeatmapChartInstance = echarts.init(teacherHeatmapChart.value)
-        
-        // 处理热力图数据
-        const heatmapData = []
-        const teachers = Object.keys(teacherPerformance.value.teacher_performance)
-        let index = 0
-        
-        teachers.forEach(teacher => {
-          const teacherData = teacherPerformance.value.teacher_performance[teacher]
-          // 为每个教师创建一个数据点，使用教师索引作为x轴，平均分为y轴，分数作为热力值
-          heatmapData.push([index, 0, teacherData.average])
-          index++
-        })
-        
-        const option = {
-          title: {
-            text: '教师与成绩关系热力图',
-            left: 'center'
-          },
-          tooltip: {
-            position: 'top'
-          },
-          grid: {
-            height: '60%',
-            top: '10%'
-          },
-          xAxis: {
-            type: 'category',
-            data: teachers,
-            splitArea: {
-              show: true
-            },
-            axisLabel: {
-              rotate: 45
-            }
-          },
-          yAxis: {
-            type: 'category',
-            data: ['平均成绩'],
-            splitArea: {
-              show: true
-            }
-          },
-          visualMap: {
-            min: 60,
-            max: 100,
-            calculable: true,
-            orient: 'horizontal',
-            left: 'center',
-            bottom: '15%',
-            inRange: {
-              color: ['#313695', '#4575b4', '#74add1', '#abd9e9', '#e0f3f8', '#ffffbf', '#fee090', '#fdae61', '#f46d43', '#d73027', '#a50026']
-            }
-          },
-          series: [
-            {
-              name: '平均成绩',
-              type: 'heatmap',
-              data: heatmapData,
-              label: {
-                show: true
-              },
-              emphasis: {
-                itemStyle: {
-                  shadowBlur: 10,
-                  shadowColor: 'rgba(0, 0, 0, 0.5)'
-                }
-              }
-            }
-          ]
-        }
-        
-        teacherHeatmapChartInstance.setOption(option)
-      }
-    }
-    
-    // 窗口大小变化时调整图表
-    const handleResize = () => {
-      gradeSubjectChartInstance?.resize()
-      classComparisonChartInstance?.resize()
-      subjectDistributionChartInstance?.resize()
-      subjectBoxPlotChartInstance?.resize()
-      examTrendChartInstance?.resize()
-      teacherComparisonChartInstance?.resize()
-      teacherHeatmapChartInstance?.resize()
-    }
-    
-    onMounted(() => {
-      window.addEventListener('resize', handleResize)
-      loadGradeOptions()
+    // 年级学科成绩数据
+    const gradeSubjectData = computed(() => {
+      return gradeAnalysis.value || {}
     })
     
-    onUnmounted(() => {
-      window.removeEventListener('resize', handleResize)
-      gradeSubjectChartInstance?.dispose()
-      classComparisonChartInstance?.dispose()
-      subjectDistributionChartInstance?.dispose()
-      subjectBoxPlotChartInstance?.dispose()
-      examTrendChartInstance?.dispose()
-      teacherComparisonChartInstance?.dispose()
-      teacherHeatmapChartInstance?.dispose()
+    // 年级学科成绩配置
+    const gradeSubjectOptions = computed(() => {
+      if (!gradeAnalysis.value || !gradeAnalysis.value.subject_averages) return {}
+      
+      const subjects = Object.keys(gradeAnalysis.value.subject_averages)
+      const averages = subjects.map(subject => gradeAnalysis.value.subject_averages[subject])
+      
+      return {
+        title: {
+          text: '年级各学科平均成绩',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        xAxis: {
+          type: 'category',
+          data: subjects,
+          axisLabel: {
+            rotate: 45
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: '平均分'
+        },
+        series: [
+          {
+            data: averages,
+            type: 'bar',
+            itemStyle: {
+              color: '#ee6666'
+            }
+          }
+        ]
+      }
+    })
+    
+    // 班级对比数据
+    const classComparisonData = computed(() => {
+      return gradeAnalysis.value || {}
+    })
+    
+    // 班级对比配置
+    const classComparisonOptions = computed(() => {
+      if (!gradeAnalysis.value || !gradeAnalysis.value.class_averages || !gradeAnalysis.value.subject_averages) return {}
+      
+      const classes = Object.keys(gradeAnalysis.value.class_averages)
+      const subjects = Object.keys(gradeAnalysis.value.subject_averages)
+      
+      // 使用柱状图展示班级间的成绩对比
+      const series = classes.map((className) => {
+        const data = subjects.map(subject => {
+          return gradeAnalysis.value.class_averages[className][subject] || 0
+        })
+        
+        return {
+          name: className,
+          type: 'bar',
+          data: data,
+          barWidth: '15%'
+        }
+      })
+      
+      return {
+        title: {
+          text: '班级成绩对比',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        legend: {
+          data: classes,
+          bottom: 0
+        },
+        xAxis: {
+          type: 'category',
+          data: subjects,
+          axisLabel: {
+            rotate: 45
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: '平均分'
+        },
+        series: series
+      }
+    })
+    
+    // 科目分布数据
+    const subjectDistributionData = computed(() => {
+      return subjectAnalysis.value || {}
+    })
+    
+    // 科目分布配置
+    const subjectDistributionOptions = computed(() => {
+      if (!subjectAnalysis.value || !subjectAnalysis.value.statistics || !subjectAnalysis.value.statistics.distribution) return {}
+      
+      const distribution = subjectAnalysis.value.statistics.distribution
+      const categories = ['优秀', '良好', '中等', '及格', '不及格']
+      const data = [
+        distribution.excellent,
+        distribution.good,
+        distribution.average,
+        distribution.pass,
+        distribution.fail
+      ]
+      
+      return {
+        title: {
+          text: '成绩分布',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        xAxis: {
+          type: 'category',
+          data: categories
+        },
+        yAxis: {
+          type: 'value',
+          name: '人数'
+        },
+        series: [
+          {
+            name: '人数',
+            type: 'bar',
+            data: data,
+            itemStyle: {
+              color: '#5470c6'
+            }
+          }
+        ]
+      }
+    })
+    
+    // 科目箱线图数据
+    const subjectBoxPlotData = computed(() => {
+      return subjectAnalysis.value || {}
+    })
+    
+    // 科目箱线图配置
+    const subjectBoxPlotOptions = computed(() => {
+      if (!subjectAnalysis.value || !subjectAnalysis.value.statistics) return {}
+      
+      // 模拟箱线图数据（实际项目中应该从API获取）
+      const boxData = [
+        [subjectAnalysis.value.statistics.min_score, 
+         subjectAnalysis.value.statistics.min_score + 10, 
+         subjectAnalysis.value.statistics.median, 
+         subjectAnalysis.value.statistics.median + 10, 
+         subjectAnalysis.value.statistics.max_score]
+      ]
+      
+      return {
+        title: {
+          text: '成绩分布箱线图',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'item',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        grid: {
+          left: '10%',
+          right: '10%',
+          bottom: '15%'
+        },
+        xAxis: {
+          type: 'category',
+          data: [subjectAnalysis.value.subject],
+          boundaryGap: true,
+          nameGap: 30,
+          splitArea: {
+            show: false
+          },
+          splitLine: {
+            show: false
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: '分数',
+          splitArea: {
+            show: true
+          }
+        },
+        series: [
+          {
+            name: '成绩分布',
+            type: 'boxplot',
+            data: boxData,
+            itemStyle: {
+              color: '#5470c6'
+            }
+          }
+        ]
+      }
+    })
+    
+    // 考试趋势数据
+    const examTrendData = computed(() => {
+      return examTrend.value || {}
+    })
+    
+    // 考试趋势配置
+    const examTrendOptions = computed(() => {
+      if (!examTrend.value || !examTrend.value.exam_trend) return {}
+      
+      const examNames = examTrend.value.exam_trend.exam_names
+      const averages = examTrend.value.exam_trend.averages
+      
+      return {
+        title: {
+          text: '年级历次考试趋势',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis'
+        },
+        xAxis: {
+          type: 'category',
+          data: examNames,
+          axisLabel: {
+            rotate: 45
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: '平均分数'
+        },
+        series: [
+          {
+            name: '平均分数',
+            type: 'line',
+            data: averages,
+            smooth: true,
+            itemStyle: {
+              color: '#5470c6'
+            },
+            areaStyle: {
+              color: {
+                type: 'linear',
+                x: 0,
+                y: 0,
+                x2: 0,
+                y2: 1,
+                colorStops: [{
+                  offset: 0, color: 'rgba(84, 112, 198, 0.3)'
+                }, {
+                  offset: 1, color: 'rgba(84, 112, 198, 0.1)'
+                }]
+              }
+            }
+          }
+        ]
+      }
+    })
+    
+    // 教师对比数据
+    const teacherComparisonData = computed(() => {
+      return teacherPerformance.value || {}
+    })
+    
+    // 教师对比配置
+    const teacherComparisonOptions = computed(() => {
+      if (!teacherPerformance.value || !teacherPerformance.value.teacher_performance) return {}
+      
+      const teachers = Object.keys(teacherPerformance.value.teacher_performance)
+      const data = teachers.map(teacher => teacherPerformance.value.teacher_performance[teacher].average)
+      
+      return {
+        title: {
+          text: '教师成绩对比',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        xAxis: {
+          type: 'category',
+          data: teachers,
+          axisLabel: {
+            rotate: 45
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: '平均分数'
+        },
+        series: [
+          {
+            name: '平均分数',
+            type: 'bar',
+            data: data,
+            itemStyle: {
+              color: '#91cc75'
+            }
+          }
+        ]
+      }
+    })
+    
+    // 教师热力图数据
+    const teacherHeatmapData = computed(() => {
+      return teacherPerformance.value || {}
+    })
+    
+    // 教师热力图配置
+    const teacherHeatmapOptions = computed(() => {
+      if (!teacherPerformance.value || !teacherPerformance.value.teacher_performance) return {}
+      
+      // 处理热力图数据
+      const heatmapData = []
+      const teachers = Object.keys(teacherPerformance.value.teacher_performance)
+      let index = 0
+      
+      teachers.forEach(teacher => {
+        const teacherData = teacherPerformance.value.teacher_performance[teacher]
+        // 为每个教师创建一个数据点，使用教师索引作为x轴，平均分为y轴，分数作为热力值
+        heatmapData.push([index, 0, teacherData.average])
+        index++
+      })
+      
+      return {
+        title: {
+          text: '教师与成绩关系热力图',
+          left: 'center'
+        },
+        tooltip: {
+          position: 'top'
+        },
+        grid: {
+          height: '60%',
+          top: '10%'
+        },
+        xAxis: {
+          type: 'category',
+          data: teachers,
+          splitArea: {
+            show: true
+          },
+          axisLabel: {
+            rotate: 45
+          }
+        },
+        yAxis: {
+          type: 'category',
+          data: ['平均成绩'],
+          splitArea: {
+            show: true
+          }
+        },
+        visualMap: {
+          min: 60,
+          max: 100,
+          calculable: true,
+          orient: 'horizontal',
+          left: 'center',
+          bottom: '15%',
+          inRange: {
+            color: ['#313695', '#4575b4', '#74add1', '#abd9e9', '#e0f3f8', '#ffffbf', '#fee090', '#fdae61', '#f46d43', '#d73027', '#a50026']
+          }
+        },
+        series: [
+          {
+            name: '平均成绩',
+            type: 'heatmap',
+            data: heatmapData,
+            label: {
+              show: true
+            },
+            emphasis: {
+              itemStyle: {
+                shadowBlur: 10,
+                shadowColor: 'rgba(0, 0, 0, 0.5)'
+              }
+            }
+          }
+        ]
+      }
+    })
+    
+    onMounted(() => {
+      loadGradeOptions()
     })
     
     return {
@@ -698,13 +645,20 @@ export default {
       teacherPerformance,
       loading,
       gradeError,
-      gradeSubjectChart,
-      classComparisonChart,
-      subjectDistributionChart,
-      subjectBoxPlotChart,
-      examTrendChart,
-      teacherComparisonChart,
-      teacherHeatmapChart,
+      gradeSubjectData,
+      gradeSubjectOptions,
+      classComparisonData,
+      classComparisonOptions,
+      subjectDistributionData,
+      subjectDistributionOptions,
+      subjectBoxPlotData,
+      subjectBoxPlotOptions,
+      examTrendData,
+      examTrendOptions,
+      teacherComparisonData,
+      teacherComparisonOptions,
+      teacherHeatmapData,
+      teacherHeatmapOptions,
       analyzeGrade,
       analyzeSubject
     }

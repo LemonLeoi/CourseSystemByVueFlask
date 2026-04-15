@@ -46,7 +46,6 @@ def get_students():
                 'grade': grade_record.grade_level,
                 'examType': exam.exam_type if exam else None,
                 'semester': exam.semester if exam else None,
-                'examDate': grade_record.exam_date.isoformat() if grade_record.exam_date else None,
                 'period': exam.academic_year if exam else None
             })
         student_data['scores'] = scores
@@ -69,15 +68,14 @@ def get_student(student_id):
     scores = []
     grade_records = db.session.query(Grade, Exam).join(Exam, Grade.exam_code == Exam.exam_code).filter(Grade.student_id == student_id).all()
     for grade_record, exam in grade_records:
-        scores.append({
-            'subject': grade_record.subject,
-            'score': grade_record.score,
-            'grade': grade_record.grade_level,
-            'examType': exam.exam_type if exam else None,
-            'semester': exam.semester if exam else None,
-            'examDate': grade_record.exam_date.isoformat() if grade_record.exam_date else None,
-            'period': exam.academic_year if exam else None
-        })
+            scores.append({
+                'subject': grade_record.subject,
+                'score': grade_record.score,
+                'grade': grade_record.grade_level,
+                'examType': exam.exam_type if exam else None,
+                'semester': exam.semester if exam else None,
+                'period': exam.academic_year if exam else None
+            })
     
     student_data['scores'] = scores
     return jsonify(student_data)
@@ -259,14 +257,7 @@ def update_student_grades(student_id):
             else:
                 grade_level = 'E'
             
-            # 处理考试日期
-            exam_date = None
-            if 'examDate' in score_data:
-                try:
-                    from datetime import datetime
-                    exam_date = datetime.strptime(score_data['examDate'], '%Y-%m-%d').date()
-                except ValueError:
-                    pass
+            # 考试日期字段已从数据库中删除，不再处理
             
             # 验证考试是否存在
             exam = Exam.query.get(exam_code)
@@ -286,8 +277,7 @@ def update_student_grades(student_id):
                 course_code=course_code,
                 subject=subject,
                 score=score,
-                grade_level=grade_level,
-                exam_date=exam_date
+                grade_level=grade_level
             )
             
             db.session.add(new_grade)
@@ -303,16 +293,15 @@ def update_student_grades(student_id):
     updated_grades = db.session.query(Grade, Exam).join(Exam, Grade.exam_code == Exam.exam_code).filter(Grade.student_id == student_id).all()
     updated_scores = []
     for grade, exam in updated_grades:
-        updated_scores.append({
-            'subject': grade.subject,
-            'score': grade.score,
-            'grade': grade.grade_level,
-            'examType': exam.exam_type if exam else None,
-            'semester': exam.semester if exam else None,
-            'examDate': grade.exam_date.isoformat() if grade.exam_date else None,
-            'period': exam.academic_year if exam else None,
-            'exam_code': exam.exam_code if exam else None
-        })
+            updated_scores.append({
+                'subject': grade.subject,
+                'score': grade.score,
+                'grade': grade.grade_level,
+                'examType': exam.exam_type if exam else None,
+                'semester': exam.semester if exam else None,
+                'period': exam.academic_year if exam else None,
+                'exam_code': exam.exam_code if exam else None
+            })
     
     return jsonify({
         'message': '成绩更新成功',

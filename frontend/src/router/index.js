@@ -104,6 +104,7 @@ const routes = [
       },
       {
         path: '',
+        name: 'GradeAnalysisRedirect',
         redirect: 'overall'
       }
     ]

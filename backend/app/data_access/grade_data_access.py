@@ -5,12 +5,10 @@ class GradeDataAccess:
     @staticmethod
     def get_student_grades(student_id):
         """获取学生个人成绩"""
-        # 获取学生信息
         student = Student.query.filter_by(student_id=student_id).first()
         if not student:
             return None, None
         
-        # 获取学生成绩，使用左连接以处理exam_id为None的情况
         grades = db.session.query(
             Grade.subject,
             Grade.score,
@@ -19,19 +17,17 @@ class GradeDataAccess:
             Grade.student_id == student_id
         ).all()
         
-        # 转换为与原有格式兼容的结构
         formatted_grades = []
         for grade in grades:
-            # 由于exam_id为None，我们使用默认值
             formatted_grades.append((
-                '未知考试',  # exam_name
-                '2024-2025学年',  # academic_year
-                '第一学期',  # semester
-                student.grade,  # grade
-                '期中考试',  # exam_type
-                grade[0],  # subject
-                grade[1],  # score
-                grade[2]   # grade_level
+                '未知考试',
+                '2024-2025学年',
+                '第一学期',
+                student.grade,
+                '期中考试',
+                grade[0],
+                grade[1],
+                grade[2]
             ))
         
         student_info = (student.name, student.gender, student.class_, student.grade)
@@ -40,7 +36,6 @@ class GradeDataAccess:
     @staticmethod
     def get_class_average(student_class, student_grade):
         """获取班级平均成绩"""
-        # 查询班级学科平均成绩
         class_avgs = db.session.query(
             Grade.subject,
             db.func.avg(Grade.score).label('avg_score')
@@ -55,7 +50,6 @@ class GradeDataAccess:
             Grade.subject
         ).all()
         
-        # 转换为字典
         avg_dict = {}
         for subject, avg_score in class_avgs:
             avg_dict[subject] = round(avg_score, 2)
@@ -196,12 +190,10 @@ class GradeDataAccess:
     @staticmethod
     def get_student_schedule_grades(student_id):
         """获取学生课程安排和成绩"""
-        # 获取学生信息
         student = Student.query.filter_by(student_id=student_id).first()
         if not student:
             return []
         
-        # 获取学生课程安排和成绩
         from sqlalchemy import and_
         schedule_grades = db.session.query(
             StudentCourse.day_of_week,
@@ -228,7 +220,6 @@ class GradeDataAccess:
             Student.student_id == student_id
         ).all()
         
-        # 转换结果格式，确保与预期一致
         formatted_result = []
         for day_of_week, period, subject, teacher, score in schedule_grades:
             formatted_result.append((day_of_week, period, subject, teacher, score))
@@ -238,7 +229,6 @@ class GradeDataAccess:
     @staticmethod
     def get_class_schedule_grades(class_name, grade):
         """获取班级课程安排和成绩"""
-        # 获取班级课程安排和成绩
         from sqlalchemy import and_
         schedule_grades = db.session.query(
             StudentCourse.day_of_week,
@@ -265,9 +255,66 @@ class GradeDataAccess:
             Student.grade == grade
         ).all()
         
-        # 转换结果格式，确保与预期一致
         formatted_result = []
         for day_of_week, period, subject, teacher, score in schedule_grades:
             formatted_result.append((day_of_week, period, subject, teacher, score))
         
         return formatted_result
+    
+    @staticmethod
+    def delete_student_grade(student_id, exam_code, subject):
+        """删除学生指定考试的指定科目成绩"""
+        try:
+            grade = Grade.query.filter_by(
+                student_id=student_id,
+                exam_code=exam_code,
+                subject=subject
+            ).first()
+            
+            if grade:
+                db.session.delete(grade)
+                db.session.commit()
+                return True, "删除成功"
+            else:
+                return False, "成绩记录不存在"
+        except Exception as e:
+            db.session.rollback()
+            return False, f"删除失败: {str(e)}"
+    
+    @staticmethod
+    def delete_student_exam_grades(student_id, exam_code):
+        """删除学生指定考试的所有科目成绩"""
+        try:
+            grades = Grade.query.filter_by(
+                student_id=student_id,
+                exam_code=exam_code
+            ).all()
+            
+            if grades:
+                for grade in grades:
+                    db.session.delete(grade)
+                db.session.commit()
+                return True, f"成功删除 {len(grades)} 条成绩记录"
+            else:
+                return False, "没有找到该考试的成绩记录"
+        except Exception as e:
+            db.session.rollback()
+            return False, f"删除失败: {str(e)}"
+    
+    @staticmethod
+    def delete_exam_all_grades(exam_code):
+        """删除指定考试的所有学生成绩"""
+        try:
+            grades = Grade.query.filter_by(exam_code=exam_code).all()
+            
+            if grades:
+                count = len(grades)
+                for grade in grades:
+                    db.session.delete(grade)
+                db.session.commit()
+                return True, f"成功删除 {count} 条成绩记录"
+            else:
+                return False, "没有找到该考试的成绩记录"
+        except Exception as e:
+            db.session.rollback()
+            return False, f"删除失败: {str(e)}"

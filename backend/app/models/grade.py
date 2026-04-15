@@ -12,7 +12,6 @@ class Grade(db.Model):
     subject = db.Column(db.VARCHAR(50), nullable=False)
     score = db.Column(db.FLOAT, nullable=False)
     grade_level = db.Column(db.VARCHAR(1), nullable=False)
-    exam_date = db.Column(db.DATE)
     
     # 添加唯一约束，确保每个学生的每个学科在每次考试下只有一条记录
     __table_args__ = (
@@ -31,8 +30,7 @@ class Grade(db.Model):
             'course_code': self.course_code,
             'subject': self.subject,
             'score': self.score,
-            'grade': self.grade_level,
-            'exam_date': self.exam_date.isoformat() if self.exam_date else None
+            'grade': self.grade_level
         }
     
     def __repr__(self):

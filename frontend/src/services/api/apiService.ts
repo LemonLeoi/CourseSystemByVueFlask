@@ -116,6 +116,27 @@ export const studentApi = {
     });
   },
   
+  // 删除学生指定考试的指定科目成绩
+  deleteStudentGrade: async (studentId: string, examCode: string, subject: string): Promise<ApiResponse<boolean>> => {
+    return await fetchApi<ApiResponse<boolean>>(`/grades/${studentId}/${examCode}/${subject}`, {
+      method: 'DELETE',
+    });
+  },
+  
+  // 删除学生指定考试的所有科目成绩
+  deleteStudentExamGrades: async (studentId: string, examCode: string): Promise<ApiResponse<boolean>> => {
+    return await fetchApi<ApiResponse<boolean>>(`/grades/${studentId}/${examCode}`, {
+      method: 'DELETE',
+    });
+  },
+  
+  // 删除指定考试的所有学生成绩
+  deleteExamAllGrades: async (examCode: string): Promise<ApiResponse<boolean>> => {
+    return await fetchApi<ApiResponse<boolean>>(`/grades/exam/${examCode}`, {
+      method: 'DELETE',
+    });
+  },
+  
   // 获取班级和年级列表
   getClasses: async (): Promise<{ grades: string[], classes: string[] }> => {
     return await fetchApi<{ grades: string[], classes: string[] }>('/students/classes');
