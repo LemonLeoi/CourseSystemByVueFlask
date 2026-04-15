@@ -78,6 +78,7 @@ export function useTeacherManage(subjectFilter = ref('')) {
         gender: teacher.gender,
         age: teacher.age,
         subject: teacher.subject,
+        department: teacher.subject, // 前端的subject对应后端的department
         title: teacher.title,
         contact: teacher.contact,
         teachingClasses: teacher.teachingClasses,

@@ -101,7 +101,7 @@ def create_teacher():
                 # 提取年级和班级信息
                 if len(class_name) >= 3:
                     grade = class_name[:2]
-                    class_ = class_name[2:].replace("班", "")
+                    class_ = class_name[2:]  # 保留"班"字
                 else:
                     grade = "未知"
                     class_ = class_name
@@ -182,7 +182,7 @@ def update_teacher(teacher_id):
                 # 提取年级和班级信息
                 if len(class_name) >= 3:
                     grade = class_name[:2]
-                    class_ = class_name[2:].replace("班", "")
+                    class_ = class_name[2:]  # 保留"班"字
                 else:
                     grade = "未知"
                     class_ = class_name
@@ -206,7 +206,7 @@ def update_teacher(teacher_id):
             # 提取年级和班级信息
             if len(class_name) >= 3:
                 grade = class_name[:2]
-                class_ = class_name[2:].replace("班", "")
+                class_ = class_name[2:]  # 保留"班"字
             else:
                 grade = "未知"
                 class_ = class_name
