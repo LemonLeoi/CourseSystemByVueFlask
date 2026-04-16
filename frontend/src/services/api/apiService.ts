@@ -7,7 +7,7 @@ import type { Student, Teacher, Course, Score, ApiResponse } from '@/types';
 import notificationService from '@/services/ui/uiNotificationService';
 
 // 通用请求函数
-async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   console.log('API请求:', url);
   
@@ -374,7 +374,7 @@ export const courseApi = {
   
   // 获取考试列表
   getExams: async (): Promise<any[]> => {
-    return await fetchApi<any[]>('/exams');
+    return await fetchApi<any[]>('/exams/');
   },
 };
 
@@ -385,10 +385,27 @@ export const healthApi = {
   },
 };
 
+// 成绩分级设置相关API
+export const gradeSettingsApi = {
+  // 获取成绩分级设置
+  getGradeSettings: async (): Promise<any> => {
+    return await fetchApi<any>('/grade-settings/');
+  },
+  
+  // 更新成绩分级设置
+  updateGradeSettings: async (settings: any): Promise<any> => {
+    return await fetchApi<any>('/grade-settings/', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  },
+};
+
 export default {
   student: studentApi,
   teacher: teacherApi,
   course: courseApi,
   auth: authApi,
   health: healthApi,
+  gradeSettings: gradeSettingsApi,
 };

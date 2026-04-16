@@ -58,7 +58,7 @@ def analyze_student_performance(student_id):
         if subject in class_averages:
             if avg_score > class_averages[subject]:
                 strengths.append((subject, avg_score, class_averages[subject]))
-            else:
+            elif avg_score < class_averages[subject]:
                 weaknesses.append((subject, avg_score, class_averages[subject]))
     
     # 按成绩差异排序
@@ -116,19 +116,32 @@ def analyze_student_performance(student_id):
 
 # 分析班级成绩
 def analyze_class_performance(class_name, grade):
-    # 处理班级格式，确保与数据库匹配
-    # 如果class_name是数字，添加"班"字
-    if class_name.isdigit():
-        class_name = f"{class_name}班"
-    
-    # 查询班级学生
-    students = GradeDataAccess.get_class_students(class_name, grade)
-    
-    if not students:
-        return {"error": f"未找到 {grade}{class_name} 班级的学生"}
+    # 直接使用传入的班级名称和年级进行查询
     
     # 查询班级所有成绩
     grades = GradeDataAccess.get_class_grades(class_name, grade)
+    
+    # 如果没有成绩记录，返回班级信息和错误消息
+    if not grades:
+        # 直接查询学生表
+        from app.models import Student
+        from app import db
+        students = Student.query.filter_by(class_=class_name, grade=grade).all()
+        student_count = len(students)
+        return {
+            "class_info": {
+                "class_name": f"{grade}{class_name}",
+                "grade": grade,
+                "student_count": student_count
+            },
+            "error": f"{grade}{class_name} 班级暂无成绩记录，学生数量: {student_count}"
+        }
+    
+    # 从成绩记录中提取学生ID，获取学生列表
+    student_ids = set()
+    for student_id, _, _, _, _, _, _, _ in grades:
+        student_ids.add(student_id)
+    students = [(student_id, "") for student_id in student_ids]
     
     # 整理成绩数据
     student_grades = {}
@@ -496,7 +509,19 @@ def analyze_class_trend(class_name, grade):
     grades = GradeDataAccess.get_class_grades(class_name, grade)
     
     if not grades:
-        return {"error": f"{grade}{class_name} 班级暂无成绩记录"}
+        # 直接查询学生表
+        from app.models import Student
+        from app import db
+        students = Student.query.filter_by(class_=class_name, grade=grade).all()
+        student_count = len(students)
+        return {
+            "class_info": {
+                "class_name": f"{grade}{class_name}",
+                "grade": grade,
+                "student_count": student_count
+            },
+            "error": f"{grade}{class_name} 班级暂无成绩记录"
+        }
     
     # 按考试整理成绩
     exam_grades = {}

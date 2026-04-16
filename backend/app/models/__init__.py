@@ -8,8 +8,9 @@ from .teacher_course import TeacherCourse
 from .teaching_progress import TeachingProgress
 from .exam import Exam
 from .classroom import Classroom
+from .grade_settings import GradeSettings
 
-__all__ = ['Student', 'Teacher', 'TeacherClass', 'HomeroomTeacher', 'Course', 'Grade', 'User', 'StudentCourse', 'TeacherCourse', 'TeachingProgress', 'Exam', 'Classroom']
+__all__ = ['Student', 'Teacher', 'TeacherClass', 'HomeroomTeacher', 'Course', 'Grade', 'User', 'StudentCourse', 'TeacherCourse', 'TeachingProgress', 'Exam', 'Classroom', 'GradeSettings']
 
 # 有效班级列表常量
 VALID_CLASSES = ["1班", "2班", "3班", "4班", "5班", "6班"]

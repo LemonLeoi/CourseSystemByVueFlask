@@ -22,6 +22,9 @@ export function useIndividualGrade() {
     error.value = ''
     try {
       const response = await gradeService.getStudentAnalysis(studentId)
+      if (response.error) {
+        throw new Error(response.error)
+      }
       studentInfo.value = response.student_info
       examGrades.value = response.exam_grades
       subjectAverages.value = response.subject_averages
@@ -43,6 +46,9 @@ export function useIndividualGrade() {
     error.value = ''
     try {
       const response = await gradeService.getStudentSubjectAnalysis(studentId, subject)
+      if (response.error) {
+        throw new Error(response.error)
+      }
       subjectAnalysis.value = response
     } catch (err) {
       error.value = err.message || '获取个人科目分析失败'
@@ -58,6 +64,9 @@ export function useIndividualGrade() {
     error.value = ''
     try {
       const response = await gradeService.getStudentTrend(studentId)
+      if (response.error) {
+        throw new Error(response.error)
+      }
       examTrend.value = response
     } catch (err) {
       error.value = err.message || '获取个人考试趋势失败'
@@ -73,6 +82,9 @@ export function useIndividualGrade() {
     error.value = ''
     try {
       const response = await gradeService.getStudentScheduleAnalysis(studentId)
+      if (response.error) {
+        throw new Error(response.error)
+      }
       scheduleAnalysis.value = response
     } catch (err) {
       error.value = err.message || '获取个人课程安排与成绩关系失败'

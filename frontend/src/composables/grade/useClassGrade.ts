@@ -19,6 +19,9 @@ export function useClassGrade() {
     error.value = ''
     try {
       const response = await gradeService.getClassAnalysis(className)
+      if (response.error) {
+        throw new Error(response.error)
+      }
       classInfo.value = response.class_info
       subjectAverages.value = response.subject_averages
       overallAverage.value = response.overall_average
@@ -37,6 +40,9 @@ export function useClassGrade() {
     error.value = ''
     try {
       const response = await gradeService.getClassSubjectAnalysis(className, subject)
+      if (response.error) {
+        throw new Error(response.error)
+      }
       subjectAnalysis.value = response
     } catch (err) {
       error.value = err.message || '获取班级科目分析失败'
@@ -52,6 +58,9 @@ export function useClassGrade() {
     error.value = ''
     try {
       const response = await gradeService.getClassTrend(className)
+      if (response.error) {
+        throw new Error(response.error)
+      }
       examTrend.value = response
     } catch (err) {
       error.value = err.message || '获取班级考试趋势失败'
@@ -67,6 +76,9 @@ export function useClassGrade() {
     error.value = ''
     try {
       const response = await gradeService.getClassScheduleAnalysis(className)
+      if (response.error) {
+        throw new Error(response.error)
+      }
       scheduleAnalysis.value = response
     } catch (err) {
       error.value = err.message || '获取班级课程安排与成绩关系失败'

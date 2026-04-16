@@ -215,8 +215,16 @@ def update_student_grades(student_id):
     
     try:
         # 开始事务
-        # 删除现有成绩
-        Grade.query.filter_by(student_id=student_id).delete()
+        # 收集所有考试代码
+        exam_codes = []
+        for score_data in scores:
+            exam_code = score_data.get('exam_id') or score_data.get('exam_code')
+            if exam_code and exam_code not in exam_codes:
+                exam_codes.append(exam_code)
+        
+        # 只删除对应考试的成绩，而不是所有成绩
+        for exam_code in exam_codes:
+            Grade.query.filter_by(student_id=student_id, exam_code=exam_code).delete()
         
         # 添加新成绩
         for score_data in scores:
@@ -264,17 +272,10 @@ def update_student_grades(student_id):
             if not exam:
                 return jsonify({'error': f'考试代码 {exam_code} 不存在'}), 400
             
-            # 为了简化测试，暂时跳过课程验证
-            # 直接使用一个默认的课程代码
-            course_code = f"{exam.grade[0]}{'001' if subject == '语文' else '002' if subject == '数学' else '003' if subject == '英语' else '014' if subject == '物理' else '015' if subject == '化学' else '016' if subject == '生物' else '024' if subject == '历史' else '025' if subject == '政治' else '026'}"
-            
-            print(f"使用默认课程代码: {course_code}")
-            
             # 创建成绩记录
             new_grade = Grade(
                 student_id=student_id,
                 exam_code=exam_code,
-                course_code=course_code,
                 subject=subject,
                 score=score,
                 grade_level=grade_level

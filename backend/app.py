@@ -43,9 +43,7 @@ from app.api import auth_routes
 from app.api import exam_routes
 from app.api import admin_routes
 from app.api import grade_routes
-
-# 注册命名空间到API
-api.add_namespace(exam_routes.exam_ns, path='/api/exams')
+from app.api import grade_settings_routes
 
 # 注册蓝图
 app.register_blueprint(student_routes.bp, url_prefix='/api/students')
@@ -55,6 +53,7 @@ app.register_blueprint(auth_routes.bp, url_prefix='/api/auth')
 app.register_blueprint(exam_routes.bp, url_prefix='/api/exams')
 app.register_blueprint(admin_routes.bp, url_prefix='/api/admin')
 app.register_blueprint(grade_routes.grade_bp)
+app.register_blueprint(grade_settings_routes.bp, url_prefix='/api/grade-settings')
 
 # 根路由
 @app.route('/')

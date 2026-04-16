@@ -10,25 +10,52 @@ class GradeDataAccess:
             return None, None
         
         grades = db.session.query(
+            Exam.exam_name,
+            Exam.academic_year,
+            Exam.semester,
+            Exam.exam_type,
             Grade.subject,
             Grade.score,
             Grade.grade_level
+        ).join(
+            Exam, Grade.exam_code == Exam.exam_code
         ).filter(
             Grade.student_id == student_id
         ).all()
         
         formatted_grades = []
-        for grade in grades:
-            formatted_grades.append((
-                '未知考试',
-                '2024-2025学年',
-                '第一学期',
-                student.grade,
-                '期中考试',
-                grade[0],
-                grade[1],
-                grade[2]
-            ))
+        if grades:
+            for grade in grades:
+                formatted_grades.append((
+                    grade[0],  # exam_name
+                    grade[1],  # academic_year
+                    grade[2],  # semester
+                    student.grade,
+                    grade[3],  # exam_type
+                    grade[4],  # subject
+                    grade[5],  # score
+                    grade[6]   # grade_level
+                ))
+        else:
+            # 如果没有找到考试记录，使用默认值
+            grades = db.session.query(
+                Grade.subject,
+                Grade.score,
+                Grade.grade_level
+            ).filter(
+                Grade.student_id == student_id
+            ).all()
+            for grade in grades:
+                formatted_grades.append((
+                    '未知考试',
+                    '2024-2025学年',
+                    '第一学期',
+                    student.grade,
+                    '期中考试',
+                    grade[0],
+                    grade[1],
+                    grade[2]
+                ))
         
         student_info = (student.name, student.gender, student.class_, student.grade)
         return student_info, formatted_grades
@@ -41,8 +68,6 @@ class GradeDataAccess:
             db.func.avg(Grade.score).label('avg_score')
         ).join(
             Student, Grade.student_id == Student.student_id
-        ).join(
-            Exam, Grade.exam_code == Exam.exam_code
         ).filter(
             Student.class_ == student_class,
             Student.grade == student_grade
@@ -194,7 +219,8 @@ class GradeDataAccess:
         if not student:
             return []
         
-        from sqlalchemy import and_
+        # 获取班级的课程安排
+        from sqlalchemy import and_, func
         schedule_grades = db.session.query(
             StudentCourse.day_of_week,
             StudentCourse.period,
@@ -205,19 +231,15 @@ class GradeDataAccess:
             Course, StudentCourse.course_code == Course.course_code
         ).join(
             Teacher, StudentCourse.teacher_id == Teacher.teacher_id
-        ).join(
+        ).outerjoin(
             Grade, and_(
-                StudentCourse.grade == Student.grade,
-                StudentCourse.class_ == Student.class_,
-                Course.course_name == Grade.subject
-            )
-        ).join(
-            Student, and_(
-                Student.grade == StudentCourse.grade,
-                Student.class_ == StudentCourse.class_
+                Grade.student_id == student_id,
+                # 使用子字符串匹配科目名称，如"语文高一上"匹配"语文"
+                func.substr(Course.course_name, 1, 2) == Grade.subject
             )
         ).filter(
-            Student.student_id == student_id
+            StudentCourse.grade == student.grade,
+            StudentCourse.class_ == student.class_
         ).all()
         
         formatted_result = []

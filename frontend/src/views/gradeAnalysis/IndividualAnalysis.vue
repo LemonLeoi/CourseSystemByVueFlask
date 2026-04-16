@@ -49,7 +49,12 @@
           <h4>学科分析</h4>
           <div class="info-icon">📊</div>
         </div>
-        <div ref="studentSubjectChart" class="chart"></div>
+        <BaseECharts
+          chart-type="bar"
+          :data="{ subjectAverages, classAverages }"
+          :options="studentSubjectOptions"
+          height="400px"
+        />
       </div>
       
       <div class="strengths-weaknesses">
@@ -118,8 +123,18 @@
             <span class="stat-value">{{ subjectAnalysis.class_average }}</span>
           </div>
         </div>
-        <div ref="subjectDistributionChart" class="chart"></div>
-        <div ref="subjectBoxPlotChart" class="chart"></div>
+        <BaseECharts
+          chart-type="bar"
+          :data="subjectAnalysis"
+          :options="subjectDistributionOptions"
+          height="400px"
+        />
+        <BaseECharts
+          chart-type="boxplot"
+          :data="subjectAnalysis"
+          :options="subjectBoxPlotOptions"
+          height="400px"
+        />
       </div>
       
       <!-- 新增：历次考试趋势图表 -->
@@ -128,7 +143,12 @@
           <h4>历次考试趋势</h4>
           <div class="info-icon">📈</div>
         </div>
-        <div ref="examTrendChart" class="chart"></div>
+        <BaseECharts
+          chart-type="line"
+          :data="examTrend"
+          :options="examTrendOptions"
+          height="400px"
+        />
       </div>
       
       <!-- 新增：课程安排与成绩关系散点图 -->
@@ -137,19 +157,27 @@
           <h4>课程安排与成绩关系</h4>
           <div class="info-icon">📅</div>
         </div>
-        <div ref="scheduleScatterChart" class="chart"></div>
+        <BaseECharts
+          chart-type="scatter"
+          :data="scheduleAnalysis"
+          :options="scheduleScatterOptions"
+          height="400px"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import * as echarts from 'echarts'
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import BaseECharts from '../../components/common/BaseECharts.vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useIndividualGrade } from '../../composables/grade/useIndividualGrade'
 
 export default {
   name: 'IndividualAnalysis',
+  components: {
+    BaseECharts
+  },
   setup() {
     const {
       studentInfo,
@@ -191,21 +219,53 @@ export default {
     let examTrendChartInstance = null
     let scheduleScatterChartInstance = null
     
+    // ECharts 实例
+    let echarts = null
+    
+    // 动态导入 ECharts
+    const loadECharts = async () => {
+      try {
+        // 按需导入核心模块和需要的图表类型
+        const echartsCore = await import('echarts/core')
+        const charts = await import('echarts/charts')
+        const components = await import('echarts/components')
+        const renderers = await import('echarts/renderers')
+        
+        // 注册必要的组件
+        const { use, init } = echartsCore
+        const { BarChart, LineChart, RadarChart, PieChart, BoxplotChart, ScatterChart } = charts
+        const { 
+          TitleComponent, TooltipComponent, LegendComponent, 
+          GridComponent, DataZoomComponent, ToolboxComponent,
+          VisualMapComponent
+        } = components
+        const { CanvasRenderer } = renderers
+        
+        use([
+          BarChart, LineChart, RadarChart, PieChart, BoxplotChart, ScatterChart,
+          TitleComponent, TooltipComponent, LegendComponent, GridComponent,
+          DataZoomComponent, ToolboxComponent, VisualMapComponent,
+          CanvasRenderer
+        ])
+        
+        echarts = echartsCore
+        return true
+      } catch (err) {
+        console.error('加载 ECharts 失败:', err)
+        return false
+      }
+    }
+    
     // 加载学生列表
     const loadStudents = async () => {
       console.log('开始加载学生列表')
       isLoadingStudents.value = true
       try {
         console.log('发起API请求')
-        const response = await fetch('http://localhost:5000/api/students/')
-        console.log('API请求返回:', response)
-        if (response.ok) {
-          const data = await response.json()
-          console.log('获取到学生数据:', data)
-          students.value = data
-        } else {
-          console.error('API请求失败:', response.status)
-        }
+        const { studentApi } = await import('../../services/api/apiService')
+        const data = await studentApi.getStudents()
+        console.log('获取到学生数据:', data)
+        students.value = data
       } catch (error) {
         console.error('获取学生列表失败:', error)
       } finally {
@@ -242,46 +302,52 @@ export default {
     }
     
     // 监听学生分析数据变化，更新图表
-    watch([subjectAverages, classAverages], () => {
+    watch([subjectAverages, classAverages], async () => {
       if (subjectAverages.value && Object.keys(subjectAverages.value).length > 0) {
         // 使用nextTick确保DOM渲染完成后再初始化图表
-        setTimeout(() => {
-          initStudentSubjectChart()
+        setTimeout(async () => {
+          await initStudentSubjectChart()
         }, 0)
       }
     }, { deep: true })
     
     // 监听科目分析数据变化，更新图表
-    watch(subjectAnalysis, () => {
+    watch(subjectAnalysis, async () => {
       if (subjectAnalysis.value) {
-        setTimeout(() => {
-          initSubjectDistributionChart()
-          initSubjectBoxPlotChart()
+        setTimeout(async () => {
+          await initSubjectDistributionChart()
+          await initSubjectBoxPlotChart()
         }, 0)
       }
     }, { deep: true })
     
     // 监听考试趋势数据变化，更新图表
-    watch(examTrend, () => {
+    watch(examTrend, async () => {
       if (examTrend.value) {
-        setTimeout(() => {
-          initExamTrendChart()
+        setTimeout(async () => {
+          await initExamTrendChart()
         }, 0)
       }
     }, { deep: true })
     
     // 监听课程安排分析数据变化，更新图表
-    watch(scheduleAnalysis, () => {
+    watch(scheduleAnalysis, async () => {
       if (scheduleAnalysis.value) {
-        setTimeout(() => {
-          initScheduleScatterChart()
+        setTimeout(async () => {
+          await initScheduleScatterChart()
         }, 0)
       }
     }, { deep: true })
     
     // 初始化学生学科成绩图表
-    const initStudentSubjectChart = () => {
+    const initStudentSubjectChart = async () => {
       if (studentSubjectChart.value && subjectAverages.value) {
+        // 确保 ECharts 已加载
+        if (!echarts) {
+          const loaded = await loadECharts()
+          if (!loaded) return
+        }
+        
         if (studentSubjectChartInstance) {
           studentSubjectChartInstance.dispose()
         }
@@ -342,8 +408,14 @@ export default {
     }
     
     // 初始化科目分布图表
-    const initSubjectDistributionChart = () => {
+    const initSubjectDistributionChart = async () => {
       if (subjectDistributionChart.value && subjectAnalysis.value) {
+        // 确保 ECharts 已加载
+        if (!echarts) {
+          const loaded = await loadECharts()
+          if (!loaded) return
+        }
+        
         if (subjectDistributionChartInstance) {
           subjectDistributionChartInstance.dispose()
         }
@@ -395,8 +467,14 @@ export default {
     }
     
     // 初始化科目箱线图
-    const initSubjectBoxPlotChart = () => {
+    const initSubjectBoxPlotChart = async () => {
       if (subjectBoxPlotChart.value && subjectAnalysis.value) {
+        // 确保 ECharts 已加载
+        if (!echarts) {
+          const loaded = await loadECharts()
+          if (!loaded) return
+        }
+        
         if (subjectBoxPlotChartInstance) {
           subjectBoxPlotChartInstance.dispose()
         }
@@ -463,8 +541,14 @@ export default {
     }
     
     // 初始化考试趋势图表
-    const initExamTrendChart = () => {
+    const initExamTrendChart = async () => {
       if (examTrendChart.value && examTrend.value) {
+        // 确保 ECharts 已加载
+        if (!echarts) {
+          const loaded = await loadECharts()
+          if (!loaded) return
+        }
+        
         if (examTrendChartInstance) {
           examTrendChartInstance.dispose()
         }
@@ -524,8 +608,14 @@ export default {
     }
     
     // 初始化课程安排与成绩关系散点图
-    const initScheduleScatterChart = () => {
+    const initScheduleScatterChart = async () => {
       if (scheduleScatterChart.value && scheduleAnalysis.value) {
+        // 确保 ECharts 已加载
+        if (!echarts) {
+          const loaded = await loadECharts()
+          if (!loaded) return
+        }
+        
         if (scheduleScatterChartInstance) {
           scheduleScatterChartInstance.dispose()
         }
@@ -617,6 +707,297 @@ export default {
       scheduleScatterChartInstance?.dispose()
     })
     
+    // 计算属性，实时更新 studentAnalysis
+    const studentAnalysis = computed(() => ({
+      student_info: studentInfo.value,
+      overall: overall.value,
+      subject_averages: subjectAverages.value,
+      class_averages: classAverages.value,
+      strengths: strengths.value,
+      weaknesses: weaknesses.value
+    }))
+    
+    // 学生学科成绩配置
+    const studentSubjectOptions = computed(() => {
+      if (!subjectAverages.value || !classAverages.value) return {}
+      
+      const subjects = Object.keys(subjectAverages.value)
+      const personalAverages = subjects.map(subject => subjectAverages.value[subject])
+      const classAvgs = subjects.map(subject => classAverages.value[subject] || 0)
+      
+      return {
+        title: {
+          text: '个人与班级学科成绩对比',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        legend: {
+          data: ['个人平均', '班级平均'],
+          bottom: 0
+        },
+        xAxis: {
+          type: 'category',
+          data: subjects,
+          axisLabel: {
+            rotate: 45
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: '分数'
+        },
+        series: [
+          {
+            name: '个人平均',
+            type: 'bar',
+            data: personalAverages,
+            itemStyle: {
+              color: '#5470c6'
+            }
+          },
+          {
+            name: '班级平均',
+            type: 'bar',
+            data: classAvgs,
+            itemStyle: {
+              color: '#91cc75'
+            }
+          }
+        ]
+      }
+    })
+    
+    // 科目分布配置
+    const subjectDistributionOptions = computed(() => {
+      if (!subjectAnalysis.value || !subjectAnalysis.value.statistics || !subjectAnalysis.value.statistics.distribution) return {}
+      
+      const distribution = subjectAnalysis.value.statistics.distribution
+      const categories = ['优秀', '良好', '中等', '及格', '不及格']
+      const data = [
+        distribution.excellent,
+        distribution.good,
+        distribution.average,
+        distribution.pass,
+        distribution.fail
+      ]
+      
+      return {
+        title: {
+          text: '成绩分布',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        xAxis: {
+          type: 'category',
+          data: categories
+        },
+        yAxis: {
+          type: 'value',
+          name: '人数'
+        },
+        series: [
+          {
+            name: '人数',
+            type: 'bar',
+            data: data,
+            itemStyle: {
+              color: '#5470c6'
+            }
+          }
+        ]
+      }
+    })
+    
+    // 科目箱线图配置
+    const subjectBoxPlotOptions = computed(() => {
+      if (!subjectAnalysis.value || !subjectAnalysis.value.statistics) return {}
+      
+      // 模拟箱线图数据
+      const boxData = [
+        [subjectAnalysis.value.statistics.min_score, 
+         subjectAnalysis.value.statistics.min_score + 10, 
+         subjectAnalysis.value.statistics.median, 
+         subjectAnalysis.value.statistics.median + 10, 
+         subjectAnalysis.value.statistics.max_score]
+      ]
+      
+      return {
+        title: {
+          text: '成绩分布箱线图',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'item',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        grid: {
+          left: '10%',
+          right: '10%',
+          bottom: '15%'
+        },
+        xAxis: {
+          type: 'category',
+          data: [subjectAnalysis.value.subject],
+          boundaryGap: true,
+          nameGap: 30,
+          splitArea: {
+            show: false
+          },
+          splitLine: {
+            show: false
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: '分数',
+          splitArea: {
+            show: true
+          }
+        },
+        series: [
+          {
+            name: '成绩分布',
+            type: 'boxplot',
+            data: boxData,
+            itemStyle: {
+              color: '#5470c6'
+            }
+          }
+        ]
+      }
+    })
+    
+    // 考试趋势配置
+    const examTrendOptions = computed(() => {
+      if (!examTrend.value || !examTrend.value.exam_trend) return {}
+      
+      const examNames = examTrend.value.exam_trend.exam_names
+      const averages = examTrend.value.exam_trend.averages
+      
+      return {
+        title: {
+          text: '历次考试趋势',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis'
+        },
+        xAxis: {
+          type: 'category',
+          data: examNames,
+          axisLabel: {
+            rotate: 45
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: '平均分数'
+        },
+        series: [
+          {
+            name: '平均分数',
+            type: 'line',
+            data: averages,
+            smooth: true,
+            itemStyle: {
+              color: '#5470c6'
+            },
+            areaStyle: {
+              color: {
+                type: 'linear',
+                x: 0,
+                y: 0,
+                x2: 0,
+                y2: 1,
+                colorStops: [{
+                  offset: 0, color: 'rgba(84, 112, 198, 0.3)'
+                }, {
+                  offset: 1, color: 'rgba(84, 112, 198, 0.1)'
+                }]
+              }
+            }
+          }
+        ]
+      }
+    })
+    
+    // 课程安排散点图配置
+    const scheduleScatterOptions = computed(() => {
+      if (!scheduleAnalysis.value || !scheduleAnalysis.value.schedule_analysis) return {}
+      
+      // 处理散点图数据
+      const scatterData = []
+      for (const key in scheduleAnalysis.value.schedule_analysis) {
+        const item = scheduleAnalysis.value.schedule_analysis[key]
+        if (item.score) {
+          scatterData.push([
+            item.day_of_week,
+            item.period,
+            item.score
+          ])
+        }
+      }
+      
+      return {
+        title: {
+          text: '课程安排与成绩关系',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'item',
+          formatter: function(params) {
+            return `周${params.value[0]} 第${params.value[1]}节<br/>成绩: ${params.value[2]}`
+          }
+        },
+        xAxis: {
+          type: 'category',
+          data: ['1', '2', '3', '4', '5', '6', '7'],
+          name: '周几'
+        },
+        yAxis: {
+          type: 'category',
+          data: ['1', '2', '3', '4', '5', '6', '7', '8'],
+          name: '节次'
+        },
+        series: [
+          {
+            name: '成绩',
+            type: 'scatter',
+            data: scatterData,
+            symbolSize: function(val) {
+              return val[2] / 10
+            },
+            itemStyle: {
+              color: function(params) {
+                const score = params.value[2]
+                if (score >= 90) return '#52c41a'
+                if (score >= 80) return '#1890ff'
+                if (score >= 70) return '#faad14'
+                if (score >= 60) return '#fa8c16'
+                return '#f5222d'
+              }
+            }
+          }
+        ]
+      }
+    })
+    
+    onMounted(() => {
+      loadStudents()
+    })
+    
     return {
       studentId,
       students,
@@ -624,24 +1005,19 @@ export default {
       selectedStudentName,
       selectedSubject,
       subjects,
-      studentAnalysis: {
-        student_info: studentInfo.value,
-        overall: overall.value,
-        subject_averages: subjectAverages.value,
-        class_averages: classAverages.value,
-        strengths: strengths.value,
-        weaknesses: weaknesses.value
-      },
+      studentAnalysis,
       subjectAnalysis,
       examTrend,
       scheduleAnalysis,
       loading,
       studentError: error.value,
-      studentSubjectChart,
-      subjectDistributionChart,
-      subjectBoxPlotChart,
-      examTrendChart,
-      scheduleScatterChart,
+      subjectAverages,
+      classAverages,
+      studentSubjectOptions,
+      subjectDistributionOptions,
+      subjectBoxPlotOptions,
+      examTrendOptions,
+      scheduleScatterOptions,
       analyzeStudent,
       analyzeSubject
     }

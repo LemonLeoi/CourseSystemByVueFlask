@@ -29,7 +29,6 @@
 </template>
 
 <script>
-import * as echarts from 'echarts'
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useGradeAnalysis } from '../../composables/grade/useGradeAnalysis'
 
@@ -51,6 +50,41 @@ export default {
     let distributionChartInstance = null
     let subjectChartInstance = null
     
+    // ECharts 实例
+    let echarts = null
+    
+    // 动态导入 ECharts
+    const loadECharts = async () => {
+      try {
+        // 按需导入核心模块和需要的图表类型
+        const echartsCore = await import('echarts/core')
+        const charts = await import('echarts/charts')
+        const components = await import('echarts/components')
+        const renderers = await import('echarts/renderers')
+        
+        // 注册必要的组件
+        const { use, init } = echartsCore
+        const { BarChart, PieChart } = charts
+        const { 
+          TitleComponent, TooltipComponent, LegendComponent, 
+          GridComponent
+        } = components
+        const { CanvasRenderer } = renderers
+        
+        use([
+          BarChart, PieChart,
+          TitleComponent, TooltipComponent, LegendComponent, GridComponent,
+          CanvasRenderer
+        ])
+        
+        echarts = echartsCore
+        return true
+      } catch (err) {
+        console.error('加载 ECharts 失败:', err)
+        return false
+      }
+    }
+    
     // 窗口大小变化时调整图表
     const handleResize = () => {
       distributionChartInstance?.resize()
@@ -58,11 +92,17 @@ export default {
     }
     
     // 初始化成绩分布图表
-    const initDistributionChart = () => {
+    const initDistributionChart = async () => {
       console.log('initDistributionChart called')
       console.log('distributionChart.value:', distributionChart.value)
       console.log('overallStats.value.overall:', overallStats.value.overall)
       if (distributionChart.value && overallStats.value.overall) {
+        // 确保 ECharts 已加载
+        if (!echarts) {
+          const loaded = await loadECharts()
+          if (!loaded) return
+        }
+        
         console.log('Creating ECharts instance')
         if (distributionChartInstance) {
           distributionChartInstance.dispose()
@@ -116,8 +156,14 @@ export default {
     }
     
     // 初始化学科平均成绩图表
-    const initSubjectChart = () => {
+    const initSubjectChart = async () => {
       if (subjectChart.value && overallStats.value.subjects) {
+        // 确保 ECharts 已加载
+        if (!echarts) {
+          const loaded = await loadECharts()
+          if (!loaded) return
+        }
+        
         if (subjectChartInstance) {
           subjectChartInstance.dispose()
         }
@@ -171,10 +217,10 @@ export default {
         console.log('getOverallAnalysis completed')
         console.log('overallStats.value:', overallStats.value)
         // 使用nextTick确保DOM已经渲染完成
-        nextTick(() => {
+        nextTick(async () => {
           console.log('nextTick called')
-          initDistributionChart()
-          initSubjectChart()
+          await initDistributionChart()
+          await initSubjectChart()
         })
       } catch (error) {
         console.error('Error in onMounted:', error)
@@ -184,12 +230,12 @@ export default {
     })
     
     // 监听整体统计数据变化，更新图表
-    watch(overallStats, (newStats) => {
+    watch(overallStats, async (newStats) => {
       if (newStats && Object.keys(newStats).length > 0) {
         // 使用nextTick确保DOM已经渲染完成
-        nextTick(() => {
-          initDistributionChart()
-          initSubjectChart()
+        nextTick(async () => {
+          await initDistributionChart()
+          await initSubjectChart()
         })
       }
     }, { deep: true })

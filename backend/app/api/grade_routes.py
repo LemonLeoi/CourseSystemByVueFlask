@@ -54,19 +54,28 @@ def get_student_analysis(student_id):
 @grade_bp.route('/analysis/class/<class_name>', methods=['GET'])
 def get_class_analysis(class_name):
     try:
-        # 从班级名称中提取年级信息（例如：高三1班 -> 年级：高三，班级：1）
-        # 这里简化处理，假设班级名称格式为"高三1班"这样的形式
+        # 解码URL编码的班级名称
+        import urllib.parse
+        class_name = urllib.parse.unquote_plus(class_name)
+        
+        # 直接打印解码后的班级名称，用于调试
+        print(f"解码后的班级名称: {class_name}")
+        
+        # 从班级名称中提取年级和班级数字
         import re
-        match = re.match(r'(.*?)(\d+)班', class_name)
+        # 匹配中文年级 + 数字 + 可选的"班"字
+        match = re.search(r'([\u4e00-\u9fa5]+)(\d+)(?:班)?', class_name)
         if not match:
             return jsonify({"error": "班级名称格式不正确，应为'高三1班'这样的形式"}), 400
         
         grade = match.group(1)
         class_num = match.group(2)
+        class_name = f"{class_num}班"
         
-        result = analyze_class_performance(class_num, grade)
-        if "error" in result:
-            return jsonify(result), 404
+        # 添加调试信息
+        print(f"使用的班级名称: {class_name}, 年级: {grade}")
+        
+        result = analyze_class_performance(class_name, grade)
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -97,9 +106,14 @@ def get_student_subject_analysis(student_id, subject):
 @grade_bp.route('/analysis/class/<class_name>/<subject>', methods=['GET'])
 def get_class_subject_analysis(class_name, subject):
     try:
-        # 从班级名称中提取年级信息
+        # 解码URL编码的班级名称
+        import urllib.parse
+        class_name = urllib.parse.unquote_plus(class_name)
+        
+        # 从班级名称中提取年级和班级数字
         import re
-        match = re.match(r'(.*?)(\d+)班', class_name)
+        # 更宽松的正则表达式，匹配中文年级 + 数字 + 可选的"班"字
+        match = re.search(r'(.*?)(\d+)(?:班)?', class_name)
         if not match:
             return jsonify({"error": "班级名称格式不正确，应为'高三1班'这样的形式"}), 400
         
@@ -139,9 +153,14 @@ def get_student_trend(student_id):
 @grade_bp.route('/analysis/class/trend/<class_name>', methods=['GET'])
 def get_class_trend(class_name):
     try:
-        # 从班级名称中提取年级信息
+        # 解码URL编码的班级名称
+        import urllib.parse
+        class_name = urllib.parse.unquote_plus(class_name)
+        
+        # 从班级名称中提取年级和班级数字
         import re
-        match = re.match(r'(.*?)(\d+)班', class_name)
+        # 更宽松的正则表达式，匹配中文年级 + 数字 + 可选的"班"字
+        match = re.search(r'(.*?)(\d+)(?:班)?', class_name)
         if not match:
             return jsonify({"error": "班级名称格式不正确，应为'高三1班'这样的形式"}), 400
         
@@ -149,8 +168,6 @@ def get_class_trend(class_name):
         class_num = match.group(2)
         
         result = analyze_class_trend(class_num, grade)
-        if "error" in result:
-            return jsonify(result), 404
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -191,9 +208,14 @@ def get_student_schedule_analysis(student_id):
 @grade_bp.route('/analysis/class/schedule/<class_name>', methods=['GET'])
 def get_class_schedule_analysis(class_name):
     try:
-        # 从班级名称中提取年级信息
+        # 解码URL编码的班级名称
+        import urllib.parse
+        class_name = urllib.parse.unquote_plus(class_name)
+        
+        # 从班级名称中提取年级和班级数字
         import re
-        match = re.match(r'(.*?)(\d+)班', class_name)
+        # 更宽松的正则表达式，匹配中文年级 + 数字 + 可选的"班"字
+        match = re.search(r'(.*?)(\d+)(?:班)?', class_name)
         if not match:
             return jsonify({"error": "班级名称格式不正确，应为'高三1班'这样的形式"}), 400
         

@@ -443,34 +443,15 @@ const gradeSettings = ref({
   }
 });
 
-// 从本地存储加载成绩分级设置
-const loadGradeSettings = () => {
+// 从后端API加载成绩分级设置
+const loadGradeSettings = async () => {
   try {
-    // 先设置默认值，确保A-E是递减顺序
-    gradeSettings.value = {
-      ruleType: 'score',
-      scoreRules: {
-        A: 90,
-        B: 80,
-        C: 70,
-        D: 60
-      },
-      percentageRules: {
-        A: 90,
-        B: 85,
-        C: 75,
-        D: 60,
-        E: 50
-      }
-    };
-    
-    // 尝试从本地存储加载设置
-    const savedSettings = localStorage.getItem('gradeSettings');
-    if (savedSettings) {
-      const parsedSettings = JSON.parse(savedSettings);
-      // 只加载规则类型，保持分数和百分比规则的递减顺序
-      gradeSettings.value.ruleType = parsedSettings.ruleType || 'score';
-      console.log('=== 从本地存储加载成绩分级设置 ===');
+    console.log('=== 从后端API加载成绩分级设置 ===');
+    const { default: apiService } = await import('@/services/api/apiService');
+    const settings = await apiService.gradeSettings.getGradeSettings();
+    if (settings) {
+      gradeSettings.value = settings;
+      console.log('=== 成绩分级设置加载成功 ===');
       console.log('加载的设置:', gradeSettings.value);
     }
   } catch (error) {
@@ -497,35 +478,11 @@ const loadGradeSettings = () => {
 };
 
 // 打开成绩分级设置模态框
-const openGradeSettingsModal = () => {
+const openGradeSettingsModal = async () => {
   try {
-    // 强制使用正确的默认值，确保A-E是递减顺序
-    gradeSettings.value = {
-      ruleType: 'score',
-      scoreRules: {
-        A: 90,
-        B: 80,
-        C: 70,
-        D: 60
-      },
-      percentageRules: {
-        A: 90,
-        B: 85,
-        C: 75,
-        D: 60,
-        E: 50
-      }
-    };
-    
-    // 尝试从本地存储加载设置，但确保保持递减顺序
-    const savedSettings = localStorage.getItem('gradeSettings');
-    if (savedSettings) {
-      const parsedSettings = JSON.parse(savedSettings);
-      // 只加载规则类型，保持分数和百分比规则的递减顺序
-      gradeSettings.value.ruleType = parsedSettings.ruleType || 'score';
-    }
-    
     console.log('=== 打开成绩分级设置模态框 ===');
+    // 先加载最新的设置
+    await loadGradeSettings();
     console.log('当前设置:', gradeSettings.value);
   } catch (error) {
     console.error('=== 初始化成绩分级设置失败 ===');
@@ -557,11 +514,15 @@ const closeGradeSettingsModal = () => {
 };
 
 // 保存成绩分级设置
-const saveGradeSettings = () => {
+const saveGradeSettings = async () => {
   try {
-    localStorage.setItem('gradeSettings', JSON.stringify(gradeSettings.value));
     console.log('=== 保存成绩分级设置 ===');
-    console.log('保存的设置:', gradeSettings.value);
+    console.log('准备保存的设置:', gradeSettings.value);
+    
+    const { default: apiService } = await import('@/services/api/apiService');
+    await apiService.gradeSettings.updateGradeSettings(gradeSettings.value);
+    
+    console.log('成绩分级设置保存成功！');
     alert('成绩分级设置保存成功！');
   } catch (error) {
     console.error('=== 保存成绩分级设置失败 ===');
@@ -654,9 +615,6 @@ const getRequiredSubjects = (grade: string, classNumber: string): string[] => {
 };
 
 const getGrade = (score: number, subject: string): string => {
-  // 从本地存储加载最新的分级设置
-  loadGradeSettings();
-  
   if (gradeSettings.value.ruleType === 'score') {
     // 按具体分数分级
     if (score >= gradeSettings.value.scoreRules.A) return 'A';
@@ -680,9 +638,6 @@ const getGrade = (score: number, subject: string): string => {
 };
 
 const getGradeClass = (score: number, subject: string): string => {
-  // 从本地存储加载最新的分级设置
-  loadGradeSettings();
-  
   if (gradeSettings.value.ruleType === 'score') {
     // 按具体分数分级
     if (score >= gradeSettings.value.scoreRules.A) return 'grade-a';
@@ -917,6 +872,9 @@ onMounted(async () => {
   // 数据初始化已在useStudentManage中处理
   // 加载班级和年级列表
   await loadClassOptions();
+  
+  // 加载成绩分级设置
+  await loadGradeSettings();
   
   // 设置定时刷新机制，每5分钟刷新一次选项卡数据
   const refreshInterval = setInterval(async () => {

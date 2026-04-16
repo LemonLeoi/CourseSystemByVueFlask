@@ -65,7 +65,7 @@ export default {
         
         // 注册必要的组件
         const { use, init } = echartsCore
-        const { BarChart, LineChart, RadarChart, PieChart, BoxplotChart, HeatmapChart } = charts
+        const { BarChart, LineChart, RadarChart, PieChart, BoxplotChart, HeatmapChart, ScatterChart } = charts
         const { 
           TitleComponent, TooltipComponent, LegendComponent, 
           GridComponent, DataZoomComponent, ToolboxComponent,
@@ -74,7 +74,7 @@ export default {
         const { CanvasRenderer } = renderers
         
         use([
-          BarChart, LineChart, RadarChart, PieChart, BoxplotChart, HeatmapChart,
+          BarChart, LineChart, RadarChart, PieChart, BoxplotChart, HeatmapChart, ScatterChart,
           TitleComponent, TooltipComponent, LegendComponent, GridComponent,
           DataZoomComponent, ToolboxComponent, VisualMapComponent,
           CanvasRenderer

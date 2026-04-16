@@ -68,7 +68,10 @@ def calculate_score_distribution(scores):
 
 # 获取整体成绩统计
 def get_overall_statistics():
-    conn = sqlite3.connect('e:/A_Course/backend/data/database.db')
+    import os
+    # 使用相对路径连接数据库
+    db_path = os.path.join(os.path.dirname(__file__), '../../data/database.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     # 查询所有成绩
@@ -107,7 +110,10 @@ def get_overall_statistics():
 
 # 获取学科成绩统计
 def get_subject_statistics():
-    conn = sqlite3.connect('e:/A_Course/backend/data/database.db')
+    import os
+    # 使用相对路径连接数据库
+    db_path = os.path.join(os.path.dirname(__file__), '../../data/database.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     # 查询所有学科
@@ -147,7 +153,10 @@ def get_subject_statistics():
 
 # 获取考试类型成绩统计
 def get_exam_type_statistics():
-    conn = sqlite3.connect('e:/A_Course/backend/data/database.db')
+    import os
+    # 使用相对路径连接数据库
+    db_path = os.path.join(os.path.dirname(__file__), '../../data/database.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     # 查询所有考试类型（通过连接exams表）
