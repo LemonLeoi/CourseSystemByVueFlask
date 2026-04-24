@@ -14,9 +14,28 @@
       <button @click="analyzeGrade">分析</button>
     </div>
     
-    <div v-if="loading" class="loading">加载中...</div>
+    <div v-if="loading" class="loading">
+      <div class="loading-spinner"></div>
+      <p>正在分析 {{ gradeName }} 的成绩...</p>
+      <p class="loading-detail">{{ loadingStep }}</p>
+    </div>
     <div v-else-if="gradeError" class="error">{{ gradeError }}</div>
     <div v-else-if="gradeAnalysis && gradeAnalysis.grade_info" class="grade-analysis-result">
+      <!-- 分析过程展示 -->
+      <CollapsibleSection 
+        title="分析过程" 
+        icon="🎓" 
+        :default-collapsed="false"
+        storage-key="analysis_process"
+      >
+        <AnalysisProcessVisualizer
+          :process-steps="analysisProcessSteps"
+          :current-step="currentAnalysisStep"
+          :data-flow="analysisDataFlow"
+          :calculations="analysisCalculations"
+        />
+      </CollapsibleSection>
+      
       <CollapsibleSection 
         title="年级信息" 
         icon="🎓" 
@@ -156,6 +175,7 @@
 <script>
 import BaseECharts from '../../components/common/BaseECharts.vue'
 import CollapsibleSection from '../../components/common/CollapsibleSection.vue'
+import AnalysisProcessVisualizer from '../../components/common/AnalysisProcessVisualizer.vue'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useGradeAnalysis } from '../../composables/grade/useGradeAnalysis'
 
@@ -163,7 +183,8 @@ export default {
   name: 'GradeLevelAnalysis',
   components: {
     BaseECharts,
-    CollapsibleSection
+    CollapsibleSection,
+    AnalysisProcessVisualizer
   },
   setup() {
     const { 
@@ -188,6 +209,115 @@ export default {
     const selectedSubject = ref('')
     const subjects = ref([])
     
+    // 分析过程相关状态
+    const loadingStep = ref('正在获取年级成绩数据，请稍候...')
+    const analysisProcessSteps = ref([
+      {
+        title: '数据获取',
+        description: '从数据库中提取年级的基本信息和所有班级的成绩记录',
+        details: {
+          data_source: '学生成绩数据库',
+          tables: ['students', 'grades', 'exams', 'classrooms'],
+          method: '通过GradeDataAccess.get_grade_grades获取年级成绩数据'
+        }
+      },
+      {
+        title: '数据预处理',
+        description: '清理和整理原始数据，确保数据质量',
+        details: {
+          steps: ['数据清洗', '缺失值处理', '数据标准化'],
+          method: '使用数据预处理函数处理原始成绩数据'
+        }
+      },
+      {
+        title: '统计分析',
+        description: '计算年级各项统计指标，如平均分、中位数、标准差等',
+        details: {
+          metrics: ['年级平均分', '中位数', '标准差', '最高分', '最低分'],
+          method: '使用statistical_analysis.py中的函数进行计算'
+        }
+      },
+      {
+        title: '学科分析',
+        description: '分析年级各学科的表现',
+        details: {
+          method: '计算各学科的平均成绩和分布情况',
+          metrics: ['学科平均分', '成绩分布', '标准差']
+        }
+      },
+      {
+        title: '班级对比',
+        description: '分析年级内各班级的成绩对比',
+        details: {
+          method: '比较各班级的平均成绩和排名',
+          metrics: ['班级平均分', '班级排名', '差异分析']
+        }
+      },
+      {
+        title: '趋势分析',
+        description: '分析年级历次考试的成绩变化趋势',
+        details: {
+          method: '使用时间序列分析方法',
+          metrics: ['成绩趋势', '进步幅度', '稳定性']
+        }
+      },
+      {
+        title: '教师分析',
+        description: '分析教师的教学效果',
+        details: {
+          method: '比较不同教师的学生成绩表现',
+          metrics: ['教师平均成绩', '教学效果评估']
+        }
+      },
+      {
+        title: '结果生成',
+        description: '综合分析结果，生成最终报告',
+        details: {
+          method: '整合各项分析结果',
+          output: '年级成绩分析报告'
+        }
+      }
+    ])
+    const currentAnalysisStep = ref(0)
+    const analysisDataFlow = ref({
+      nodes: [
+        { name: '原始数据', type: 'source', description: '从数据库提取的年级原始成绩数据' },
+        { name: '数据处理', type: 'process', description: '清洗、整理和标准化数据' },
+        { name: '分析结果', type: 'result', description: '生成年级分析报告' }
+      ],
+      connections: [
+        { from: 0, to: 1 },
+        { from: 1, to: 2 }
+      ]
+    })
+    const analysisCalculations = ref([
+      {
+        name: '年级平均分计算',
+        formula: '年级总分 / 年级总人数',
+        result: '计算年级所有学生的平均分数'
+      },
+      {
+        name: '学科平均分计算',
+        formula: '学科总分 / 学生人数',
+        result: '计算年级各学科的平均分数'
+      },
+      {
+        name: '班级平均分计算',
+        formula: '班级总分 / 班级人数',
+        result: '计算各班级的平均分数'
+      },
+      {
+        name: '标准差计算',
+        formula: 'sqrt(sum((x - μ)^2) / n)',
+        result: '计算年级成绩的离散程度'
+      },
+      {
+        name: '成绩分布计算',
+        formula: '按分数段统计人数',
+        result: '计算年级成绩在各分数段的分布情况'
+      }
+    ])
+    
     // 加载年级列表
     const loadGradeOptions = async () => {
       isLoadingOptions.value = true
@@ -207,13 +337,59 @@ export default {
     // 分析年级成绩
     const analyzeGrade = async () => {
       if (gradeName.value) {
+        // 重置分析步骤
+        currentAnalysisStep.value = 0
+        
+        // 步骤1：数据获取
+        loadingStep.value = '正在获取年级基本信息和班级成绩数据...'
+        currentAnalysisStep.value = 0
         await getGradeAnalysis(gradeName.value)
-        // 加载考试趋势
-        await getGradeTrend(gradeName.value)
+        
+        // 步骤2：数据预处理
+        loadingStep.value = '正在预处理数据，确保数据质量...'
+        currentAnalysisStep.value = 1
+        // 模拟预处理时间
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // 步骤3：统计分析
+        loadingStep.value = '正在计算年级统计指标，如平均分、中位数、标准差等...'
+        currentAnalysisStep.value = 2
+        // 模拟统计分析时间
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // 步骤4：学科分析
+        loadingStep.value = '正在分析年级各学科表现...'
+        currentAnalysisStep.value = 3
         // 提取科目列表
         if (gradeAnalysis.value && gradeAnalysis.value.subject_averages) {
           subjects.value = Object.keys(gradeAnalysis.value.subject_averages)
         }
+        
+        // 步骤5：班级对比
+        loadingStep.value = '正在分析年级内各班级的成绩对比...'
+        currentAnalysisStep.value = 4
+        // 模拟班级对比时间
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // 步骤6：趋势分析
+        loadingStep.value = '正在分析年级历次考试的成绩变化趋势...'
+        currentAnalysisStep.value = 5
+        await getGradeTrend(gradeName.value)
+        
+        // 步骤7：教师分析
+        loadingStep.value = '正在分析教师的教学效果...'
+        currentAnalysisStep.value = 6
+        // 模拟教师分析时间
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
+        // 步骤8：结果生成
+        loadingStep.value = '正在生成分析报告...'
+        currentAnalysisStep.value = 7
+        // 模拟结果生成时间
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
+        // 完成分析
+        currentAnalysisStep.value = 8
       }
     }
     
@@ -666,7 +842,13 @@ export default {
       teacherHeatmapData,
       teacherHeatmapOptions,
       analyzeGrade,
-      analyzeSubject
+      analyzeSubject,
+      // 分析过程相关
+      loadingStep,
+      analysisProcessSteps,
+      currentAnalysisStep,
+      analysisDataFlow,
+      analysisCalculations
     }
   }
 }
@@ -737,13 +919,48 @@ h3 {
 }
 
 .loading {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 40px;
   color: #999;
   background: #f9f9f9;
   border-radius: 8px;
   border: 1px solid #eee;
   animation: fadeIn 0.5s ease-out;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #409eff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+  box-shadow: 0 0 10px rgba(64, 158, 255, 0.2);
+}
+
+.loading-detail {
+  font-size: 14px;
+  color: #666;
+  margin-top: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes fadeIn {

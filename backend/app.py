@@ -36,24 +36,26 @@ api = Api(
 )
 
 # 导入路由
+from app.api import auth_routes
+from app.api import admin_routes
 from app.api import student_routes
 from app.api import teacher_routes
 from app.api import course_routes
-from app.api import auth_routes
-from app.api import exam_routes
-from app.api import admin_routes
 from app.api import grade_routes
+from app.api import exam_routes
+from app.api import analysis_routes
 from app.api import grade_settings_routes
 
 # 注册蓝图
 app.register_blueprint(student_routes.bp, url_prefix='/api/students')
 app.register_blueprint(teacher_routes.bp, url_prefix='/api/teachers')
 app.register_blueprint(course_routes.bp, url_prefix='/api/courses')
-app.register_blueprint(auth_routes.bp, url_prefix='/api/auth')
+app.register_blueprint(grade_routes.bp, url_prefix='/api/grades')
 app.register_blueprint(exam_routes.bp, url_prefix='/api/exams')
+app.register_blueprint(auth_routes.bp, url_prefix='/api/auth')
 app.register_blueprint(admin_routes.bp, url_prefix='/api/admin')
-app.register_blueprint(grade_routes.grade_bp)
 app.register_blueprint(grade_settings_routes.bp, url_prefix='/api/grade-settings')
+app.register_blueprint(analysis_routes.analysis_bp)
 
 # 根路由
 @app.route('/')

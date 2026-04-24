@@ -18,10 +18,10 @@ from app.analysis.statistical_analysis import get_overall_statistics, get_subjec
 from app.data_access.grade_data_access import GradeDataAccess
 
 # 创建蓝图
-grade_bp = Blueprint('grade', __name__, url_prefix='/api/grades')
+bp = Blueprint('grade', __name__, url_prefix='/api/grades')
 
 # 获取整体成绩分析
-@grade_bp.route('/analysis', methods=['GET'])
+@bp.route('/analysis', methods=['GET'])
 def get_overall_analysis():
     try:
         # 获取整体统计数据
@@ -40,7 +40,7 @@ def get_overall_analysis():
         return jsonify({"error": str(e)}), 500
 
 # 获取个人成绩分析
-@grade_bp.route('/analysis/<student_id>', methods=['GET'])
+@bp.route('/analysis/<student_id>', methods=['GET'])
 def get_student_analysis(student_id):
     try:
         result = analyze_student_performance(student_id)
@@ -51,7 +51,7 @@ def get_student_analysis(student_id):
         return jsonify({"error": str(e)}), 500
 
 # 获取班级成绩分析
-@grade_bp.route('/analysis/class/<class_name>', methods=['GET'])
+@bp.route('/analysis/class/<class_name>', methods=['GET'])
 def get_class_analysis(class_name):
     try:
         # 解码URL编码的班级名称
@@ -81,7 +81,7 @@ def get_class_analysis(class_name):
         return jsonify({"error": str(e)}), 500
 
 # 获取年级成绩分析
-@grade_bp.route('/analysis/grade/<grade_name>', methods=['GET'])
+@bp.route('/analysis/grade/<grade_name>', methods=['GET'])
 def get_grade_analysis(grade_name):
     try:
         result = analyze_grade_performance(grade_name)
@@ -92,7 +92,7 @@ def get_grade_analysis(grade_name):
         return jsonify({"error": str(e)}), 500
 
 # 获取个人科目分析
-@grade_bp.route('/analysis/subject/<student_id>/<subject>', methods=['GET'])
+@bp.route('/analysis/subject/<student_id>/<subject>', methods=['GET'])
 def get_student_subject_analysis(student_id, subject):
     try:
         result = analyze_student_subject(student_id, subject)
@@ -103,7 +103,7 @@ def get_student_subject_analysis(student_id, subject):
         return jsonify({"error": str(e)}), 500
 
 # 获取班级科目分析
-@grade_bp.route('/analysis/class/<class_name>/<subject>', methods=['GET'])
+@bp.route('/analysis/class/<class_name>/<subject>', methods=['GET'])
 def get_class_subject_analysis(class_name, subject):
     try:
         # 解码URL编码的班级名称
@@ -128,7 +128,7 @@ def get_class_subject_analysis(class_name, subject):
         return jsonify({"error": str(e)}), 500
 
 # 获取年级科目分析
-@grade_bp.route('/analysis/grade/<grade_name>/<subject>', methods=['GET'])
+@bp.route('/analysis/grade/<grade_name>/<subject>', methods=['GET'])
 def get_grade_subject_analysis(grade_name, subject):
     try:
         result = analyze_grade_subject(grade_name, subject)
@@ -139,7 +139,7 @@ def get_grade_subject_analysis(grade_name, subject):
         return jsonify({"error": str(e)}), 500
 
 # 获取个人考试趋势
-@grade_bp.route('/analysis/trend/<student_id>', methods=['GET'])
+@bp.route('/analysis/trend/<student_id>', methods=['GET'])
 def get_student_trend(student_id):
     try:
         result = analyze_student_trend(student_id)
@@ -150,7 +150,7 @@ def get_student_trend(student_id):
         return jsonify({"error": str(e)}), 500
 
 # 获取班级考试趋势
-@grade_bp.route('/analysis/class/trend/<class_name>', methods=['GET'])
+@bp.route('/analysis/class/trend/<class_name>', methods=['GET'])
 def get_class_trend(class_name):
     try:
         # 解码URL编码的班级名称
@@ -173,7 +173,7 @@ def get_class_trend(class_name):
         return jsonify({"error": str(e)}), 500
 
 # 获取年级考试趋势
-@grade_bp.route('/analysis/grade/trend/<grade_name>', methods=['GET'])
+@bp.route('/analysis/grade/trend/<grade_name>', methods=['GET'])
 def get_grade_trend(grade_name):
     try:
         result = analyze_grade_trend(grade_name)
@@ -184,7 +184,7 @@ def get_grade_trend(grade_name):
         return jsonify({"error": str(e)}), 500
 
 # 获取教师成绩对比
-@grade_bp.route('/analysis/teacher/<subject>', methods=['GET'])
+@bp.route('/analysis/teacher/<subject>', methods=['GET'])
 def get_teacher_performance(subject):
     try:
         result = analyze_teacher_performance(subject)
@@ -195,7 +195,7 @@ def get_teacher_performance(subject):
         return jsonify({"error": str(e)}), 500
 
 # 获取个人课程安排与成绩关系
-@grade_bp.route('/analysis/schedule/<student_id>', methods=['GET'])
+@bp.route('/analysis/schedule/<student_id>', methods=['GET'])
 def get_student_schedule_analysis(student_id):
     try:
         result = analyze_student_schedule(student_id)
@@ -205,7 +205,7 @@ def get_student_schedule_analysis(student_id):
         return jsonify({"error": str(e)}), 500
 
 # 获取班级课程安排与成绩关系
-@grade_bp.route('/analysis/class/schedule/<class_name>', methods=['GET'])
+@bp.route('/analysis/class/schedule/<class_name>', methods=['GET'])
 def get_class_schedule_analysis(class_name):
     try:
         # 解码URL编码的班级名称
@@ -229,7 +229,7 @@ def get_class_schedule_analysis(class_name):
         return jsonify({"error": str(e)}), 500
 
 # 删除学生指定考试的指定科目成绩
-@grade_bp.route('/<student_id>/<exam_code>/<subject>', methods=['DELETE'])
+@bp.route('/<student_id>/<exam_code>/<subject>', methods=['DELETE'])
 def delete_student_grade(student_id, exam_code, subject):
     try:
         success, message = GradeDataAccess.delete_student_grade(student_id, exam_code, subject)
@@ -241,7 +241,7 @@ def delete_student_grade(student_id, exam_code, subject):
         return jsonify({"success": False, "message": f"删除失败: {str(e)}"}), 500
 
 # 删除学生指定考试的所有科目成绩
-@grade_bp.route('/<student_id>/<exam_code>', methods=['DELETE'])
+@bp.route('/<student_id>/<exam_code>', methods=['DELETE'])
 def delete_student_exam_grades(student_id, exam_code):
     try:
         success, message = GradeDataAccess.delete_student_exam_grades(student_id, exam_code)
@@ -253,7 +253,7 @@ def delete_student_exam_grades(student_id, exam_code):
         return jsonify({"success": False, "message": f"删除失败: {str(e)}"}), 500
 
 # 删除指定考试的所有学生成绩
-@grade_bp.route('/exam/<exam_code>', methods=['DELETE'])
+@bp.route('/exam/<exam_code>', methods=['DELETE'])
 def delete_exam_all_grades(exam_code):
     try:
         success, message = GradeDataAccess.delete_exam_all_grades(exam_code)

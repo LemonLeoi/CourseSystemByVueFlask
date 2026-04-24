@@ -1,9 +1,15 @@
 # Grade analysis core logic
 from ..data_access.grade_data_access import GradeDataAccess
 from .statistical_analysis import calculate_average, calculate_std_deviation, calculate_median, calculate_min_max, calculate_score_distribution
+from .analysis_explainer import explainer
+from .analysis_logger import logger
 
 # 分析学生成绩
-def analyze_student_performance(student_id):
+def analyze_student_performance(student_id, analysis_id=None):
+    # 记录分析开始
+    if analysis_id:
+        logger.log('personal', 'analysis_start', f'开始分析学生 {student_id} 的成绩', {'student_id': student_id})
+    
     # 获取学生信息和成绩
     student_info, grades = GradeDataAccess.get_student_grades(student_id)
     
@@ -23,6 +29,10 @@ def analyze_student_performance(student_id):
             "error": "该学生暂无成绩记录"
         }
     
+    # 记录数据获取完成
+    if analysis_id:
+        logger.log('personal', 'data_retrieval', f'获取到学生 {name} 的 {len(grades)} 条成绩记录', {'student_id': student_id, 'record_count': len(grades)})
+    
     # 按考试名称和学科整理成绩
     exam_grades = {}
     for exam_name, academic_year, semester, grade, exam_type, subject, score, grade_level in grades:
@@ -36,6 +46,10 @@ def analyze_student_performance(student_id):
             }
         exam_grades[exam_name]['subjects'][subject] = (score, grade_level)
     
+    # 记录数据整理完成
+    if analysis_id:
+        logger.log('personal', 'data_preprocessing', f'整理完成 {len(exam_grades)} 次考试的成绩数据', {'exam_count': len(exam_grades)})
+    
     # 计算各学科平均成绩
     subject_averages = {}
     for exam_data in exam_grades.values():
@@ -47,6 +61,10 @@ def analyze_student_performance(student_id):
     # 计算平均值
     for subject, scores in subject_averages.items():
         subject_averages[subject] = round(sum(scores) / len(scores), 2)
+    
+    # 记录学科平均计算完成
+    if analysis_id:
+        logger.log('personal', 'statistical_analysis', f'计算完成 {len(subject_averages)} 个学科的平均成绩', {'subject_count': len(subject_averages)})
     
     # 获取班级平均成绩
     class_averages = GradeDataAccess.get_class_average(student_class, student_grade)
@@ -81,6 +99,56 @@ def analyze_student_performance(student_id):
     else:
         evaluation = "需要提高，低于班级平均水平"
     
+    # 生成分析解释
+    explanations = {}
+    
+    # 分析步骤解释
+    analysis_steps = [
+        {
+            'name': '数据获取',
+            'purpose': '从数据库中提取学生的基本信息和成绩记录',
+            'method': '通过GradeDataAccess.get_student_grades获取学生成绩数据'
+        },
+        {
+            'name': '数据整理',
+            'purpose': '按考试和学科整理成绩数据',
+            'method': '将成绩按考试名称分组，记录每个考试的学科成绩'
+        },
+        {
+            'name': '统计分析',
+            'purpose': '计算学科平均成绩和整体平均成绩',
+            'method': '使用算术平均值计算各学科和整体的平均成绩'
+        },
+        {
+            'name': '比较分析',
+            'purpose': '与班级平均成绩比较，分析强弱项',
+            'method': '将学生成绩与班级平均成绩对比，识别优势和劣势学科'
+        },
+        {
+            'name': '综合评估',
+            'purpose': '生成整体表现评估',
+            'method': '基于与班级平均成绩的差异程度，给出相应的评估等级'
+        }
+    ]
+    explanations['analysis_steps'] = explainer.explain_analysis_steps('个人成绩分析', analysis_steps)
+    
+    # 统计方法解释
+    explanations['statistical_methods'] = {
+        'average': explainer.explain_statistical_methods('average', list(subject_averages.values())),
+        'comparison': '本分析通过将学生成绩与班级平均成绩进行对比，识别学生的优势和劣势学科。比较的理论依据是：当学生某学科成绩高于班级平均水平时，说明该学生在该学科上表现较好；反之，则需要加强。'
+    }
+    
+    # 结果解释
+    explanations['result_interpretation'] = {
+        'strengths': '优势学科是指学生成绩明显高于班级平均水平的学科，这些学科是学生的特长领域，建议继续保持和发展。',
+        'weaknesses': '劣势学科是指学生成绩低于班级平均水平的学科，这些学科需要重点关注和加强，建议制定针对性的学习计划。',
+        'overall_evaluation': f'学生整体表现{evaluation}。{"继续保持优良的学习状态，争取更大的进步。" if overall_diff > 0 else "需要更加努力，制定合理的学习计划，逐步提高成绩。"}'
+    }
+    
+    # 记录分析完成
+    if analysis_id:
+        logger.log('personal', 'analysis_complete', '学生成绩分析完成', {'student_id': student_id, 'evaluation': evaluation})
+    
     # 构建结果
     result = {
         "student_info": {
@@ -109,13 +177,18 @@ def analyze_student_performance(student_id):
             "class_avg": class_overall_avg,
             "diff": overall_diff,
             "evaluation": evaluation
-        }
+        },
+        "explanations": explanations
     }
     
     return result
 
 # 分析班级成绩
-def analyze_class_performance(class_name, grade):
+def analyze_class_performance(class_name, grade, analysis_id=None):
+    # 记录分析开始
+    if analysis_id:
+        logger.log('class', 'analysis_start', f'开始分析班级 {grade}{class_name} 的成绩', {'class_name': class_name, 'grade': grade})
+    
     # 直接使用传入的班级名称和年级进行查询
     
     # 查询班级所有成绩
@@ -137,6 +210,10 @@ def analyze_class_performance(class_name, grade):
             "error": f"{grade}{class_name} 班级暂无成绩记录，学生数量: {student_count}"
         }
     
+    # 记录数据获取完成
+    if analysis_id:
+        logger.log('class', 'data_retrieval', f'获取到班级 {grade}{class_name} 的 {len(grades)} 条成绩记录', {'class_name': class_name, 'grade': grade, 'record_count': len(grades)})
+    
     # 从成绩记录中提取学生ID，获取学生列表
     student_ids = set()
     for student_id, _, _, _, _, _, _, _ in grades:
@@ -157,6 +234,10 @@ def analyze_class_performance(class_name, grade):
             }
         student_grades[student_id][exam_name]['subjects'][subject] = (score, grade_level)
     
+    # 记录数据整理完成
+    if analysis_id:
+        logger.log('class', 'data_preprocessing', f'整理完成班级 {grade}{class_name} 的成绩数据，涉及 {len(student_grades)} 名学生', {'class_name': class_name, 'grade': grade, 'student_count': len(student_grades)})
+    
     # 计算班级学科平均
     class_subject_avgs = {}
     for student_id, exam_data in student_grades.items():
@@ -169,11 +250,54 @@ def analyze_class_performance(class_name, grade):
     for subject, scores in class_subject_avgs.items():
         class_subject_avgs[subject] = round(sum(scores) / len(scores), 2)
     
+    # 记录学科平均计算完成
+    if analysis_id:
+        logger.log('class', 'statistical_analysis', f'计算完成班级 {grade}{class_name} 的 {len(class_subject_avgs)} 个学科的平均成绩', {'class_name': class_name, 'grade': grade, 'subject_count': len(class_subject_avgs)})
+    
     # 计算班级整体平均
     all_scores = []
     for subject, scores in class_subject_avgs.items():
         all_scores.append(scores)
     class_overall_avg = round(sum(all_scores) / len(all_scores), 2) if all_scores else 0
+    
+    # 生成分析解释
+    explanations = {}
+    
+    # 分析步骤解释
+    analysis_steps = [
+        {
+            'name': '数据获取',
+            'purpose': '从数据库中提取班级的成绩记录',
+            'method': '通过GradeDataAccess.get_class_grades获取班级成绩数据'
+        },
+        {
+            'name': '数据整理',
+            'purpose': '按学生和考试整理成绩数据',
+            'method': '将成绩按学生ID和考试名称分组，记录每个学生的考试成绩'
+        },
+        {
+            'name': '统计分析',
+            'purpose': '计算班级各学科平均成绩和整体平均成绩',
+            'method': '使用算术平均值计算各学科和整体的平均成绩'
+        }
+    ]
+    explanations['analysis_steps'] = explainer.explain_analysis_steps('班级成绩分析', analysis_steps)
+    
+    # 统计方法解释
+    explanations['statistical_methods'] = {
+        'average': explainer.explain_statistical_methods('average', list(class_subject_avgs.values())),
+        'class_performance': '班级整体平均成绩反映了班级的整体学习水平，学科平均成绩反映了班级在各学科上的表现情况。通过分析班级成绩，可以了解班级的优势和劣势学科，为教学改进提供依据。'
+    }
+    
+    # 结果解释
+    explanations['result_interpretation'] = {
+        'subject_averages': '各学科的平均成绩反映了班级在该学科上的整体表现，可与年级平均成绩对比，识别班级的优势和劣势学科。',
+        'overall_average': f'班级整体平均成绩为 {class_overall_avg}，这是班级所有学科平均成绩的平均值，反映了班级的整体学习水平。'
+    }
+    
+    # 记录分析完成
+    if analysis_id:
+        logger.log('class', 'analysis_complete', '班级成绩分析完成', {'class_name': class_name, 'grade': grade, 'overall_average': class_overall_avg})
     
     # 构建结果
     result = {
@@ -184,18 +308,27 @@ def analyze_class_performance(class_name, grade):
         },
         "subject_averages": class_subject_avgs,
         "overall_average": class_overall_avg,
-        "student_count": len(students)
+        "student_count": len(students),
+        "explanations": explanations
     }
     
     return result
 
 # 分析年级成绩
-def analyze_grade_performance(grade):
+def analyze_grade_performance(grade, analysis_id=None):
+    # 记录分析开始
+    if analysis_id:
+        logger.log('grade', 'analysis_start', f'开始分析年级 {grade} 的成绩', {'grade': grade})
+    
     # 查询年级所有班级
     classes = GradeDataAccess.get_grade_classes(grade)
     
     if not classes:
         return {"error": f"未找到 {grade} 年级的班级"}
+    
+    # 记录班级获取完成
+    if analysis_id:
+        logger.log('grade', 'data_retrieval', f'获取到年级 {grade} 的 {len(classes)} 个班级', {'grade': grade, 'class_count': len(classes)})
     
     # 查询年级所有成绩
     grades = GradeDataAccess.get_grade_grades(grade)
@@ -216,6 +349,10 @@ def analyze_grade_performance(grade):
             class_grades[class_name][exam_name]['subjects'][subject] = []
         class_grades[class_name][exam_name]['subjects'][subject].append(score)
     
+    # 记录数据整理完成
+    if analysis_id:
+        logger.log('grade', 'data_preprocessing', f'整理完成年级 {grade} 的成绩数据，涉及 {len(class_grades)} 个班级', {'grade': grade, 'class_count': len(class_grades)})
+    
     # 计算各班级学科平均
     class_subject_avgs = {}
     for class_name, exam_data in class_grades.items():
@@ -230,6 +367,10 @@ def analyze_grade_performance(grade):
         for subject, scores in subjects.items():
             class_subject_avgs[class_name][subject] = round(sum(scores) / len(scores), 2)
     
+    # 记录班级学科平均计算完成
+    if analysis_id:
+        logger.log('grade', 'statistical_analysis', f'计算完成年级 {grade} 各班级的学科平均成绩', {'grade': grade})
+    
     # 计算年级学科平均
     grade_subject_avgs = {}
     for class_name, subjects in class_subject_avgs.items():
@@ -241,11 +382,55 @@ def analyze_grade_performance(grade):
     for subject, scores in grade_subject_avgs.items():
         grade_subject_avgs[subject] = round(sum(scores) / len(scores), 2)
     
+    # 记录年级学科平均计算完成
+    if analysis_id:
+        logger.log('grade', 'statistical_analysis', f'计算完成年级 {grade} 的 {len(grade_subject_avgs)} 个学科的平均成绩', {'grade': grade, 'subject_count': len(grade_subject_avgs)})
+    
     # 计算年级整体平均
     all_scores = []
     for subject, scores in grade_subject_avgs.items():
         all_scores.append(scores)
     grade_overall_avg = round(sum(all_scores) / len(all_scores), 2) if all_scores else 0
+    
+    # 生成分析解释
+    explanations = {}
+    
+    # 分析步骤解释
+    analysis_steps = [
+        {
+            'name': '数据获取',
+            'purpose': '从数据库中提取年级的班级信息和成绩记录',
+            'method': '通过GradeDataAccess.get_grade_classes和GradeDataAccess.get_grade_grades获取数据'
+        },
+        {
+            'name': '数据整理',
+            'purpose': '按班级和考试整理成绩数据',
+            'method': '将成绩按班级名称和考试名称分组，记录每个班级的考试成绩'
+        },
+        {
+            'name': '统计分析',
+            'purpose': '计算各班级学科平均成绩、年级学科平均成绩和年级整体平均成绩',
+            'method': '使用算术平均值计算各层次的平均成绩'
+        }
+    ]
+    explanations['analysis_steps'] = explainer.explain_analysis_steps('年级成绩分析', analysis_steps)
+    
+    # 统计方法解释
+    explanations['statistical_methods'] = {
+        'average': explainer.explain_statistical_methods('average', list(grade_subject_avgs.values())),
+        'grade_performance': '年级整体平均成绩反映了年级的整体学习水平，学科平均成绩反映了年级在各学科上的表现情况。通过分析年级成绩，可以了解年级的优势和劣势学科，为教学改进提供依据。'
+    }
+    
+    # 结果解释
+    explanations['result_interpretation'] = {
+        'class_averages': '各班级的学科平均成绩反映了班级的学习水平，可用于班级间的比较，识别优秀班级和需要改进的班级。',
+        'subject_averages': '年级各学科的平均成绩反映了年级在该学科上的整体表现，可与其他年级对比，识别年级的优势和劣势学科。',
+        'overall_average': f'年级整体平均成绩为 {grade_overall_avg}，这是年级所有学科平均成绩的平均值，反映了年级的整体学习水平。'
+    }
+    
+    # 记录分析完成
+    if analysis_id:
+        logger.log('grade', 'analysis_complete', '年级成绩分析完成', {'grade': grade, 'overall_average': grade_overall_avg})
     
     # 构建结果
     result = {
@@ -255,7 +440,8 @@ def analyze_grade_performance(grade):
         },
         "class_averages": class_subject_avgs,
         "subject_averages": grade_subject_avgs,
-        "overall_average": grade_overall_avg
+        "overall_average": grade_overall_avg,
+        "explanations": explanations
     }
     
     return result
