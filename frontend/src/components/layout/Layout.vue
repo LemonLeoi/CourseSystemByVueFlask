@@ -41,9 +41,23 @@ const menuItems = computed(() => createMenuItems(props.activePath || '/'));
   margin-left: 60px;
 }
 
+/* 响应式断点 */
+@media (max-width: 1200px) {
+  .main-content {
+    padding: 20px;
+  }
+}
+
 @media (max-width: 768px) {
   .main-content {
     margin-left: 0;
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 10px;
   }
 }
 </style>

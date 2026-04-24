@@ -17,29 +17,30 @@
     <div v-if="loading" class="loading">加载中...</div>
     <div v-else-if="classError" class="error">{{ classError }}</div>
     <div v-else-if="classAnalysis && classAnalysis.class_info" class="class-analysis-result">
-      <div class="class-info">
-        <div class="info-header">
-          <h4>班级信息</h4>
-          <div class="info-icon">🏫</div>
-        </div>
+      <CollapsibleSection 
+        title="班级信息" 
+        icon="🏫" 
+        :default-collapsed="false"
+        storage-key="class_info"
+      >
         <p>班级名称: {{ classAnalysis.class_info.class_name }}</p>
         <p>年级: {{ classAnalysis.class_info.grade }}</p>
         <p>学生人数: {{ classAnalysis.class_info.student_count }}</p>
         <p>班级平均成绩: {{ classAnalysis.overall_average }}</p>
-      </div>
+      </CollapsibleSection>
       
-      <div class="chart-container">
-        <div class="info-header">
-          <h4>学科平均成绩</h4>
-          <div class="info-icon">📊</div>
-        </div>
+      <CollapsibleSection 
+        title="学科平均成绩" 
+        icon="📊"
+        storage-key="class_subject_analysis"
+      >
         <BaseECharts
           chart-type="bar"
           :data="{ subjectAverages }"
           :options="classSubjectOptions"
           height="400px"
         />
-      </div>
+      </CollapsibleSection>
       
       <!-- 新增：科目选择下拉菜单 -->
       <div class="subject-selector">
@@ -51,11 +52,12 @@
       </div>
       
       <!-- 新增：具体科目分析模块 -->
-      <div v-if="subjectAnalysis" class="specific-subject-analysis">
-        <div class="info-header">
-          <h4>{{ selectedSubject }} 科目分析</h4>
-          <div class="info-icon">📊</div>
-        </div>
+      <CollapsibleSection 
+        v-if="subjectAnalysis" 
+        :title="selectedSubject + ' 科目分析'" 
+        icon="📊"
+        storage-key="specific_class_subject_analysis"
+      >
         <div class="subject-stats">
           <div class="stat-item">
             <span class="stat-label">平均成绩:</span>
@@ -90,34 +92,36 @@
           :options="subjectBoxPlotOptions"
           height="400px"
         />
-      </div>
+      </CollapsibleSection>
       
       <!-- 新增：历次考试趋势图表 -->
-      <div class="exam-trend-analysis">
-        <div class="info-header">
-          <h4>班级历次考试趋势</h4>
-          <div class="info-icon">📈</div>
-        </div>
+      <CollapsibleSection 
+        title="班级历次考试趋势" 
+        icon="📈"
+        storage-key="class_exam_trend"
+      >
         <BaseECharts
           chart-type="line"
           :data="examTrend"
           :options="examTrendOptions"
           height="400px"
         />
-      </div>
+      </CollapsibleSection>
     </div>
   </div>
 </template>
 
 <script>
 import BaseECharts from '../../components/common/BaseECharts.vue'
+import CollapsibleSection from '../../components/common/CollapsibleSection.vue'
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useClassGrade } from '../../composables/grade/useClassGrade'
 
 export default {
   name: 'ClassAnalysis',
   components: {
-    BaseECharts
+    BaseECharts,
+    CollapsibleSection
   },
   setup() {
     const {
@@ -821,12 +825,41 @@ h3 {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.class-input button:hover {
+  background: #66b1ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+}
+
+.class-input button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.3);
 }
 
 .loading {
   text-align: center;
   padding: 40px;
   color: #999;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .error {
@@ -835,61 +868,43 @@ h3 {
   color: #f56c6c;
   background: #fef0f0;
   border-radius: 4px;
+  border: 1px solid #fbc4c4;
+  animation: shake 0.5s ease-in-out;
+  box-shadow: 0 2px 8px rgba(245, 108, 108, 0.1);
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+.filter-select {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  min-width: 150px;
+  transition: all 0.3s ease;
+  background: #fff;
+}
+
+.filter-select:focus {
+  border-color: #409eff;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(64, 158, 255, 0.25);
+  transform: translateY(-1px);
 }
 
 .class-analysis-result {
   margin-top: 20px;
-}
-
-.class-info {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
-}
-
-.info-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 15px;
-}
-
-.info-header h4 {
-  margin: 0;
-  color: #333;
-}
-
-.info-icon {
-  font-size: 20px;
-  margin-left: 10px;
-}
-
-.class-info p {
-  margin: 8px 0;
-  color: #666;
-}
-
-.chart-container {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
-}
-
-.chart-container h4 {
-  margin-bottom: 15px;
-  color: #333;
-  text-align: center;
-}
-
-.chart {
-  width: 100%;
-  height: 400px;
-  display: block;
-  position: relative;
 }
 
 .subject-selector {
@@ -903,14 +918,6 @@ h3 {
 .subject-selector h4 {
   margin-bottom: 10px;
   color: #333;
-}
-
-.specific-subject-analysis {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
 }
 
 .subject-stats {
@@ -942,27 +949,53 @@ h3 {
   color: #333;
 }
 
-.exam-trend-analysis {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
-}
-
-.exam-trend-analysis h4 {
-  margin-bottom: 15px;
-  color: #333;
-  text-align: center;
+@media (max-width: 1200px) {
+  .class-analysis {
+    padding: 15px;
+  }
+  
+  .class-input {
+    flex-wrap: wrap;
+  }
+  
+  .class-input select {
+    flex: 1 1 200px;
+  }
+  
+  .class-input button {
+    flex: 1 1 100px;
+  }
 }
 
 @media (max-width: 768px) {
+  .class-analysis {
+    padding: 10px;
+  }
+  
   .class-input {
     flex-direction: column;
   }
   
   .subject-stats {
     grid-template-columns: 1fr 1fr;
+  }
+  
+  h3 {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .subject-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  h3 {
+    font-size: 16px;
+  }
+  
+  .loading {
+    padding: 20px;
   }
 }
 </style>

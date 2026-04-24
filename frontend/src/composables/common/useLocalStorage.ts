@@ -1,7 +1,7 @@
 import { ref, watch } from 'vue';
 
 export function useLocalStorage<T>(key: string, initialValue: T) {
-  // 从本地存储中获取初始值
+  // 从localStorage读取初始值
   const readValue = (): T => {
     if (typeof window === 'undefined') {
       return initialValue;
@@ -16,56 +16,60 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
     }
   };
 
+  // 创建响应式ref
   const storedValue = ref<T>(readValue());
 
-  // 保存值到本地存储
-  const saveValue = (value: T) => {
-    if (typeof window === 'undefined') {
-      console.warn(`Tried setting localStorage key "${key}" in SSR environment`);
-      return;
-    }
-
-    try {
-      // 允许值是一个函数，类似于React的setState
-      const valueToStore =
-        value instanceof Function ? value(storedValue.value) : value;
-      
-      storedValue.value = valueToStore;
-      
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.warn(`Error setting localStorage key "${key}":`, error);
-    }
-  };
-
-  // 监听值的变化并保存到本地存储
+  // 监听值的变化，自动更新localStorage
   watch(
     storedValue,
-    (newValue) => {
-      saveValue(newValue);
+    (value) => {
+      if (typeof window === 'undefined') {
+        console.warn(`Tried setting localStorage key "${key}" in SSR environment`);
+        return;
+      }
+
+      try {
+        window.localStorage.setItem(key, JSON.stringify(value));
+      } catch (error) {
+        console.warn(`Error setting localStorage key "${key}":`, error);
+      }
     },
     { deep: true }
   );
 
-  // 移除本地存储中的值
-  const removeValue = () => {
+  return storedValue;
+}
+
+// 用于管理多个折叠状态的组合函数
+export function useCollapsibleStates() {
+  const getCollapsedState = (key: string, defaultState: boolean = false): boolean => {
     if (typeof window === 'undefined') {
-      console.warn(`Tried removing localStorage key "${key}" in SSR environment`);
+      return defaultState;
+    }
+
+    try {
+      const item = window.localStorage.getItem(`collapsible_${key}`);
+      return item ? item === 'true' : defaultState;
+    } catch (error) {
+      console.warn(`Error reading collapsible state for key "${key}":`, error);
+      return defaultState;
+    }
+  };
+
+  const setCollapsedState = (key: string, state: boolean): void => {
+    if (typeof window === 'undefined') {
       return;
     }
 
     try {
-      storedValue.value = initialValue;
-      window.localStorage.removeItem(key);
+      window.localStorage.setItem(`collapsible_${key}`, state.toString());
     } catch (error) {
-      console.warn(`Error removing localStorage key "${key}":`, error);
+      console.warn(`Error setting collapsible state for key "${key}":`, error);
     }
   };
 
   return {
-    value: storedValue,
-    setValue: saveValue,
-    removeValue,
-    resetValue: () => saveValue(initialValue)
+    getCollapsedState,
+    setCollapsedState
   };
 }

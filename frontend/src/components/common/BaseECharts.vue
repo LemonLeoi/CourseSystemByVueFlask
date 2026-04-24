@@ -139,6 +139,18 @@ export default {
       chartInstance?.resize()
     }
     
+    // 监听容器大小变化
+    let resizeObserver = null
+    
+    const observeResize = () => {
+      if (chartRef.value) {
+        resizeObserver = new ResizeObserver(() => {
+          handleResize()
+        })
+        resizeObserver.observe(chartRef.value)
+      }
+    }
+    
     // 监听数据变化
     watch(() => props.data, () => {
       updateChart()
@@ -152,10 +164,14 @@ export default {
     onMounted(() => {
       initChart()
       window.addEventListener('resize', handleResize)
+      observeResize()
     })
     
     onUnmounted(() => {
       window.removeEventListener('resize', handleResize)
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+      }
       chartInstance?.dispose()
     })
     

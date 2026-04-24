@@ -4,36 +4,49 @@
     <div v-if="loading" class="loading">加载中...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else class="overall-stats">
-      <div class="stat-card">
-        <h4>总体统计</h4>
+      <CollapsibleSection 
+        title="总体统计" 
+        icon="📊" 
+        :default-collapsed="false"
+        storage-key="overall_stats"
+      >
         <p>总记录数: {{ overallStats.overall?.total_count || 0 }}</p>
         <p>平均成绩: {{ overallStats.overall?.average || 0 }}</p>
         <p>标准差: {{ overallStats.overall?.std_deviation || 0 }}</p>
         <p>中位数: {{ overallStats.overall?.median || 0 }}</p>
         <p>最高分: {{ overallStats.overall?.max_score || 0 }}</p>
         <p>最低分: {{ overallStats.overall?.min_score || 0 }}</p>
-        
-      </div>
+      </CollapsibleSection>
       
-      <div class="chart-container">
-        <h4>成绩分布</h4>
+      <CollapsibleSection 
+        title="成绩分布" 
+        icon="🎯"
+        storage-key="score_distribution"
+      >
         <div ref="distributionChart" class="chart"></div>
-      </div>
+      </CollapsibleSection>
       
-      <div class="chart-container">
-        <h4>学科平均成绩</h4>
+      <CollapsibleSection 
+        title="学科平均成绩" 
+        icon="📈"
+        storage-key="subject_averages"
+      >
         <div ref="subjectChart" class="chart"></div>
-      </div>
+      </CollapsibleSection>
     </div>
   </div>
 </template>
 
 <script>
+import CollapsibleSection from '../../components/common/CollapsibleSection.vue'
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useGradeAnalysis } from '../../composables/grade/useGradeAnalysis'
 
 export default {
   name: 'OverallAnalysis',
+  components: {
+    CollapsibleSection
+  },
   setup() {
     const { 
       overallStats, 
@@ -274,6 +287,21 @@ h3 {
   text-align: center;
   padding: 40px;
   color: #999;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .error {
@@ -282,50 +310,31 @@ h3 {
   color: #f56c6c;
   background: #fef0f0;
   border-radius: 4px;
+  border: 1px solid #fbc4c4;
+  animation: shake 0.5s ease-in-out;
+  box-shadow: 0 2px 8px rgba(245, 108, 108, 0.1);
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
 }
 
 .overall-stats {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 20px;
   margin-top: 20px;
-}
-
-.stat-card {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-}
-
-.stat-card h4 {
-  margin-bottom: 15px;
-  color: #333;
-}
-
-.stat-card p {
-  margin: 8px 0;
-  color: #666;
-}
-
-.chart-container {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
-}
-
-.chart-container h4 {
-  margin-bottom: 15px;
-  color: #333;
-  text-align: center;
 }
 
 .chart {
   width: 100%;
   height: 400px;
-  min-width: 400px;
+  min-width: 300px;
   min-height: 400px;
   border: 1px solid #eee;
   background-color: white;
@@ -333,9 +342,42 @@ h3 {
   position: relative;
 }
 
+@media (max-width: 1200px) {
+  .overall-analysis {
+    padding: 15px;
+  }
+  
+  .chart {
+    height: 350px;
+  }
+}
+
 @media (max-width: 768px) {
-  .overall-stats {
-    grid-template-columns: 1fr;
+  .overall-analysis {
+    padding: 10px;
+  }
+  
+  .chart {
+    min-width: 100%;
+    height: 300px;
+  }
+  
+  h3 {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chart {
+    height: 250px;
+  }
+  
+  h3 {
+    font-size: 16px;
+  }
+  
+  .loading {
+    padding: 20px;
   }
 }
 </style>

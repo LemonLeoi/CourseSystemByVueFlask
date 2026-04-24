@@ -22,65 +22,72 @@
     </div>
     <div v-else-if="studentError" class="error">{{ studentError }}</div>
     <div v-else-if="studentAnalysis && studentAnalysis.student_info" class="student-analysis">
-      <div class="student-info">
-        <div class="info-header">
-          <h4>学生信息</h4>
-          <div class="info-icon">📊</div>
-        </div>
-        <p>姓名: {{ studentAnalysis.student_info.name }}</p>
-        <p>性别: {{ studentAnalysis.student_info.gender }}</p>
-        <p>班级: {{ studentAnalysis.student_info.class }}</p>
-        <p>年级: {{ studentAnalysis.student_info.grade }}</p>
+      <div class="module-row">
+        <CollapsibleSection 
+          title="学生信息" 
+          icon="📊" 
+          :default-collapsed="false"
+          storage-key="student_info"
+          class="module-item"
+        >
+          <p>姓名: {{ studentAnalysis.student_info.name }}</p>
+          <p>性别: {{ studentAnalysis.student_info.gender }}</p>
+          <p>班级: {{ studentAnalysis.student_info.class }}</p>
+          <p>年级: {{ studentAnalysis.student_info.grade }}</p>
+        </CollapsibleSection>
+        
+        <CollapsibleSection 
+          title="整体表现" 
+          icon="📈" 
+          :default-collapsed="false"
+          storage-key="overall_performance"
+          class="module-item"
+        >
+          <p>个人平均: {{ studentAnalysis.overall.personal_avg }}</p>
+          <p>班级平均: {{ studentAnalysis.overall.class_avg }}</p>
+          <p>差异: {{ studentAnalysis.overall.diff > 0 ? '+' + studentAnalysis.overall.diff : studentAnalysis.overall.diff }}</p>
+          <p>评估: {{ studentAnalysis.overall.evaluation }}</p>
+        </CollapsibleSection>
+        
+        <CollapsibleSection 
+          title="学科强项与弱项" 
+          icon="⚖️"
+          storage-key="strengths_weaknesses"
+          class="module-item"
+        >
+          <div class="strengths-weaknesses">
+            <div class="strengths">
+              <h5>学科强项</h5>
+              <ul>
+                <li v-for="(item, index) in studentAnalysis.strengths" :key="index">
+                  {{ item.subject }}: {{ item.avg_score }} (班级平均: {{ item.class_avg }}, +{{ item.diff }})
+                </li>
+              </ul>
+            </div>
+            <div class="weaknesses">
+              <h5>学科弱项</h5>
+              <ul>
+                <li v-for="(item, index) in studentAnalysis.weaknesses" :key="index">
+                  {{ item.subject }}: {{ item.avg_score }} (班级平均: {{ item.class_avg }}, -{{ item.diff }})
+                </li>
+              </ul>
+            </div>
+          </div>
+        </CollapsibleSection>
       </div>
       
-      <div class="overall-performance">
-        <div class="info-header">
-          <h4>整体表现</h4>
-          <div class="info-icon">📈</div>
-        </div>
-        <p>个人平均: {{ studentAnalysis.overall.personal_avg }}</p>
-        <p>班级平均: {{ studentAnalysis.overall.class_avg }}</p>
-        <p>差异: {{ studentAnalysis.overall.diff > 0 ? '+' + studentAnalysis.overall.diff : studentAnalysis.overall.diff }}</p>
-        <p>评估: {{ studentAnalysis.overall.evaluation }}</p>
-      </div>
-      
-      <div class="subject-analysis">
-        <div class="info-header">
-          <h4>学科分析</h4>
-          <div class="info-icon">📊</div>
-        </div>
+      <CollapsibleSection 
+        title="学科分析" 
+        icon="📊"
+        storage-key="subject_analysis"
+      >
         <BaseECharts
           chart-type="bar"
           :data="{ subjectAverages, classAverages }"
           :options="studentSubjectOptions"
           height="400px"
         />
-      </div>
-      
-      <div class="strengths-weaknesses">
-        <div class="strengths">
-          <div class="info-header">
-            <h4>学科强项</h4>
-            <div class="info-icon">👍</div>
-          </div>
-          <ul>
-            <li v-for="(item, index) in studentAnalysis.strengths" :key="index">
-              {{ item.subject }}: {{ item.avg_score }} (班级平均: {{ item.class_avg }}, +{{ item.diff }})
-            </li>
-          </ul>
-        </div>
-        <div class="weaknesses">
-          <div class="info-header">
-            <h4>学科弱项</h4>
-            <div class="info-icon">👎</div>
-          </div>
-          <ul>
-            <li v-for="(item, index) in studentAnalysis.weaknesses" :key="index">
-              {{ item.subject }}: {{ item.avg_score }} (班级平均: {{ item.class_avg }}, -{{ item.diff }})
-            </li>
-          </ul>
-        </div>
-      </div>
+      </CollapsibleSection>
       
       <!-- 新增：科目选择下拉菜单 -->
       <div class="subject-selector">
@@ -92,11 +99,12 @@
       </div>
       
       <!-- 新增：具体科目分析模块 -->
-      <div v-if="subjectAnalysis" class="specific-subject-analysis">
-        <div class="info-header">
-          <h4>{{ selectedSubject }} 科目分析</h4>
-          <div class="info-icon">📊</div>
-        </div>
+      <CollapsibleSection 
+        v-if="subjectAnalysis" 
+        :title="selectedSubject + ' 科目分析'" 
+        icon="📊"
+        storage-key="specific_subject_analysis"
+      >
         <div class="subject-stats">
           <div class="stat-item">
             <span class="stat-label">平均成绩:</span>
@@ -135,48 +143,50 @@
           :options="subjectBoxPlotOptions"
           height="400px"
         />
-      </div>
+      </CollapsibleSection>
       
       <!-- 新增：历次考试趋势图表 -->
-      <div class="exam-trend-analysis">
-        <div class="info-header">
-          <h4>历次考试趋势</h4>
-          <div class="info-icon">📈</div>
-        </div>
+      <CollapsibleSection 
+        title="历次考试趋势" 
+        icon="📈"
+        storage-key="exam_trend"
+      >
         <BaseECharts
           chart-type="line"
           :data="examTrend"
           :options="examTrendOptions"
           height="400px"
         />
-      </div>
+      </CollapsibleSection>
       
       <!-- 新增：课程安排与成绩关系散点图 -->
-      <div class="schedule-analysis">
-        <div class="info-header">
-          <h4>课程安排与成绩关系</h4>
-          <div class="info-icon">📅</div>
-        </div>
+      <CollapsibleSection 
+        title="课程安排与成绩关系" 
+        icon="📅"
+        storage-key="schedule_analysis"
+      >
         <BaseECharts
           chart-type="scatter"
           :data="scheduleAnalysis"
           :options="scheduleScatterOptions"
           height="400px"
         />
-      </div>
+      </CollapsibleSection>
     </div>
   </div>
 </template>
 
 <script>
 import BaseECharts from '../../components/common/BaseECharts.vue'
+import CollapsibleSection from '../../components/common/CollapsibleSection.vue'
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useIndividualGrade } from '../../composables/grade/useIndividualGrade'
 
 export default {
   name: 'IndividualAnalysis',
   components: {
-    BaseECharts
+    BaseECharts,
+    CollapsibleSection
   },
   setup() {
     const {
@@ -725,10 +735,16 @@ export default {
       const personalAverages = subjects.map(subject => subjectAverages.value[subject])
       const classAvgs = subjects.map(subject => classAverages.value[subject] || 0)
       
+      // 响应式配置
+      const isSmallScreen = window.innerWidth < 768
+      
       return {
         title: {
           text: '个人与班级学科成绩对比',
-          left: 'center'
+          left: 'center',
+          textStyle: {
+            fontSize: isSmallScreen ? 14 : 16
+          }
         },
         tooltip: {
           trigger: 'axis',
@@ -738,18 +754,28 @@ export default {
         },
         legend: {
           data: ['个人平均', '班级平均'],
-          bottom: 0
+          bottom: 0,
+          textStyle: {
+            fontSize: isSmallScreen ? 12 : 14
+          }
         },
         xAxis: {
           type: 'category',
           data: subjects,
           axisLabel: {
-            rotate: 45
+            rotate: isSmallScreen ? 60 : 45,
+            fontSize: isSmallScreen ? 10 : 12
           }
         },
         yAxis: {
           type: 'value',
-          name: '分数'
+          name: '分数',
+          nameTextStyle: {
+            fontSize: isSmallScreen ? 12 : 14
+          },
+          axisLabel: {
+            fontSize: isSmallScreen ? 10 : 12
+          }
         },
         series: [
           {
@@ -768,7 +794,13 @@ export default {
               color: '#91cc75'
             }
           }
-        ]
+        ],
+        grid: {
+          left: isSmallScreen ? '3%' : '10%',
+          right: isSmallScreen ? '3%' : '10%',
+          bottom: isSmallScreen ? '15%' : '10%',
+          containLabel: true
+        }
       }
     })
     
@@ -786,10 +818,16 @@ export default {
         distribution.fail
       ]
       
+      // 响应式配置
+      const isSmallScreen = window.innerWidth < 768
+      
       return {
         title: {
           text: '成绩分布',
-          left: 'center'
+          left: 'center',
+          textStyle: {
+            fontSize: isSmallScreen ? 14 : 16
+          }
         },
         tooltip: {
           trigger: 'axis',
@@ -799,11 +837,20 @@ export default {
         },
         xAxis: {
           type: 'category',
-          data: categories
+          data: categories,
+          axisLabel: {
+            fontSize: isSmallScreen ? 10 : 12
+          }
         },
         yAxis: {
           type: 'value',
-          name: '人数'
+          name: '人数',
+          nameTextStyle: {
+            fontSize: isSmallScreen ? 12 : 14
+          },
+          axisLabel: {
+            fontSize: isSmallScreen ? 10 : 12
+          }
         },
         series: [
           {
@@ -814,7 +861,13 @@ export default {
               color: '#5470c6'
             }
           }
-        ]
+        ],
+        grid: {
+          left: isSmallScreen ? '3%' : '10%',
+          right: isSmallScreen ? '3%' : '10%',
+          bottom: isSmallScreen ? '10%' : '5%',
+          containLabel: true
+        }
       }
     })
     
@@ -831,10 +884,16 @@ export default {
          subjectAnalysis.value.statistics.max_score]
       ]
       
+      // 响应式配置
+      const isSmallScreen = window.innerWidth < 768
+      
       return {
         title: {
           text: '成绩分布箱线图',
-          left: 'center'
+          left: 'center',
+          textStyle: {
+            fontSize: isSmallScreen ? 14 : 16
+          }
         },
         tooltip: {
           trigger: 'item',
@@ -843,9 +902,9 @@ export default {
           }
         },
         grid: {
-          left: '10%',
-          right: '10%',
-          bottom: '15%'
+          left: isSmallScreen ? '15%' : '10%',
+          right: isSmallScreen ? '10%' : '10%',
+          bottom: isSmallScreen ? '15%' : '15%'
         },
         xAxis: {
           type: 'category',
@@ -857,11 +916,20 @@ export default {
           },
           splitLine: {
             show: false
+          },
+          axisLabel: {
+            fontSize: isSmallScreen ? 12 : 14
           }
         },
         yAxis: {
           type: 'value',
           name: '分数',
+          nameTextStyle: {
+            fontSize: isSmallScreen ? 12 : 14
+          },
+          axisLabel: {
+            fontSize: isSmallScreen ? 10 : 12
+          },
           splitArea: {
             show: true
           }
@@ -886,10 +954,16 @@ export default {
       const examNames = examTrend.value.exam_trend.exam_names
       const averages = examTrend.value.exam_trend.averages
       
+      // 响应式配置
+      const isSmallScreen = window.innerWidth < 768
+      
       return {
         title: {
           text: '历次考试趋势',
-          left: 'center'
+          left: 'center',
+          textStyle: {
+            fontSize: isSmallScreen ? 14 : 16
+          }
         },
         tooltip: {
           trigger: 'axis'
@@ -898,12 +972,19 @@ export default {
           type: 'category',
           data: examNames,
           axisLabel: {
-            rotate: 45
+            rotate: isSmallScreen ? 60 : 45,
+            fontSize: isSmallScreen ? 10 : 12
           }
         },
         yAxis: {
           type: 'value',
-          name: '平均分数'
+          name: '平均分数',
+          nameTextStyle: {
+            fontSize: isSmallScreen ? 12 : 14
+          },
+          axisLabel: {
+            fontSize: isSmallScreen ? 10 : 12
+          }
         },
         series: [
           {
@@ -929,7 +1010,13 @@ export default {
               }
             }
           }
-        ]
+        ],
+        grid: {
+          left: isSmallScreen ? '3%' : '10%',
+          right: isSmallScreen ? '3%' : '10%',
+          bottom: isSmallScreen ? '15%' : '10%',
+          containLabel: true
+        }
       }
     })
     
@@ -950,10 +1037,16 @@ export default {
         }
       }
       
+      // 响应式配置
+      const isSmallScreen = window.innerWidth < 768
+      
       return {
         title: {
           text: '课程安排与成绩关系',
-          left: 'center'
+          left: 'center',
+          textStyle: {
+            fontSize: isSmallScreen ? 14 : 16
+          }
         },
         tooltip: {
           trigger: 'item',
@@ -964,12 +1057,24 @@ export default {
         xAxis: {
           type: 'category',
           data: ['1', '2', '3', '4', '5', '6', '7'],
-          name: '周几'
+          name: '周几',
+          nameTextStyle: {
+            fontSize: isSmallScreen ? 12 : 14
+          },
+          axisLabel: {
+            fontSize: isSmallScreen ? 10 : 12
+          }
         },
         yAxis: {
           type: 'category',
           data: ['1', '2', '3', '4', '5', '6', '7', '8'],
-          name: '节次'
+          name: '节次',
+          nameTextStyle: {
+            fontSize: isSmallScreen ? 12 : 14
+          },
+          axisLabel: {
+            fontSize: isSmallScreen ? 10 : 12
+          }
         },
         series: [
           {
@@ -977,7 +1082,7 @@ export default {
             type: 'scatter',
             data: scatterData,
             symbolSize: function(val) {
-              return val[2] / 10
+              return isSmallScreen ? val[2] / 12 : val[2] / 10
             },
             itemStyle: {
               color: function(params) {
@@ -990,7 +1095,14 @@ export default {
               }
             }
           }
-        ]
+        ],
+        grid: {
+          left: isSmallScreen ? '10%' : '15%',
+          right: isSmallScreen ? '5%' : '10%',
+          bottom: isSmallScreen ? '5%' : '10%',
+          top: isSmallScreen ? '15%' : '10%',
+          containLabel: true
+        }
       }
     })
     
@@ -1073,6 +1185,20 @@ h3 {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.student-input button:hover {
+  background: #66b1ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+}
+
+.student-input button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.3);
 }
 
 .loading {
@@ -1085,16 +1211,18 @@ h3 {
   background: #f9f9f9;
   border-radius: 8px;
   border: 1px solid #eee;
+  animation: fadeIn 0.5s ease-out;
 }
 
 .loading-spinner {
   width: 40px;
   height: 40px;
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
+  border-top: 4px solid #409eff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
+  box-shadow: 0 0 10px rgba(64, 158, 255, 0.2);
 }
 
 @keyframes spin {
@@ -1102,10 +1230,31 @@ h3 {
   100% { transform: rotate(360deg); }
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .loading-detail {
   font-size: 14px;
   color: #666;
   margin-top: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .error {
@@ -1114,101 +1263,77 @@ h3 {
   color: #f56c6c;
   background: #fef0f0;
   border-radius: 4px;
+  border: 1px solid #fbc4c4;
+  animation: shake 0.5s ease-in-out;
+  box-shadow: 0 2px 8px rgba(245, 108, 108, 0.1);
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+.filter-select {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  min-width: 150px;
+  transition: all 0.3s ease;
+  background: #fff;
+}
+
+.filter-select:focus {
+  border-color: #409eff;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(64, 158, 255, 0.25);
+  transform: translateY(-1px);
 }
 
 .student-analysis {
   margin-top: 20px;
 }
 
-.student-info {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
-}
-
-.info-header {
+.module-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 15px;
-}
-
-.info-header h4 {
-  margin: 0;
-  color: #333;
-}
-
-.info-icon {
-  font-size: 20px;
-  margin-left: 10px;
-}
-
-.student-info p {
-  margin: 8px 0;
-  color: #666;
-}
-
-.overall-performance {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
+  gap: 20px;
   margin-bottom: 20px;
 }
 
-.overall-performance h4 {
-  margin-bottom: 15px;
-  color: #333;
+.module-item {
+  flex: 1;
+  min-width: 0;
 }
 
-.overall-performance p {
-  margin: 8px 0;
-  color: #666;
-}
-
-.subject-analysis {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
-}
-
-.subject-analysis h4 {
-  margin-bottom: 15px;
-  color: #333;
-  text-align: center;
-}
-
-.chart {
-  width: 100%;
-  height: 400px;
-  display: block;
-  position: relative;
+.module-item .collapsible-section {
+  height: 100%;
 }
 
 .strengths-weaknesses {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 20px;
-  margin-top: 20px;
-  margin-bottom: 20px;
 }
 
 .strengths,
 .weaknesses {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
+  padding: 15px;
 }
 
-.strengths h4,
-.weaknesses h4 {
-  margin-bottom: 15px;
+.strengths h5,
+.weaknesses h5 {
+  margin-bottom: 10px;
   color: #333;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .strengths ul,
@@ -1221,6 +1346,7 @@ h3 {
 .weaknesses li {
   margin: 8px 0;
   color: #666;
+  font-size: 14px;
 }
 
 .subject-selector {
@@ -1234,14 +1360,6 @@ h3 {
 .subject-selector h4 {
   margin-bottom: 10px;
   color: #333;
-}
-
-.specific-subject-analysis {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
 }
 
 .subject-stats {
@@ -1273,31 +1391,74 @@ h3 {
   color: #333;
 }
 
-.exam-trend-analysis {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
-}
-
-.exam-trend-analysis h4 {
-  margin-bottom: 15px;
-  color: #333;
-  text-align: center;
+@media (max-width: 1200px) {
+  .individual-analysis {
+    padding: 15px;
+  }
+  
+  .student-input {
+    flex-wrap: wrap;
+  }
+  
+  .student-input select {
+    flex: 1 1 200px;
+  }
+  
+  .student-input button {
+    flex: 1 1 100px;
+  }
+  
+  .module-row {
+    flex-wrap: wrap;
+  }
+  
+  .module-item {
+    flex: 1 1 calc(50% - 10px);
+  }
 }
 
 @media (max-width: 768px) {
+  .individual-analysis {
+    padding: 10px;
+  }
+  
   .student-input {
     flex-direction: column;
   }
   
-  .strengths-weaknesses {
-    grid-template-columns: 1fr;
+  .module-row {
+    flex-direction: column;
+  }
+  
+  .module-item {
+    flex: 1 1 100%;
   }
   
   .subject-stats {
     grid-template-columns: 1fr 1fr;
+  }
+  
+  h3 {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .subject-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  h3 {
+    font-size: 16px;
+  }
+  
+  .loading {
+    padding: 20px;
+  }
+  
+  .loading-spinner {
+    width: 30px;
+    height: 30px;
   }
 }
 </style>

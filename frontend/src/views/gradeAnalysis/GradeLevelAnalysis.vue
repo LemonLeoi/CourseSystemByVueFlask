@@ -17,41 +17,42 @@
     <div v-if="loading" class="loading">加载中...</div>
     <div v-else-if="gradeError" class="error">{{ gradeError }}</div>
     <div v-else-if="gradeAnalysis && gradeAnalysis.grade_info" class="grade-analysis-result">
-      <div class="grade-info">
-        <div class="info-header">
-          <h4>年级信息</h4>
-          <div class="info-icon">🎓</div>
-        </div>
+      <CollapsibleSection 
+        title="年级信息" 
+        icon="🎓" 
+        :default-collapsed="false"
+        storage-key="grade_info"
+      >
         <p>年级: {{ gradeAnalysis.grade_info.grade }}</p>
         <p>班级数量: {{ gradeAnalysis.grade_info.class_count }}</p>
         <p>年级平均成绩: {{ gradeAnalysis.overall_average }}</p>
-      </div>
+      </CollapsibleSection>
       
-      <div class="chart-container">
-        <div class="info-header">
-          <h4>学科平均成绩</h4>
-          <div class="info-icon">📊</div>
-        </div>
+      <CollapsibleSection 
+        title="学科平均成绩" 
+        icon="📊"
+        storage-key="grade_subject_analysis"
+      >
         <BaseECharts
           chart-type="bar"
           :data="gradeSubjectData"
           :options="gradeSubjectOptions"
           height="400px"
         />
-      </div>
+      </CollapsibleSection>
       
-      <div class="chart-container">
-        <div class="info-header">
-          <h4>班级平均成绩对比</h4>
-          <div class="info-icon">📈</div>
-        </div>
+      <CollapsibleSection 
+        title="班级平均成绩对比" 
+        icon="📈"
+        storage-key="class_comparison_analysis"
+      >
         <BaseECharts
           chart-type="bar"
           :data="classComparisonData"
           :options="classComparisonOptions"
           height="400px"
         />
-      </div>
+      </CollapsibleSection>
       
       <!-- 新增：科目选择下拉菜单 -->
       <div class="subject-selector">
@@ -63,11 +64,12 @@
       </div>
       
       <!-- 新增：具体科目分析模块 -->
-      <div v-if="subjectAnalysis" class="specific-subject-analysis">
-        <div class="info-header">
-          <h4>{{ selectedSubject }} 科目分析</h4>
-          <div class="info-icon">📊</div>
-        </div>
+      <CollapsibleSection 
+        v-if="subjectAnalysis" 
+        :title="selectedSubject + ' 科目分析'" 
+        icon="📊"
+        storage-key="specific_grade_subject_analysis"
+      >
         <div class="subject-stats">
           <div class="stat-item">
             <span class="stat-label">平均成绩:</span>
@@ -102,62 +104,66 @@
           :options="subjectBoxPlotOptions"
           height="400px"
         />
-      </div>
+      </CollapsibleSection>
       
       <!-- 新增：历次考试趋势图表 -->
-      <div class="exam-trend-analysis">
-        <div class="info-header">
-          <h4>年级历次考试趋势</h4>
-          <div class="info-icon">📈</div>
-        </div>
+      <CollapsibleSection 
+        title="年级历次考试趋势" 
+        icon="📈"
+        storage-key="grade_exam_trend"
+      >
         <BaseECharts
           chart-type="line"
           :data="examTrendData"
           :options="examTrendOptions"
           height="400px"
         />
-      </div>
+      </CollapsibleSection>
       
       <!-- 新增：教师成绩对比模块 -->
-      <div v-if="teacherPerformance" class="teacher-performance-analysis">
-        <div class="info-header">
-          <h4>教师成绩对比</h4>
-          <div class="info-icon">👨‍🏫</div>
-        </div>
+      <CollapsibleSection 
+        v-if="teacherPerformance" 
+        title="教师成绩对比" 
+        icon="👨‍🏫"
+        storage-key="teacher_performance"
+      >
         <BaseECharts
           chart-type="bar"
           :data="teacherComparisonData"
           :options="teacherComparisonOptions"
           height="400px"
         />
-      </div>
+      </CollapsibleSection>
       
       <!-- 新增：教师与成绩关系热力图 -->
-      <div v-if="teacherPerformance" class="teacher-heatmap-analysis">
-        <div class="info-header">
-          <h4>教师与成绩关系热力图</h4>
-          <div class="info-icon">🔥</div>
-        </div>
+      <CollapsibleSection 
+        v-if="teacherPerformance" 
+        title="教师与成绩关系热力图" 
+        icon="🔥"
+        storage-key="teacher_heatmap"
+      >
         <BaseECharts
           chart-type="heatmap"
           :data="teacherHeatmapData"
           :options="teacherHeatmapOptions"
           height="400px"
         />
-      </div>
+      </CollapsibleSection>
     </div>
   </div>
 </template>
 
 <script>
 import BaseECharts from '../../components/common/BaseECharts.vue'
+import CollapsibleSection from '../../components/common/CollapsibleSection.vue'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useGradeAnalysis } from '../../composables/grade/useGradeAnalysis'
 
 export default {
   name: 'GradeLevelAnalysis',
   components: {
-    BaseECharts
+    BaseECharts,
+    CollapsibleSection
   },
   setup() {
     const { 
@@ -714,12 +720,41 @@ h3 {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.grade-input button:hover {
+  background: #66b1ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+}
+
+.grade-input button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.3);
 }
 
 .loading {
   text-align: center;
   padding: 40px;
   color: #999;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .error {
@@ -728,61 +763,43 @@ h3 {
   color: #f56c6c;
   background: #fef0f0;
   border-radius: 4px;
+  border: 1px solid #fbc4c4;
+  animation: shake 0.5s ease-in-out;
+  box-shadow: 0 2px 8px rgba(245, 108, 108, 0.1);
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+.filter-select {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  min-width: 150px;
+  transition: all 0.3s ease;
+  background: #fff;
+}
+
+.filter-select:focus {
+  border-color: #409eff;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(64, 158, 255, 0.25);
+  transform: translateY(-1px);
 }
 
 .grade-analysis-result {
   margin-top: 20px;
-}
-
-.grade-info {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
-}
-
-.info-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 15px;
-}
-
-.info-header h4 {
-  margin: 0;
-  color: #333;
-}
-
-.info-icon {
-  font-size: 20px;
-  margin-left: 10px;
-}
-
-.grade-info p {
-  margin: 8px 0;
-  color: #666;
-}
-
-.chart-container {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
-}
-
-.chart-container h4 {
-  margin-bottom: 15px;
-  color: #333;
-  text-align: center;
-}
-
-.chart {
-  width: 100%;
-  height: 400px;
-  display: block;
-  position: relative;
 }
 
 .subject-selector {
@@ -796,14 +813,6 @@ h3 {
 .subject-selector h4 {
   margin-bottom: 10px;
   color: #333;
-}
-
-.specific-subject-analysis {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
 }
 
 .subject-stats {
@@ -835,41 +844,53 @@ h3 {
   color: #333;
 }
 
-.exam-trend-analysis {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
-}
-
-.exam-trend-analysis h4 {
-  margin-bottom: 15px;
-  color: #333;
-  text-align: center;
-}
-
-.teacher-performance-analysis {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  margin-bottom: 20px;
-}
-
-.teacher-performance-analysis h4 {
-  margin-bottom: 15px;
-  color: #333;
-  text-align: center;
+@media (max-width: 1200px) {
+  .grade-analysis {
+    padding: 15px;
+  }
+  
+  .grade-input {
+    flex-wrap: wrap;
+  }
+  
+  .grade-input select {
+    flex: 1 1 200px;
+  }
+  
+  .grade-input button {
+    flex: 1 1 100px;
+  }
 }
 
 @media (max-width: 768px) {
+  .grade-analysis {
+    padding: 10px;
+  }
+  
   .grade-input {
     flex-direction: column;
   }
   
   .subject-stats {
     grid-template-columns: 1fr 1fr;
+  }
+  
+  h3 {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .subject-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  h3 {
+    font-size: 16px;
+  }
+  
+  .loading {
+    padding: 20px;
   }
 }
 </style>
