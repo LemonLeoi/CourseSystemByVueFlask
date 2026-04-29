@@ -6,12 +6,36 @@
         <h3 class="section-title">挖掘发现</h3>
         <p class="section-subtitle">Knowledge Discovery</p>
       </div>
-      <div class="academic-badge">
-        <span>C4.5算法</span>
+      <div class="header-actions">
+        <div class="academic-badge">
+          <span>C4.5算法</span>
+        </div>
+        <button 
+          v-if="!isLoading" 
+          class="refresh-btn" 
+          @click="refreshData"
+          :disabled="isLoading"
+        >
+          <span>{{ isLoading ? '刷新中...' : '↻' }}</span>
+        </button>
       </div>
     </div>
     
-    <div class="discovery-list">
+    <!-- 加载状态 -->
+    <div v-if="isLoading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">正在获取挖掘发现数据...</p>
+    </div>
+    
+    <!-- 错误状态 -->
+    <div v-else-if="error" class="error-state">
+      <div class="error-icon">⚠️</div>
+      <p class="error-text">{{ error }}</p>
+      <button class="retry-btn" @click="refreshData">重试</button>
+    </div>
+    
+    <!-- 数据列表 -->
+    <div v-else class="discovery-list">
       <div 
         v-for="(discovery, index) in discoveries" 
         :key="index"
@@ -67,7 +91,7 @@
       </div>
     </div>
     
-    <div v-if="discoveries.length === 0" class="empty-state">
+    <div v-if="!isLoading && !error && discoveries.length === 0" class="empty-state">
       <div class="empty-icon">🔍</div>
       <p class="empty-text">暂无挖掘发现数据</p>
       <p class="empty-hint">请先进行成绩分析以获取挖掘发现</p>
@@ -76,7 +100,8 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue';
+import { ref, onMounted, watch } from 'vue';
+import { gradeService } from '../../services/gradeService';
 
 export interface DiscoveryCondition {
   feature: string;
@@ -99,9 +124,45 @@ export interface KnowledgeDiscovery {
   statisticalSignificance?: string;
 }
 
-defineProps<{
-  discoveries: KnowledgeDiscovery[];
+const props = defineProps<{
+  classId?: string;
 }>();
+
+const discoveries = ref<KnowledgeDiscovery[]>([]);
+const isLoading = ref(false);
+const error = ref<string | null>(null);
+
+const loadData = async () => {
+  isLoading.value = true;
+  error.value = null;
+  
+  try {
+    const params: Record<string, string> = {};
+    if (props.classId) {
+      params.class_id = props.classId;
+    }
+    
+    const response = await gradeService.getRealtimeDiscoveries(props.classId);
+    discoveries.value = response.discoveries || [];
+  } catch (e) {
+    error.value = '获取挖掘发现数据失败，请稍后重试';
+    console.error('Failed to load discoveries:', e);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const refreshData = () => {
+  loadData();
+};
+
+onMounted(() => {
+  loadData();
+});
+
+watch(() => props.classId, () => {
+  loadData();
+});
 </script>
 
 <style scoped>
@@ -141,12 +202,96 @@ defineProps<{
   opacity: 0.8;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .academic-badge {
   background: rgba(255, 255, 255, 0.2);
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 500;
+}
+
+.refresh-btn {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 加载状态 */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* 错误状态 */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px;
+  background: #fef2f2;
+}
+
+.error-icon {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.error-text {
+  margin: 0 0 12px 0;
+  color: #dc2626;
+  font-size: 14px;
+}
+
+.retry-btn {
+  padding: 8px 16px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
 }
 
 .discovery-list {

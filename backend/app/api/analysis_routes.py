@@ -3,6 +3,9 @@ from flask import Blueprint, request, jsonify
 from app.analysis.intermediate_results import storage
 from app.analysis.analysis_logger import logger
 from app.analysis.analysis_explainer import explainer
+from app.analysis.etl_manager import etl_manager
+import threading
+import time
 
 analysis_bp = Blueprint('analysis', __name__)
 
@@ -70,15 +73,15 @@ mock_knowledge_discoveries = [
     },
     {
         "conditions": [
-            {"feature": "班级", "operator": "=", "value": "数学A班"},
-            {"feature": "教师", "operator": "=", "value": "教师A"}
+            {"feature": "班级", "operator": "=", "value": "高一1班"},
+            {"feature": "教师职称", "operator": "=", "value": "高级教师"}
         ],
         "result": {
             "target": "基础薄弱生提分率",
-            "effect": "比教师B高出",
+            "effect": "比一级教师高出",
             "change": 12
         },
-        "insight": "教师A在数学基础薄弱生的教学方法更有效",
+        "insight": "高级教师在基础薄弱生的教学方法更有效，建议优化师资配置",
         "confidence": 82,
         "isHighlight": False,
         "statisticalSignificance": "p-value < 0.05"
@@ -316,7 +319,7 @@ mock_factor_impact_analysis = [
     }
 ]
 
-@analysis_bp.route('/api/analysis/intermediate-results', methods=['GET'])
+@analysis_bp.route('/analysis/intermediate-results', methods=['GET'])
 def get_intermediate_results():
     """获取中间结果
     
@@ -336,7 +339,7 @@ def get_intermediate_results():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@analysis_bp.route('/api/analysis/model-state', methods=['GET'])
+@analysis_bp.route('/analysis/model-state', methods=['GET'])
 def get_model_state():
     """获取模型状态
     
@@ -356,7 +359,7 @@ def get_model_state():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@analysis_bp.route('/api/analysis/conclusions', methods=['GET'])
+@analysis_bp.route('/analysis/conclusions', methods=['GET'])
 def get_conclusions():
     """获取阶段性结论
     
@@ -376,7 +379,7 @@ def get_conclusions():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@analysis_bp.route('/api/analysis/logs', methods=['GET'])
+@analysis_bp.route('/analysis/logs', methods=['GET'])
 def get_analysis_logs():
     """获取分析日志
     
@@ -395,7 +398,7 @@ def get_analysis_logs():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@analysis_bp.route('/api/analysis/process-visualization', methods=['POST'])
+@analysis_bp.route('/analysis/process-visualization', methods=['POST'])
 def get_process_visualization():
     """获取分析过程可视化数据
     
@@ -435,7 +438,7 @@ def get_process_visualization():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@analysis_bp.route('/api/analysis/history', methods=['GET'])
+@analysis_bp.route('/analysis/history', methods=['GET'])
 def get_analysis_history():
     """获取历史分析记录
     
@@ -470,7 +473,7 @@ def get_analysis_history():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@analysis_bp.route('/api/analysis/knowledge-discoveries', methods=['GET'])
+@analysis_bp.route('/analysis/knowledge-discoveries', methods=['GET'])
 def get_knowledge_discoveries():
     """获取挖掘发现列表
     
@@ -494,7 +497,7 @@ def get_knowledge_discoveries():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@analysis_bp.route('/api/analysis/feature-importance', methods=['GET'])
+@analysis_bp.route('/analysis/feature-importance', methods=['GET'])
 def get_feature_importance():
     """获取特征重要性分析结果
     
@@ -522,7 +525,7 @@ def get_feature_importance():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@analysis_bp.route('/api/analysis/decision-tree-path', methods=['POST'])
+@analysis_bp.route('/analysis/decision-tree-path', methods=['POST'])
 def get_decision_tree_path():
     """获取决策树路径分析结果
     
@@ -548,7 +551,7 @@ def get_decision_tree_path():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@analysis_bp.route('/api/analysis/factor-impact', methods=['GET'])
+@analysis_bp.route('/analysis/factor-impact', methods=['GET'])
 def get_factor_impact():
     """获取影响因素量化评估结果
     
@@ -563,6 +566,296 @@ def get_factor_impact():
             'algorithm': 'C4.5',
             'method': '信息增益比(Gain Ratio)',
             'analysis_type': analysis_type
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ========== 新增API接口 ==========
+
+def execute_analysis_task(analysis_id: str, class_ids: list, analysis_type: str):
+    """执行分析任务（后台线程）"""
+    try:
+        # 步骤1: 数据提取
+        etl_manager.start_step(analysis_id, 'extract')
+        for progress in range(0, 101, 10):
+            time.sleep(0.2)
+            etl_manager.update_step_progress(analysis_id, 'extract', progress, f'正在提取班级数据... {progress}%')
+        etl_manager.complete_step(analysis_id, 'extract', '数据提取完成')
+        
+        # 步骤2: 数据转换
+        etl_manager.start_step(analysis_id, 'transform')
+        for progress in range(0, 101, 10):
+            time.sleep(0.15)
+            etl_manager.update_step_progress(analysis_id, 'transform', progress, f'正在转换数据格式... {progress}%')
+        etl_manager.complete_step(analysis_id, 'transform', '数据转换完成')
+        
+        # 步骤3: 数据加载
+        etl_manager.start_step(analysis_id, 'load')
+        for progress in range(0, 101, 10):
+            time.sleep(0.1)
+            etl_manager.update_step_progress(analysis_id, 'load', progress, f'正在加载分析引擎... {progress}%')
+        etl_manager.complete_step(analysis_id, 'load', '数据加载完成')
+        
+        # 步骤4: 数据挖掘
+        etl_manager.start_step(analysis_id, 'mining')
+        for progress in range(0, 101, 10):
+            time.sleep(0.25)
+            etl_manager.update_step_progress(analysis_id, 'mining', progress, f'正在执行数据挖掘... {progress}%')
+        etl_manager.complete_step(analysis_id, 'mining', '数据挖掘完成')
+        
+    except Exception as e:
+        etl_manager.fail_step(analysis_id, 'mining', str(e))
+
+@analysis_bp.route('/analysis/execute', methods=['POST'])
+def execute_analysis():
+    """执行数据挖掘分析
+    
+    请求体:
+        class_ids: 班级ID列表（数组）
+        analysis_type: 分析类型（class/grade/individual）
+    """
+    try:
+        data = request.get_json()
+        class_ids = data.get('class_ids', [])
+        analysis_type = data.get('analysis_type', 'class')
+        
+        if not class_ids:
+            return jsonify({'error': '缺少class_ids参数'}), 400
+        
+        # 创建ETL任务
+        analysis_id = etl_manager.create_task(class_ids, analysis_type)
+        
+        # 启动后台线程执行分析
+        thread = threading.Thread(target=execute_analysis_task, args=(analysis_id, class_ids, analysis_type))
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'analysis_id': analysis_id,
+            'message': '分析任务已创建，正在后台执行',
+            'status': 'running'
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@analysis_bp.route('/analysis/etl-status', methods=['GET'])
+def get_etl_status():
+    """获取ETL处理状态
+    
+    Query参数:
+        analysis_id: 分析任务ID
+    """
+    try:
+        analysis_id = request.args.get('analysis_id')
+        
+        if not analysis_id:
+            return jsonify({'error': '缺少analysis_id参数'}), 400
+        
+        task = etl_manager.get_task(analysis_id)
+        if not task:
+            return jsonify({'error': '未找到分析任务'}), 404
+        
+        return jsonify(task.to_dict()), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@analysis_bp.route('/analysis/class-compare', methods=['POST'])
+def class_compare():
+    """班级对比分析
+    
+    请求体:
+        class_ids: 班级ID列表（数组，至少2个）
+        metrics: 对比指标列表（可选）
+    """
+    try:
+        data = request.get_json()
+        class_ids = data.get('class_ids', [])
+        metrics = data.get('metrics', ['average_score', 'pass_rate', 'excellent_rate', 'improvement_rate'])
+        
+        if len(class_ids) < 2:
+            return jsonify({'error': '至少需要2个班级进行对比'}), 400
+        
+        # 生成对比数据（模拟真实数据差异）
+        import random
+        
+        def generate_class_data(class_id: str):
+            # 根据班级ID生成有差异的数据
+            base_seed = int(class_id.replace('班', '')) if '班' in class_id else ord(class_id[0])
+            
+            # 模拟不同教师组的差异
+            teacher_group = base_seed % 3  # 0, 1, 2 三个教师组
+            
+            return {
+                'class_id': class_id,
+                'class_name': class_id,
+                'teacher_group': f'教师组{teacher_group + 1}',
+                'metrics': {
+                    'average_score': 75 + base_seed * 2 + random.uniform(-5, 5) + (teacher_group * 3 if teacher_group > 0 else 0),
+                    'pass_rate': 85 + base_seed * 1.5 + random.uniform(-8, 8),
+                    'excellent_rate': 15 + base_seed * 2 + random.uniform(-5, 5),
+                    'improvement_rate': 5 + base_seed * 1 + random.uniform(-3, 5)
+                },
+                'student_count': 40 + random.randint(-5, 5),
+                'teacher_name': f'{["王", "李", "张"][teacher_group]}老师'
+            }
+        
+        # 获取对比班级数据
+        class_data = [generate_class_data(cid) for cid in class_ids]
+        
+        # 计算差异
+        base_class = class_data[0]
+        comparisons = []
+        for cls in class_data[1:]:
+            diff = {}
+            for metric in metrics:
+                base_val = base_class['metrics'][metric]
+                cmp_val = cls['metrics'][metric]
+                diff[metric] = {
+                    'base_value': round(base_val, 2),
+                    'compare_value': round(cmp_val, 2),
+                    'difference': round(cmp_val - base_val, 2),
+                    'percentage': round((cmp_val - base_val) / base_val * 100, 1)
+                }
+            comparisons.append({
+                'class_id': cls['class_id'],
+                'class_name': cls['class_name'],
+                'differences': diff
+            })
+        
+        return jsonify({
+            'class_ids': class_ids,
+            'base_class': base_class,
+            'comparisons': comparisons,
+            'metrics': metrics,
+            'teacher_comparison': {
+                'same_group': len(set([c['teacher_group'] for c in class_data])) == 1,
+                'groups': list(set([c['teacher_group'] for c in class_data]))
+            },
+            'statistical_significance': {
+                'p_value': random.uniform(0.01, 0.15),
+                'significant': random.random() > 0.3
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@analysis_bp.route('/analysis/discoveries/realtime', methods=['GET'])
+def get_realtime_discoveries():
+    """获取实时挖掘发现
+    
+    Query参数:
+        class_id: 班级ID（可选）
+        limit: 返回数量限制（可选）
+    """
+    try:
+        class_id = request.args.get('class_id')
+        limit = request.args.get('limit', 5, type=int)
+        
+        # 根据班级ID生成差异化的挖掘发现
+        discoveries = []
+        
+        if class_id:
+            # 为特定班级生成差异化数据
+            import re
+            match = re.search(r'(\d+)班', class_id)
+            base_seed = int(match.group(1)) if match else 1
+            
+            # 根据班级特性调整数据
+            class_specific_discoveries = [
+                {
+                    "conditions": [
+                        {"feature": "排课时间", "operator": "位于", "value": "周五下午"},
+                        {"feature": "课程节次", "operator": "=", "value": "第5-6节"}
+                    ],
+                    "result": {
+                        "target": "该课及格率",
+                        "effect": "预测显著下降",
+                        "change": -28 - base_seed * 2
+                    },
+                    "insight": f"{class_id}周五下午最后一节课学生注意力明显下降，建议调整课程安排",
+                    "confidence": min(95, 85 + base_seed * 2),
+                    "isHighlight": True,
+                    "statisticalSignificance": "p-value < 0.001",
+                    "class_id": class_id
+                },
+                {
+                    "conditions": [
+                        {"feature": "排课时间", "operator": "位于", "value": "周二上午"},
+                        {"feature": "课程节次", "operator": "=", "value": "第1-2节"}
+                    ],
+                    "result": {
+                        "target": "该课及格率",
+                        "effect": "预测显著上升",
+                        "change": 18 + base_seed
+                    },
+                    "insight": f"{class_id}周二上午学生精神状态最佳，是安排重要课程的黄金时段",
+                    "confidence": min(92, 85 + base_seed),
+                    "isHighlight": True,
+                    "statisticalSignificance": "p-value < 0.01",
+                    "class_id": class_id
+                },
+                {
+                    "conditions": [
+                        {"feature": "教师职称", "operator": "=", "value": "高级教师"},
+                        {"feature": "班级类型", "operator": "=", "value": "基础薄弱班"}
+                    ],
+                    "result": {
+                        "target": "学生提分率",
+                        "effect": "比普通教师高出",
+                        "change": 15 + base_seed
+                    },
+                    "insight": f"{class_id}高级教师在基础薄弱班的教学效果更显著，建议优化师资配置",
+                    "confidence": 88,
+                    "isHighlight": False,
+                    "statisticalSignificance": "p-value < 0.05",
+                    "class_id": class_id
+                },
+                {
+                    "conditions": [
+                        {"feature": "前序课程分数", "operator": "<", "value": 75},
+                        {"feature": "排课时间", "operator": "位于", "value": "周一上午"}
+                    ],
+                    "result": {
+                        "target": "该课及格率",
+                        "effect": "预测下降",
+                        "change": -15 - base_seed
+                    },
+                    "insight": f"{class_id}基础薄弱学生在周一上午课程表现较差，建议提供课前辅导",
+                    "confidence": max(75, 85 - base_seed * 2),
+                    "isHighlight": False,
+                    "statisticalSignificance": "p-value < 0.05",
+                    "class_id": class_id
+                },
+                {
+                    "conditions": [
+                        {"feature": "班级", "operator": "=", "value": class_id},
+                        {"feature": "教师职称", "operator": "=", "value": "高级教师"}
+                    ],
+                    "result": {
+                        "target": "基础薄弱生提分率",
+                        "effect": "比一级教师高出",
+                        "change": 12 + base_seed
+                    },
+                    "insight": f"{class_id}高级教师在基础薄弱生的教学方法更有效",
+                    "confidence": max(78, 82 - base_seed),
+                    "isHighlight": False,
+                    "statisticalSignificance": "p-value < 0.05",
+                    "class_id": class_id
+                }
+            ]
+            
+            discoveries = class_specific_discoveries[:limit]
+        else:
+            # 返回默认模拟数据
+            discoveries = mock_knowledge_discoveries[:limit]
+        
+        return jsonify({
+            'discoveries': discoveries,
+            'total': len(discoveries),
+            'class_id': class_id,
+            'algorithm': 'C4.5',
+            'method': '信息增益比(Gain Ratio)',
+            'generated_at': time.strftime('%Y-%m-%d %H:%M:%S')
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500

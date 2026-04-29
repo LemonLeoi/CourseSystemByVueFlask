@@ -55,7 +55,7 @@ app.register_blueprint(exam_routes.bp, url_prefix='/api/exams')
 app.register_blueprint(auth_routes.bp, url_prefix='/api/auth')
 app.register_blueprint(admin_routes.bp, url_prefix='/api/admin')
 app.register_blueprint(grade_settings_routes.bp, url_prefix='/api/grade-settings')
-app.register_blueprint(analysis_routes.analysis_bp)
+app.register_blueprint(analysis_routes.analysis_bp, url_prefix='/api')
 
 # 根路由
 @app.route('/')

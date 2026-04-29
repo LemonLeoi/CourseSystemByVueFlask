@@ -40,6 +40,7 @@ const props = defineProps<{
 
 const chartRef = ref<HTMLElement | null>(null);
 let chartInstance: any = null;
+let handleResize: (() => void) | null = null;
 
 const initChart = async () => {
   if (!chartRef.value) return;
@@ -77,35 +78,26 @@ const initChart = async () => {
     const option = {
       tooltip: {
         trigger: 'axis',
-        axisPointer: {
-          type: 'shadow'
-        },
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderColor: '#e5e7eb',
+        axisPointer: { type: 'shadow' },
+        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+        borderColor: '#d1d5db',
         borderWidth: 1,
         padding: [12, 16],
-        textStyle: {
-          color: '#374151',
-          fontSize: 14
-        },
+        textStyle: { color: '#374151', fontSize: 14 },
+        extraCssText: 'overflow: visible; z-index: 9999; pointer-events: none;',
+        appendToBody: true,
         formatter: (params: any) => {
-          const index = params[0].dataIndex;
-          const item = sortedData[index];
-          return `
-            <div style="font-weight: 600; margin-bottom: 8px; color: #667eea;">${item.name}</div>
-            <div style="margin-bottom: 8px;">
-              <span style="color: #6b7280;">重要性值: </span>
-              <span style="font-weight: 600; color: #dc2626;">${item.value.toFixed(4)}</span>
-            </div>
-            <div style="margin-bottom: 8px;">
-              <span style="color: #6b7280;">描述: </span>
-              <span>${item.description}</span>
-            </div>
-            <div style="padding-top: 8px; border-top: 1px solid #e5e7eb;">
-              <div style="font-weight: 500; margin-bottom: 4px; color: #059669;">理论依据</div>
-              <div style="font-size: 12px; line-height: 1.5; color: #6b7280;">${item.theoreticalBasis}</div>
-            </div>
-          `;
+          const dataIndex = params.dataIndex;
+          if (!sortedData || !sortedData[dataIndex]) {
+            return '';
+          }
+          const data = sortedData[dataIndex];
+          return `<div style="padding: 8px;">
+            <div style="font-weight: 600; margin-bottom: 8px; color: #1f2937;">${data.name || '未知'}</div>
+            <div style="color: #667eea; font-size: 16px; font-weight: 600;">信息增益比: ${data.value ? data.value.toFixed(4) : '0.0000'}</div>
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280;">${data.description || ''}</div>
+            <div style="margin-top: 4px; font-size: 11px; color: #9ca3af; font-style: italic;">${data.theoreticalBasis || ''}</div>
+          </div>`;
         }
       },
       grid: {
@@ -118,20 +110,20 @@ const initChart = async () => {
       xAxis: {
         type: 'value',
         name: '信息增益比',
-        nameLocation: 'end',
         nameTextStyle: {
           color: '#6b7280',
           fontSize: 12
         },
-        axisLabel: {
-          formatter: (value: number) => value.toFixed(3),
-          color: '#6b7280',
-          fontSize: 12
-        },
         axisLine: {
-          lineStyle: {
-            color: '#e5e7eb'
-          }
+          lineStyle: { color: '#e5e7eb' }
+        },
+        axisTick: {
+          show: false
+        },
+        axisLabel: {
+          color: '#6b7280',
+          fontSize: 12,
+          formatter: (value: number) => value.toFixed(3)
         },
         splitLine: {
           lineStyle: {
@@ -142,24 +134,24 @@ const initChart = async () => {
       },
       yAxis: {
         type: 'category',
-        data: names,
-        axisLabel: {
-          color: '#374151',
-          fontSize: 13,
-          fontWeight: 500
-        },
+        data: names.reverse(),
         axisLine: {
           show: false
         },
         axisTick: {
           show: false
+        },
+        axisLabel: {
+          color: '#374151',
+          fontSize: 13,
+          fontWeight: 500
         }
       },
       series: [
         {
           name: '信息增益比',
           type: 'bar',
-          data: values,
+          data: values.reverse(),
           barWidth: '60%',
           itemStyle: {
             borderRadius: [0, 4, 4, 0],
@@ -206,20 +198,30 @@ const initChart = async () => {
     
     chartInstance.setOption(option);
     
-    const handleResize = () => {
+    handleResize = () => {
       chartInstance?.resize();
     };
     
     window.addEventListener('resize', handleResize);
-    
-    onUnmounted(() => {
-      window.removeEventListener('resize', handleResize);
-      chartInstance?.dispose();
-    });
   } catch (error) {
     console.error('Failed to load ECharts:', error);
   }
 };
+
+const cleanupChart = () => {
+  if (handleResize) {
+    window.removeEventListener('resize', handleResize);
+    handleResize = null;
+  }
+  if (chartInstance) {
+    chartInstance.dispose();
+    chartInstance = null;
+  }
+};
+
+onUnmounted(() => {
+  cleanupChart();
+});
 
 onMounted(() => {
   initChart();
@@ -236,6 +238,8 @@ watch(() => props.data, () => {
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   padding: 20px;
+  position: relative;
+  overflow: visible;
 }
 
 .chart-header {
@@ -294,6 +298,8 @@ watch(() => props.data, () => {
 .chart-container {
   height: 300px;
   width: 100%;
+  position: relative;
+  overflow: visible;
 }
 
 .chart-legend {

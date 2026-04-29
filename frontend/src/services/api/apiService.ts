@@ -55,6 +55,7 @@ function isOnline(): boolean {
 function generateCacheKey(endpoint: string, options: RequestInit = {}): string {
   const method = options.method || 'GET';
   const body = options.body ? JSON.stringify(options.body) : '';
+  // 将endpoint（包含查询参数）也包含在缓存键中
   return `${method}:${endpoint}:${body}`;
 }
 
@@ -90,12 +91,6 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.message || errorData.error || `API请求失败: ${response.status}`;
         notificationService.error(errorMessage);
-        
-        // 尝试从本地缓存获取数据
-        const cachedData = await offlineStorageService.getAppState(cacheKey);
-        if (cachedData) {
-          return cachedData as T;
-        }
         
         throw new Error(errorMessage);
       }
@@ -143,14 +138,6 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : '网络请求失败，请稍后重试';
     notificationService.error(errorMessage);
-    
-    // 尝试从本地缓存获取数据
-    if (mergedOptions.method === 'GET' || !mergedOptions.method) {
-      const cachedData = await offlineStorageService.getAppState(cacheKey);
-      if (cachedData) {
-        return cachedData as T;
-      }
-    }
     
     throw error;
   }

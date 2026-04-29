@@ -139,6 +139,91 @@ export interface FactorImpactResponse {
   analysis_type: string;
 }
 
+// ETL状态相关类型
+export interface ETLStepStatus {
+  step_name: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  progress: number;
+  message: string;
+  start_time?: string;
+  end_time?: string;
+  error?: string;
+}
+
+export interface ETLStatusResponse {
+  analysis_id: string;
+  class_ids: string[];
+  analysis_type: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  current_step: string;
+  progress: number;
+  created_at: string;
+  updated_at: string;
+  error_message?: string;
+  steps: Record<string, ETLStepStatus>;
+}
+
+export interface ExecuteAnalysisResponse {
+  analysis_id: string;
+  message: string;
+  status: string;
+}
+
+// 班级对比相关类型
+export interface ClassMetrics {
+  average_score: number;
+  pass_rate: number;
+  excellent_rate: number;
+  improvement_rate: number;
+}
+
+export interface ClassData {
+  class_id: string;
+  class_name: string;
+  teacher_group: string;
+  metrics: ClassMetrics;
+  student_count: number;
+  teacher_name: string;
+}
+
+export interface MetricDifference {
+  base_value: number;
+  compare_value: number;
+  difference: number;
+  percentage: number;
+}
+
+export interface ClassComparison {
+  class_id: string;
+  class_name: string;
+  differences: Record<string, MetricDifference>;
+}
+
+export interface ClassCompareResponse {
+  class_ids: string[];
+  base_class: ClassData;
+  comparisons: ClassComparison[];
+  metrics: string[];
+  teacher_comparison: {
+    same_group: boolean;
+    groups: string[];
+  };
+  statistical_significance: {
+    p_value: number;
+    significant: boolean;
+  };
+}
+
+// 实时挖掘发现响应
+export interface RealtimeDiscoveriesResponse {
+  discoveries: KnowledgeDiscovery[];
+  total: number;
+  class_id?: string;
+  algorithm: string;
+  method: string;
+  generated_at: string;
+}
+
 export class GradeService {
   async getStudentAnalysis(studentId: string): Promise<StudentAnalysisData> {
     return await fetchApi<StudentAnalysisData>(`/grades/analysis/${studentId}`);
@@ -194,7 +279,7 @@ export class GradeService {
     if (step) {
       params.append('step', step);
     }
-    return await fetchApi<IntermediateResult[]>(`/api/analysis/intermediate-results?${params.toString()}`);
+    return await fetchApi<IntermediateResult[]>(`/analysis/intermediate-results?${params.toString()}`);
   }
   
   async getModelState(analysisId: string, modelName?: string): Promise<ModelState> {
@@ -203,7 +288,7 @@ export class GradeService {
     if (modelName) {
       params.append('model_name', modelName);
     }
-    return await fetchApi<ModelState>(`/api/analysis/model-state?${params.toString()}`);
+    return await fetchApi<ModelState>(`/analysis/model-state?${params.toString()}`);
   }
   
   async getConclusions(analysisId: string, level?: string): Promise<Conclusion[]> {
@@ -212,7 +297,7 @@ export class GradeService {
     if (level) {
       params.append('level', level);
     }
-    return await fetchApi<Conclusion[]>(`/api/analysis/conclusions?${params.toString()}`);
+    return await fetchApi<Conclusion[]>(`/analysis/conclusions?${params.toString()}`);
   }
   
   async getAnalysisLogs(analysisType?: string, startTime?: string, endTime?: string): Promise<AnalysisLog[]> {
@@ -226,11 +311,11 @@ export class GradeService {
     if (endTime) {
       params.append('end_time', endTime);
     }
-    return await fetchApi<AnalysisLog[]>(`/api/analysis/logs?${params.toString()}`);
+    return await fetchApi<AnalysisLog[]>(`/analysis/logs?${params.toString()}`);
   }
   
   async getProcessVisualization(analysisId: string, processType: string): Promise<ProcessVisualizationData> {
-    return await fetchApi<ProcessVisualizationData>('/api/analysis/process-visualization', {
+    return await fetchApi<ProcessVisualizationData>('/analysis/process-visualization', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -247,7 +332,7 @@ export class GradeService {
     if (limit) {
       params.append('limit', limit.toString());
     }
-    return await fetchApi<AnalysisHistory[]>(`/api/analysis/history?${params.toString()}`);
+    return await fetchApi<AnalysisHistory[]>(`/analysis/history?${params.toString()}`);
   }
   
   // 决策可视化相关API
@@ -260,7 +345,7 @@ export class GradeService {
     if (limit) {
       params.append('limit', limit.toString());
     }
-    return await fetchApi<KnowledgeDiscoveryResponse>(`/api/analysis/knowledge-discoveries?${params.toString()}`);
+    return await fetchApi<KnowledgeDiscoveryResponse>(`/analysis/knowledge-discoveries?${params.toString()}`);
   }
   
   async getFeatureImportance(analysisType?: string): Promise<FeatureImportanceResponse> {
@@ -268,11 +353,11 @@ export class GradeService {
     if (analysisType) {
       params.append('analysis_type', analysisType);
     }
-    return await fetchApi<FeatureImportanceResponse>(`/api/analysis/feature-importance?${params.toString()}`);
+    return await fetchApi<FeatureImportanceResponse>(`/analysis/feature-importance?${params.toString()}`);
   }
   
   async getDecisionTreePath(className?: string, studentId?: string, analysisType?: string): Promise<DecisionTreePathResponse> {
-    return await fetchApi<DecisionTreePathResponse>('/api/analysis/decision-tree-path', {
+    return await fetchApi<DecisionTreePathResponse>('/analysis/decision-tree-path', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -290,7 +375,46 @@ export class GradeService {
     if (analysisType) {
       params.append('analysis_type', analysisType);
     }
-    return await fetchApi<FactorImpactResponse>(`/api/analysis/factor-impact?${params.toString()}`);
+    return await fetchApi<FactorImpactResponse>(`/analysis/factor-impact?${params.toString()}`);
+  }
+  
+  // 新增API方法
+  
+  async executeAnalysis(classIds: string[], analysisType: string = 'class'): Promise<ExecuteAnalysisResponse> {
+    return await fetchApi<ExecuteAnalysisResponse>('/analysis/execute', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ class_ids: classIds, analysis_type: analysisType })
+    });
+  }
+  
+  async getETLStatus(analysisId: string): Promise<ETLStatusResponse> {
+    const params = new URLSearchParams();
+    params.append('analysis_id', analysisId);
+    return await fetchApi<ETLStatusResponse>(`/analysis/etl-status?${params.toString()}`);
+  }
+  
+  async compareClasses(classIds: string[], metrics?: string[]): Promise<ClassCompareResponse> {
+    return await fetchApi<ClassCompareResponse>('/analysis/class-compare', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ class_ids: classIds, metrics })
+    });
+  }
+  
+  async getRealtimeDiscoveries(classId?: string, limit?: number): Promise<RealtimeDiscoveriesResponse> {
+    const params = new URLSearchParams();
+    if (classId) {
+      params.append('class_id', classId);
+    }
+    if (limit) {
+      params.append('limit', limit.toString());
+    }
+    return await fetchApi<RealtimeDiscoveriesResponse>(`/analysis/discoveries/realtime?${params.toString()}`);
   }
 }
 
