@@ -533,18 +533,32 @@ const saveGradeSettings = async () => {
   closeGradeSettingsModal();
 };
 
-// 加载考试列表
-const loadExams = async () => {
+// 加载考试列表（支持按年级过滤）
+const loadExams = async (grade?: string) => {
   try {
     isLoadingExams.value = true;
     console.log('=== 开始加载考试列表 ===');
+    console.log('过滤年级:', grade);
     // 导入 apiService
     const { default: apiService } = await import('@/services/api/apiService');
     // 使用 apiService 调用后端 API
     const examsData = await apiService.course.getExams();
     console.log('=== 考试列表加载成功 ===');
-    console.log('考试数据:', examsData);
-    exams.value = examsData || [];
+    console.log('原始考试数据:', examsData);
+    
+    if (grade && examsData && examsData.length > 0) {
+      // 根据年级过滤考试，只显示考试名称或年级字段包含对应年级关键词的考试
+      const filteredExams = examsData.filter(exam => {
+        const examName = exam.name || '';
+        const examGrade = exam.grade || '';
+        return examName.includes(grade) || examGrade.includes(grade);
+      });
+      console.log(`=== 按年级"${grade}"过滤后 ===`);
+      console.log('过滤后的考试数据:', filteredExams);
+      exams.value = filteredExams;
+    } else {
+      exams.value = examsData || [];
+    }
   } catch (error) {
     console.error('=== 加载考试列表失败 ===');
     console.error('错误信息:', error);
@@ -558,8 +572,8 @@ const manageScores = async (student: Student) => {
   selectedStudent.value = student;
   selectedExam.value = null;
   
-  // 加载考试列表
-  await loadExams();
+  // 加载考试列表（根据学生年级过滤）
+  await loadExams(student.grade);
   
   // 根据年级和班级获取需要的科目
   const requiredSubjects = getRequiredSubjects(student.grade, student.class);

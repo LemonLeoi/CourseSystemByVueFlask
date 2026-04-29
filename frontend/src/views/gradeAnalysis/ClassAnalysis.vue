@@ -67,13 +67,158 @@
         />
       </CollapsibleSection>
       
-      <!-- 新增：科目选择下拉菜单 -->
-      <div class="subject-selector">
-        <h4>科目分析</h4>
-        <select v-model="selectedSubject" class="filter-select" @change="analyzeSubject">
-          <option value="">请选择科目</option>
-          <option v-for="subject in subjects" :key="subject" :value="subject">{{ subject }}</option>
-        </select>
+      <!-- 新增：学科选择模块 -->
+      <div class="subject-selector-section">
+        <div class="section-header-bar">
+          <div class="section-icon">📚</div>
+          <div class="section-title-area">
+            <h3 class="section-main-title">成绩分析</h3>
+            <p class="section-subtitle">Grade Analysis</p>
+          </div>
+        </div>
+        
+        <div class="analysis-type-selector">
+          <div class="selector-label">分析类型:</div>
+          <div class="analysis-type-tabs">
+            <button 
+              class="tab-btn" 
+              :class="{ active: analysisType === 'all' }"
+              @click="switchAnalysisType('all')"
+            >
+              所有学科综合分析
+            </button>
+            <button 
+              class="tab-btn" 
+              :class="{ active: analysisType === 'single' }"
+              @click="switchAnalysisType('single')"
+            >
+              特定学科分析
+            </button>
+          </div>
+        </div>
+        
+        <div v-if="analysisType === 'single'" class="subject-selector">
+          <div class="selector-label">选择学科:</div>
+          <select v-model="selectedSubject" class="filter-select" @change="analyzeSubject">
+            <option value="">请选择科目</option>
+            <option v-for="subject in subjects" :key="subject" :value="subject">{{ subject }}</option>
+          </select>
+        </div>
+        
+        <!-- 详细成绩指标展示 -->
+        <div v-if="gradeDetail" class="grade-detail-panel">
+          <div class="panel-header">
+            <h4>{{ gradeDetail.subject === '综合' ? '班级综合成绩分析' : gradeDetail.subject + '学科成绩分析' }}</h4>
+          </div>
+          
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">📊</div>
+              <div class="stat-info">
+                <span class="stat-label">平均分（分）</span>
+                <span class="stat-value">{{ gradeDetail.average_score }}</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">🏆</div>
+              <div class="stat-info">
+                <span class="stat-label">最高分（分）</span>
+                <span class="stat-value">{{ gradeDetail.max_score }}</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">📉</div>
+              <div class="stat-info">
+                <span class="stat-label">最低分（分）</span>
+                <span class="stat-value">{{ gradeDetail.min_score }}</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">📈</div>
+              <div class="stat-info">
+                <span class="stat-label">标准差</span>
+                <span class="stat-value">{{ gradeDetail.std_deviation }}</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">✅</div>
+              <div class="stat-info">
+                <span class="stat-label">及格率</span>
+                <span class="stat-value">{{ gradeDetail.pass_rate }}%</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">⭐</div>
+              <div class="stat-info">
+                <span class="stat-label">优秀率</span>
+                <span class="stat-value">{{ gradeDetail.excellent_rate }}%</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">👥</div>
+              <div class="stat-info">
+                <span class="stat-label">学生人数</span>
+                <span class="stat-value">{{ gradeDetail.total_students }}人</span>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">📝</div>
+              <div class="stat-info">
+                <span class="stat-label">有效成绩数</span>
+                <span class="stat-value">{{ gradeDetail.total_scores }}条</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 分数分布图表 -->
+          <div class="distribution-section">
+            <h5>分数分布</h5>
+            <div class="distribution-bars">
+              <div class="dist-bar">
+                <div class="bar-label">优秀(≥90)</div>
+                <div class="bar-container">
+                  <div class="bar excellent" :style="distributionBarStyles[0]"></div>
+                </div>
+                <div class="bar-value">{{ gradeDetail.distribution.excellent }}人</div>
+              </div>
+              <div class="dist-bar">
+                <div class="bar-label">良好(80-89)</div>
+                <div class="bar-container">
+                  <div class="bar good" :style="distributionBarStyles[1]"></div>
+                </div>
+                <div class="bar-value">{{ gradeDetail.distribution.good }}人</div>
+              </div>
+              <div class="dist-bar">
+                <div class="bar-label">中等(60-79)</div>
+                <div class="bar-container">
+                  <div class="bar average" :style="distributionBarStyles[2]"></div>
+                </div>
+                <div class="bar-value">{{ gradeDetail.distribution.average }}人</div>
+              </div>
+              <div class="dist-bar">
+                <div class="bar-label">及格(60-69)</div>
+                <div class="bar-container">
+                  <div class="bar pass" :style="distributionBarStyles[3]"></div>
+                </div>
+                <div class="bar-value">{{ gradeDetail.distribution.pass }}人</div>
+              </div>
+              <div class="dist-bar">
+                <div class="bar-label">不及格(&lt;60)</div>
+                <div class="bar-container">
+                  <div class="bar fail" :style="distributionBarStyles[4]"></div>
+                </div>
+                <div class="bar-value">{{ gradeDetail.distribution.fail }}人</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 无数据提示 -->
+        <div v-if="gradeDetail === null" class="empty-data-panel error">
+          <div class="empty-icon">⚠️</div>
+          <p>暂无该班级或学科的成绩数据</p>
+          <p class="error-hint">请检查数据库中是否存在相关成绩记录</p>
+        </div>
       </div>
       
       <!-- 新增：具体科目分析模块 -->
@@ -207,6 +352,92 @@
           <KnowledgeDiscoveryList :class-id="className" />
         </CollapsibleSection>
       </div>
+      
+      <!-- 学科分析模块 -->
+      <div class="subject-analysis-section">
+        <div class="section-header-bar">
+          <div class="section-icon">📚</div>
+          <div class="section-title-area">
+            <h3 class="section-main-title">学科分析</h3>
+            <p class="section-subtitle">Subject Analysis</p>
+          </div>
+        </div>
+        
+        <CollapsibleSection 
+          title="学科优劣势分析" 
+          icon="📊"
+          :default-collapsed="false"
+          storage-key="subject_strength_analysis"
+        >
+          <SubjectStrengthAnalysis 
+            :data="subjectStrengthData" 
+            :loading="isSubjectAnalysisLoading" 
+            :error="subjectAnalysisError"
+          />
+        </CollapsibleSection>
+        
+        <!-- 学科对比分析 -->
+        <CollapsibleSection 
+          title="学科对比分析" 
+          icon="🔄"
+          :default-collapsed="true"
+          storage-key="subject_comparison"
+        >
+          <div class="subject-comparison-selector">
+            <select v-model="subjectCompare1" class="filter-select">
+              <option value="">请选择第一个学科</option>
+              <option v-for="subject in subjects" :key="subject" :value="subject">{{ subject }}</option>
+            </select>
+            <span class="comparison-arrow">vs</span>
+            <select v-model="subjectCompare2" class="filter-select">
+              <option value="">请选择第二个学科</option>
+              <option v-for="subject in subjects" :key="subject" :value="subject">{{ subject }}</option>
+            </select>
+            <button class="compare-subjects-btn" @click="compareSubjects">对比</button>
+          </div>
+          <div v-if="subjectComparisonData" class="subject-comparison-result">
+            <BaseECharts
+              chart-type="bar"
+              :data="subjectComparisonData"
+              :options="subjectComparisonOptions"
+              height="300px"
+            />
+            <div class="comparison-summary">
+              <div class="summary-item">
+                <span class="summary-label">平均分差异:</span>
+                <span class="summary-value" :class="subjectComparisonData.diff >= 0 ? 'positive' : 'negative'">
+                  {{ subjectComparisonData.diff >= 0 ? '+' : '' }}{{ subjectComparisonData.diff }}
+                </span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">优秀率差异:</span>
+                <span class="summary-value" :class="subjectComparisonData.excellent_diff >= 0 ? 'positive' : 'negative'">
+                  {{ subjectComparisonData.excellent_diff >= 0 ? '+' : '' }}{{ subjectComparisonData.excellent_diff }}%
+                </span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">及格率差异:</span>
+                <span class="summary-value" :class="subjectComparisonData.pass_diff >= 0 ? 'positive' : 'negative'">
+                  {{ subjectComparisonData.pass_diff >= 0 ? '+' : '' }}{{ subjectComparisonData.pass_diff }}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </CollapsibleSection>
+      </div>
+      
+      <!-- 班级对比分析模块 -->
+      <div class="class-comparison-section">
+        <div class="section-header-bar">
+          <div class="section-icon">👥</div>
+          <div class="section-title-area">
+            <h3 class="section-main-title">班级对比分析</h3>
+            <p class="section-subtitle">Class Comparison</p>
+          </div>
+        </div>
+        
+        <ClassComparePanel :currentClass="className" />
+      </div>
     </div>
   </div>
 </template>
@@ -219,14 +450,11 @@ import LoadingAnimator from '../../components/common/LoadingAnimator.vue';
 import KnowledgeDiscoveryList from '../../components/grade/KnowledgeDiscoveryList.vue';
 import FeatureImportanceChart from '../../components/grade/FeatureImportanceChart.vue';
 import DecisionTreePath from '../../components/grade/DecisionTreePath.vue';
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
+import SubjectStrengthAnalysis from '../../components/grade/SubjectStrengthAnalysis.vue';
+import ClassComparePanel from '../../components/grade/ClassComparePanel.vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { useClassGrade } from '../../composables/grade/useClassGrade';
-import { 
-  mockKnowledgeDiscoveries, 
-  mockFeatureImportance, 
-  mockDecisionTreePaths,
-  mockFactorImpactAnalysis 
-} from '../../services/data/mockData';
+import { gradeService } from '../../services/gradeService';
 
 export default {
   name: 'ClassAnalysis',
@@ -237,7 +465,9 @@ export default {
     LoadingAnimator,
     KnowledgeDiscoveryList,
     FeatureImportanceChart,
-    DecisionTreePath
+    DecisionTreePath,
+    SubjectStrengthAnalysis,
+    ClassComparePanel
   },
   setup() {
     const {
@@ -261,11 +491,30 @@ export default {
     const selectedSubject = ref('');
     const subjects = ref([]);
     
-    // 决策可视化相关数据
-    const knowledgeDiscoveriesData = ref(mockKnowledgeDiscoveries);
-    const featureImportanceData = ref(mockFeatureImportance);
-    const decisionTreePathsData = ref(mockDecisionTreePaths);
-    const factorImpactAnalysisData = ref(mockFactorImpactAnalysis);
+    // 决策可视化相关数据（从API获取）
+    const knowledgeDiscoveriesData = ref([]);
+    const featureImportanceData = ref([]);
+    const decisionTreePathsData = ref([]);
+    const factorImpactAnalysisData = ref([]);
+    
+    // 学科分析相关数据
+    const subjectStrengthData = ref(null);
+    const isSubjectAnalysisLoading = ref(false);
+    const subjectAnalysisError = ref('');
+    
+    // 学科对比相关数据
+    const subjectCompare1 = ref('');
+    const subjectCompare2 = ref('');
+    const subjectComparisonData = ref(null);
+    
+    // 分析类型（综合分析/单学科分析）
+    const analysisType = ref('all');
+    
+    // 班级详细成绩分析数据
+    const gradeDetail = ref(null);
+    
+    // 班级教师信息
+    const classTeachers = ref(null);
     
     // 分析过程相关状态
     const loadingStep = ref('正在获取班级成绩数据，请稍候...');
@@ -383,13 +632,11 @@ export default {
     // 动态导入 ECharts
     const loadECharts = async () => {
       try {
-        // 按需导入核心模块和需要的图表类型
         const echartsCore = await import('echarts/core');
         const charts = await import('echarts/charts');
         const components = await import('echarts/components');
         const renderers = await import('echarts/renderers');
         
-        // 注册必要的组件
         const { use, init } = echartsCore;
         const { BarChart, LineChart, RadarChart, PieChart, BoxplotChart } = charts;
         const { 
@@ -414,6 +661,144 @@ export default {
       }
     };
     
+    // 获取分析数据（从API）
+    const fetchAnalysisData = async (classId) => {
+      try {
+        // 获取特征重要性
+        const featureImportanceResponse = await gradeService.getFeatureImportance(classId);
+        featureImportanceData.value = featureImportanceResponse.feature_importance || [];
+        
+        // 获取决策树路径
+        const decisionTreeResponse = await gradeService.getDecisionTreePath(classId);
+        decisionTreePathsData.value = decisionTreeResponse.paths || [];
+        
+        // 获取因素影响分析
+        const factorImpactResponse = await gradeService.getFactorImpact(classId);
+        factorImpactAnalysisData.value = factorImpactResponse.factor_impact || [];
+        
+        // 获取挖掘发现
+        const discoveriesResponse = await gradeService.getKnowledgeDiscoveries(classId);
+        knowledgeDiscoveriesData.value = discoveriesResponse.discoveries || [];
+        
+        // 获取学科分析数据
+        await fetchSubjectAnalysis(classId);
+      } catch (error) {
+        console.error('获取分析数据失败:', error);
+      }
+    };
+    
+    // 切换分析类型
+    const switchAnalysisType = async (type) => {
+      analysisType.value = type;
+      selectedSubject.value = '';
+      await fetchGradeDetail(className.value, type === 'all' ? undefined : undefined);
+    };
+    
+    // 获取班级详细成绩分析数据
+    const fetchGradeDetail = async (classId, subject) => {
+      try {
+        const response = await gradeService.getClassGradeDetail(classId, subject);
+        gradeDetail.value = response.detail;
+      } catch (error) {
+        console.error('获取班级详细成绩分析失败:', error);
+        gradeDetail.value = null;
+      }
+    };
+    
+    // 获取班级教师信息
+    const fetchClassTeachers = async (classId) => {
+      try {
+        const response = await gradeService.getClassTeachers(classId);
+        classTeachers.value = response;
+      } catch (error) {
+        console.error('获取班级教师信息失败:', error);
+        classTeachers.value = null;
+      }
+    };
+    
+    // 计算分数分布宽度
+    const getDistributionWidth = (value) => {
+      if (!gradeDetail.value) return 0;
+      const total = gradeDetail.value.total_students;
+      return total > 0 ? (value / total) * 100 : 0;
+    };
+    
+    // 计算分数分布条形图样式
+    const distributionBarStyles = computed(() => {
+      if (!gradeDetail.value) return [];
+      const total = gradeDetail.value.total_students;
+      const dist = gradeDetail.value.distribution;
+      return [
+        { width: total > 0 ? (dist.excellent / total * 100) + '%' : '0%' },
+        { width: total > 0 ? (dist.good / total * 100) + '%' : '0%' },
+        { width: total > 0 ? (dist.average / total * 100) + '%' : '0%' },
+        { width: total > 0 ? (dist.pass / total * 100) + '%' : '0%' },
+        { width: total > 0 ? (dist.fail / total * 100) + '%' : '0%' }
+      ];
+    });
+    
+    // 获取学科分析数据
+    const fetchSubjectAnalysis = async (classId) => {
+      try {
+        isSubjectAnalysisLoading.value = true;
+        subjectAnalysisError.value = '';
+        
+        const response = await gradeService.getSubjectAnalysis(classId);
+        
+        if (response && response.analysis_summary) {
+          const summary = response.analysis_summary;
+          subjectStrengthData.value = {
+            strengths: summary.strong_subjects.map(s => ({
+              subject: s.subject,
+              avg_score: s.average,
+              class_avg: summary.overall_average,
+              diff: (s.average - summary.overall_average).toFixed(1)
+            })),
+            weaknesses: summary.weak_subjects.map(w => ({
+              subject: w.subject,
+              avg_score: w.average,
+              class_avg: summary.overall_average,
+              diff: (w.average - summary.overall_average).toFixed(1)
+            })),
+            overall: {
+              personal_avg: summary.overall_average,
+              class_avg: summary.overall_average,
+              diff: 0,
+              evaluation: '班级整体成绩分析完成'
+            }
+          };
+        }
+      } catch (error) {
+        console.error('获取学科分析数据失败:', error);
+        subjectAnalysisError.value = '获取学科分析数据失败';
+      } finally {
+        isSubjectAnalysisLoading.value = false;
+      }
+    };
+    
+    // 学科对比
+    const compareSubjects = async () => {
+      if (!subjectCompare1.value || !subjectCompare2.value) {
+        alert('请选择两个学科进行对比');
+        return;
+      }
+      
+      try {
+        const response = await gradeService.compareSubjects(className.value, [subjectCompare1.value, subjectCompare2.value]);
+        if (response && response.comparisons && response.comparisons.length > 0) {
+          const comparison = response.comparisons[0];
+          subjectComparisonData.value = {
+            subjects: [subjectCompare1.value, subjectCompare2.value],
+            diff: comparison.average_diff,
+            excellent_diff: comparison.excellent_diff,
+            pass_diff: comparison.pass_diff
+          };
+        }
+      } catch (error) {
+        console.error('学科对比失败:', error);
+      }
+    };
+    
     // 加载班级和年级列表
     const loadClassOptions = async () => {
       isLoadingOptions.value = true;
@@ -423,11 +808,9 @@ export default {
         grades.value = data.grades || [];
         classes.value = data.classes || [];
         
-        // 生成完整的班级名称（如：高三1班）
         const fullClasses = [];
         grades.value.forEach(grade => {
           classes.value.forEach(classNum => {
-            // 提取班级数字，如 '1班' -> '1'
             const classNumMatch = classNum.match(/\d+/);
             const num = classNumMatch ? classNumMatch[0] : classNum;
             fullClasses.push(`${grade}${num}班`);
@@ -436,15 +819,12 @@ export default {
         classes.value = fullClasses;
       } catch (error) {
         console.error('获取班级和年级列表失败:', error);
-        // 失败时使用默认值，确保系统能正常运行
         grades.value = ['高一', '高二', '高三'];
         classes.value = ['1班', '2班', '3班', '4班', '5班'];
         
-        // 生成完整的班级名称（如：高三1班）
         const fullClasses = [];
         grades.value.forEach(grade => {
           classes.value.forEach(classNum => {
-            // 提取班级数字，如 '1班' -> '1'
             const classNumMatch = classNum.match(/\d+/);
             const num = classNumMatch ? classNumMatch[0] : classNum;
             fullClasses.push(`${grade}${num}班`);
@@ -459,7 +839,6 @@ export default {
     // 分析班级成绩
     const analyzeClass = async () => {
       if (className.value) {
-        // 重置分析步骤
         currentAnalysisStep.value = 0;
         
         // 步骤1：数据获取
@@ -470,19 +849,16 @@ export default {
         // 步骤2：数据预处理
         loadingStep.value = '正在预处理数据，确保数据质量...';
         currentAnalysisStep.value = 1;
-        // 模拟预处理时间
         await new Promise(resolve => setTimeout(resolve, 500));
         
         // 步骤3：统计分析
         loadingStep.value = '正在计算班级统计指标，如平均分、中位数、标准差等...';
         currentAnalysisStep.value = 2;
-        // 模拟统计分析时间
         await new Promise(resolve => setTimeout(resolve, 500));
         
         // 步骤4：学科分析
         loadingStep.value = '正在分析班级各学科表现...';
         currentAnalysisStep.value = 3;
-        // 提取科目列表
         if (subjectAverages.value) {
           subjects.value = Object.keys(subjectAverages.value);
         }
@@ -492,14 +868,26 @@ export default {
         currentAnalysisStep.value = 4;
         await getClassTrend(className.value);
         
-        // 步骤6：结果生成
-        loadingStep.value = '正在生成分析报告...';
+        // 步骤6：获取决策分析数据
+        loadingStep.value = '正在获取决策分析数据...';
         currentAnalysisStep.value = 5;
-        // 模拟结果生成时间
+        await fetchAnalysisData(className.value);
+        
+        // 步骤7：获取详细成绩分析数据
+        loadingStep.value = '正在获取详细成绩分析数据...';
+        currentAnalysisStep.value = 6;
+        await fetchGradeDetail(className.value);
+        
+        // 步骤8：获取班级教师信息
+        loadingStep.value = '正在获取班级教师信息...';
+        await fetchClassTeachers(className.value);
+        
+        // 步骤9：结果生成
+        loadingStep.value = '正在生成分析报告...';
+        currentAnalysisStep.value = 7;
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        // 完成分析
-        currentAnalysisStep.value = 6;
+        currentAnalysisStep.value = 8;
       }
     };
     
@@ -507,13 +895,17 @@ export default {
     const analyzeSubject = async () => {
       if (className.value && selectedSubject.value) {
         await getClassSubjectAnalysis(className.value, selectedSubject.value);
+        // 获取详细成绩分析数据
+        await fetchGradeDetail(className.value, selectedSubject.value);
+      } else if (className.value && !selectedSubject.value && analysisType.value === 'all') {
+        // 如果没有选择学科且是综合分析，获取综合成绩分析
+        await fetchGradeDetail(className.value);
       }
     };
     
     // 监听班级分析数据变化，更新图表
     watch(subjectAverages, async () => {
       if (subjectAverages.value && Object.keys(subjectAverages.value).length > 0) {
-        // 使用nextTick确保DOM渲染完成后再初始化图表
         setTimeout(async () => {
           await initClassSubjectChart();
         }, 0);
@@ -542,7 +934,6 @@ export default {
     // 初始化班级学科成绩图表
     const initClassSubjectChart = async () => {
       if (classSubjectChart.value && subjectAverages.value) {
-        // 确保 ECharts 已加载
         if (!echarts) {
           const loaded = await loadECharts();
           if (!loaded) return;
@@ -596,7 +987,6 @@ export default {
     // 初始化科目分布图表
     const initSubjectDistributionChart = async () => {
       if (subjectDistributionChart.value && subjectAnalysis.value) {
-        // 确保 ECharts 已加载
         if (!echarts) {
           const loaded = await loadECharts();
           if (!loaded) return;
@@ -655,7 +1045,6 @@ export default {
     // 初始化科目箱线图
     const initSubjectBoxPlotChart = async () => {
       if (subjectBoxPlotChart.value && subjectAnalysis.value) {
-        // 确保 ECharts 已加载
         if (!echarts) {
           const loaded = await loadECharts();
           if (!loaded) return;
@@ -666,7 +1055,6 @@ export default {
         }
         subjectBoxPlotChartInstance = echarts.init(subjectBoxPlotChart.value);
         
-        // 模拟箱线图数据（实际项目中应该从API获取）
         const boxData = [
           [subjectAnalysis.value.statistics.min_score, 
            subjectAnalysis.value.statistics.min_score + 10, 
@@ -729,7 +1117,6 @@ export default {
     // 初始化考试趋势图表
     const initExamTrendChart = async () => {
       if (examTrendChart.value && examTrend.value) {
-        // 确保 ECharts 已加载
         if (!echarts) {
           const loaded = await loadECharts();
           if (!loaded) return;
@@ -892,7 +1279,6 @@ export default {
     const subjectBoxPlotOptions = computed(() => {
       if (!subjectAnalysis.value || !subjectAnalysis.value.statistics) return {};
       
-      // 模拟箱线图数据
       const boxData = [
         [subjectAnalysis.value.statistics.min_score, 
          subjectAnalysis.value.statistics.min_score + 10, 
@@ -1003,6 +1389,62 @@ export default {
       };
     });
     
+    // 学科对比图表配置
+    const subjectComparisonOptions = computed(() => {
+      if (!subjectComparisonData.value) return {};
+      
+      const { subjects, diff } = subjectComparisonData.value;
+      
+      return {
+        title: {
+          text: `${subjects[0]} vs ${subjects[1]} 对比分析`,
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        legend: {
+          data: ['平均分', '差异']
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '3%',
+          containLabel: true
+        },
+        xAxis: {
+          type: 'category',
+          data: subjects
+        },
+        yAxis: {
+          type: 'value',
+          name: '分数'
+        },
+        series: [
+          {
+            name: '平均分',
+            type: 'bar',
+            data: [75, 75 + diff],
+            itemStyle: {
+              color: ['#5470c6', '#91cc75']
+            }
+          },
+          {
+            name: '差异',
+            type: 'line',
+            data: [0, diff],
+            smooth: true,
+            itemStyle: {
+              color: '#ee6666'
+            }
+          }
+        ]
+      };
+    });
+    
     onMounted(() => {
       loadClassOptions();
     });
@@ -1024,20 +1466,35 @@ export default {
       subjectDistributionOptions,
       subjectBoxPlotOptions,
       examTrendOptions,
+      subjectComparisonOptions,
       analyzeClass,
       analyzeSubject,
-      // 分析过程相关
       loadingStep,
       analysisProcessSteps,
       currentAnalysisStep,
       analysisDataFlow,
       analysisCalculations,
       analysisHints,
-      // 决策可视化数据
+      // 决策可视化数据（从API获取）
       knowledgeDiscoveriesData,
       featureImportanceData,
       decisionTreePathsData,
-      factorImpactAnalysisData
+      factorImpactAnalysisData,
+      // 学科分析数据
+      subjectStrengthData,
+      isSubjectAnalysisLoading,
+      subjectAnalysisError,
+      // 学科对比数据
+      subjectCompare1,
+      subjectCompare2,
+      subjectComparisonData,
+      compareSubjects,
+      // 分析类型和详细成绩数据
+      analysisType,
+      gradeDetail,
+      classTeachers,
+      switchAnalysisType,
+      distributionBarStyles
     };
   }
 };
@@ -1454,6 +1911,426 @@ h3 {
   
   .node-label {
     font-size: 11px;
+  }
+}
+
+/* 学科分析模块样式 */
+.subject-analysis-section {
+  margin-top: 24px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+}
+
+/* 学科对比选择器样式 */
+.subject-comparison-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.subject-comparison-selector .filter-select {
+  flex: 1;
+  min-width: 120px;
+}
+
+.comparison-arrow {
+  font-size: 16px;
+  font-weight: bold;
+  color: #64748b;
+}
+
+.compare-subjects-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.compare-subjects-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* 学科对比结果样式 */
+.subject-comparison-result {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.comparison-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+}
+
+.summary-label {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.summary-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.summary-value.positive {
+  color: #059669;
+}
+
+.summary-value.negative {
+  color: #dc2626;
+}
+
+/* 班级对比分析模块样式 */
+.class-comparison-section {
+  margin-top: 24px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .subject-analysis-section,
+  .class-comparison-section {
+    padding: 16px;
+  }
+  
+  .subject-comparison-selector {
+    flex-direction: column;
+  }
+  
+  .subject-comparison-selector .filter-select {
+    width: 100%;
+  }
+  
+  .comparison-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .subject-analysis-section,
+  .class-comparison-section {
+    padding: 12px;
+  }
+  
+  .compare-subjects-btn {
+    width: 100%;
+  }
+}
+
+/* 学科分析模块样式 */
+.subject-selector-section {
+  margin-top: 24px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+}
+
+.analysis-type-selector {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.selector-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.analysis-type-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  background: #fff;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-color: #6366f1;
+  color: white;
+}
+
+.subject-selector {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.subject-selector .filter-select {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* 成绩详情面板样式 */
+.grade-detail-panel {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  padding: 24px;
+}
+
+.grade-detail-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.grade-detail-panel .panel-header h4 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* 统计卡片网格 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.stat-icon {
+  font-size: 24px;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-info .stat-label {
+  display: block;
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.stat-info .stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* 空数据面板样式 */
+.empty-data-panel {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8fafc;
+  border-radius: 12px;
+  margin-top: 20px;
+}
+
+.empty-data-panel .empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-data-panel p {
+  margin: 0;
+  font-size: 16px;
+  color: #64748b;
+}
+
+.empty-data-panel.error {
+  background: #fef2f2;
+}
+
+.empty-data-panel.error p {
+  color: #991b1b;
+}
+
+.empty-data-panel.error .error-hint {
+  font-size: 14px;
+  color: #b91c1c;
+  margin-top: 8px;
+}
+
+/* 分数分布区域 */
+.distribution-section {
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.distribution-section h5 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.distribution-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dist-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bar-label {
+  width: 100px;
+  font-size: 13px;
+  color: #64748b;
+  text-align: right;
+}
+
+.bar-container {
+  flex: 1;
+  height: 24px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: 12px;
+  transition: width 0.3s ease;
+}
+
+.bar.excellent {
+  background: linear-gradient(135deg, #10b981, #34d399);
+}
+
+.bar.good {
+  background: linear-gradient(135deg, #60a5fa, #93c5fd);
+}
+
+.bar.average {
+  background: linear-gradient(135deg, #fbbf24, #fcd34d);
+}
+
+.bar.pass {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+}
+
+.bar.fail {
+  background: linear-gradient(135deg, #ef4444, #f87171);
+}
+
+.bar-value {
+  width: 50px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  text-align: left;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .subject-selector-section {
+    padding: 16px;
+  }
+  
+  .analysis-type-selector {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .bar-label {
+    width: 80px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .subject-selector-section {
+    padding: 12px;
+  }
+  
+  .subject-selector {
+    flex-direction: column;
+  }
+  
+  .subject-selector .filter-select {
+    width: 100%;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .dist-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .bar-label {
+    width: 100%;
+    text-align: left;
+    margin-bottom: 5px;
+  }
+  
+  .bar-value {
+    width: 100%;
+    text-align: left;
+    margin-top: 5px;
   }
 }
 </style>

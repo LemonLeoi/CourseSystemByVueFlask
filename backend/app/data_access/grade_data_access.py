@@ -340,3 +340,34 @@ class GradeDataAccess:
         except Exception as e:
             db.session.rollback()
             return False, f"删除失败: {str(e)}"
+    
+    @staticmethod
+    def get_class_teachers(class_name, grade):
+        """获取班级的所有任课教师"""
+        from sqlalchemy import distinct
+        teachers = db.session.query(
+            distinct(Teacher.teacher_id),
+            Teacher.name,
+            Teacher.title,
+            Course.course_name
+        ).join(
+            TeacherCourse, Teacher.teacher_id == TeacherCourse.teacher_id
+        ).join(
+            Course, TeacherCourse.course_code == Course.course_code
+        ).filter(
+            TeacherCourse.class_ == class_name,
+            TeacherCourse.grade == grade
+        ).all()
+        
+        result = []
+        for teacher_id, name, title, course_name in teachers:
+            result.append({
+                'teacher_id': teacher_id,
+                'name': name,
+                'title': title,
+                'subject': course_name
+            })
+        
+        return result
+    
+    

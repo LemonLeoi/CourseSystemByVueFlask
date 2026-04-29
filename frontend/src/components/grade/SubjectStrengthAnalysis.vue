@@ -7,13 +7,14 @@
       <div class="strengths-weaknesses">
         <div class="strengths">
           <h4>学科强项</h4>
+          <div class="info-note">以下数据为具体分数</div>
           <ul v-if="data.strengths && data.strengths.length > 0">
             <li v-for="(item, index) in data.strengths" :key="index" class="strength-item">
               <div class="subject-name">{{ item.subject }}</div>
               <div class="score-info">
-                <span class="personal-score">{{ item.avg_score }}</span>
-                <span class="class-score">(班级: {{ item.class_avg }})</span>
-                <span class="diff positive">+{{ item.diff }}</span>
+                <span class="personal-score">{{ item.avg_score }}分</span>
+                <span class="class-score">(班级: {{ item.class_avg }}分)</span>
+                <span class="diff positive">+{{ item.diff }}分</span>
               </div>
               <div class="progress-bar">
                 <div 
@@ -28,13 +29,14 @@
         
         <div class="weaknesses">
           <h4>学科弱项</h4>
+          <div class="info-note">以下数据为具体分数</div>
           <ul v-if="data.weaknesses && data.weaknesses.length > 0">
             <li v-for="(item, index) in data.weaknesses" :key="index" class="weakness-item">
               <div class="subject-name">{{ item.subject }}</div>
               <div class="score-info">
-                <span class="personal-score">{{ item.avg_score }}</span>
-                <span class="class-score">(班级: {{ item.class_avg }})</span>
-                <span class="diff negative">{{ item.diff }}</span>
+                <span class="personal-score">{{ item.avg_score }}分</span>
+                <span class="class-score">(班级: {{ item.class_avg }}分)</span>
+                <span class="diff negative">{{ item.diff }}分</span>
               </div>
               <div class="progress-bar">
                 <div 
@@ -45,30 +47,6 @@
             </li>
           </ul>
           <p v-else class="no-data">暂无明显弱项</p>
-        </div>
-      </div>
-      
-      <div class="overall-evaluation">
-        <h4>整体评估</h4>
-        <div class="evaluation-content">
-          <div class="evaluation-item">
-            <span class="label">个人平均:</span>
-            <span class="value">{{ data.overall.personal_avg }}</span>
-          </div>
-          <div class="evaluation-item">
-            <span class="label">班级平均:</span>
-            <span class="value">{{ data.overall.class_avg }}</span>
-          </div>
-          <div class="evaluation-item">
-            <span class="label">差异:</span>
-            <span class="value" :class="data.overall.diff >= 0 ? 'positive' : 'negative'">
-              {{ data.overall.diff >= 0 ? '+' + data.overall.diff : data.overall.diff }}
-            </span>
-          </div>
-          <div class="evaluation-item">
-            <span class="label">评估:</span>
-            <span class="value evaluation-text">{{ data.overall.evaluation }}</span>
-          </div>
         </div>
       </div>
     </div>
@@ -142,9 +120,18 @@ h3 {
 
 .strengths h4,
 .weaknesses h4 {
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   color: #333;
   text-align: center;
+}
+
+.info-note {
+  font-size: 12px;
+  color: #999;
+  text-align: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
 }
 
 .strength-item,
@@ -214,56 +201,6 @@ h3 {
   text-align: center;
   color: #999;
   padding: 20px;
-}
-
-.overall-evaluation {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-}
-
-.overall-evaluation h4 {
-  margin-bottom: 15px;
-  color: #333;
-  text-align: center;
-}
-
-.evaluation-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-}
-
-.evaluation-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  background: #fff;
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-.evaluation-item .label {
-  color: #666;
-}
-
-.evaluation-item .value {
-  font-weight: bold;
-  color: #333;
-}
-
-.evaluation-item .value.positive {
-  color: #67c23a;
-}
-
-.evaluation-item .value.negative {
-  color: #f56c6c;
-}
-
-.evaluation-text {
-  color: #409eff !important;
 }
 
 @media (max-width: 768px) {

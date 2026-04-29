@@ -68,7 +68,6 @@
         <div class="card-header">
           <span class="card-label">基准班级</span>
           <span class="class-name">{{ comparisonData.base_class.class_name }}</span>
-          <span class="teacher-name">{{ comparisonData.base_class.teacher_name }}</span>
         </div>
         <div class="metrics-grid">
           <div v-for="metric in displayMetrics" :key="metric.key" class="metric-item">
@@ -144,7 +143,22 @@
 import { ref, computed } from 'vue';
 import { gradeService, type ClassCompareResponse } from '../../services/gradeService';
 
-const availableClasses = ['高一1班', '高一2班', '高一3班', '高一4班', '高一5班', '高一6班'];
+interface Props {
+  currentClass?: string;
+}
+
+const props = defineProps<Props>();
+
+// 根据当前班级动态生成同年级班级列表
+const availableClasses = computed(() => {
+  if (!props.currentClass) {
+    return ['高一1班', '高一2班', '高一3班', '高一4班', '高一5班', '高一6班'];
+  }
+  
+  const grade = props.currentClass.slice(0, 2);
+  return [`${grade}1班`, `${grade}2班`, `${grade}3班`, `${grade}4班`, `${grade}5班`, `${grade}6班`];
+});
+
 const selectedClasses = ref<string[]>([]);
 const isLoading = ref(false);
 const error = ref('');
@@ -180,6 +194,17 @@ const executeCompare = async () => {
   
   try {
     const response = await gradeService.compareClasses(selectedClasses.value);
+    
+    // 过滤掉同教师组的对比选项
+    if (response && response.comparisons && response.base_class) {
+      const baseTeacherGroup = response.base_class.teacher_group;
+      response.comparisons = response.comparisons.filter((cmp) => {
+        // 从后端返回的数据中获取对比班级的教师组
+        const compareTeacherGroup = getTeacherGroupFromClassId(cmp.class_id);
+        return baseTeacherGroup !== compareTeacherGroup;
+      });
+    }
+    
     comparisonData.value = response;
   } catch (e) {
     error.value = '班级对比失败，请稍后重试';
@@ -187,6 +212,23 @@ const executeCompare = async () => {
   } finally {
     isLoading.value = false;
   }
+};
+
+const getTeacherGroupFromClassId = (classId: string): string => {
+  // 根据班级编号获取教师组
+  // 规则：1班和2班为相同教师组，3班和4班为一个组，5班和6班为一个组
+  const match = classId.match(/(\d+)/);
+  if (match) {
+    const classNum = parseInt(match[1]);
+    const teacherGroup = (classNum - 1) // 2;
+    const teacherGroups = {
+      0: '教师组1',
+      1: '教师组2', 
+      2: '教师组3'
+    };
+    return teacherGroups[teacherGroup] || '教师组1';
+  }
+  return '教师组1';
 };
 </script>
 
@@ -415,10 +457,12 @@ const executeCompare = async () => {
   color: #374151;
 }
 
-.teacher-name {
+.teacher-group {
   margin-left: auto;
-  font-size: 13px;
-  color: #667eea;
+  font-size: 12px;
+  padding: 3px 8px;
+  background: #e0e7ff;
+  border-radius: 4px;
 }
 
 /* 指标网格 */
@@ -595,10 +639,6 @@ const executeCompare = async () => {
   .card-header {
     flex-wrap: wrap;
     gap: 8px;
-  }
-  
-  .teacher-name {
-    margin-left: 0;
   }
 }
 
