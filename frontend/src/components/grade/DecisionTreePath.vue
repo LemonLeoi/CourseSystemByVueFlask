@@ -62,10 +62,11 @@
       </button>
     </div>
     
-    <!-- 固定尺寸的SVG容器 -->
+    <!-- 响应式SVG容器 -->
     <div 
       ref="containerRef"
       class="tree-container"
+      @resize="handleContainerResize"
     >
       <div 
         class="tree-content"
@@ -80,7 +81,31 @@
           class="tree-svg"
           :viewBox="`0 0 ${svgWidth} ${svgHeight}`"
           preserveAspectRatio="xMidYMid meet"
+          :width="svgWidth"
+          :height="svgHeight"
         >
+          <defs>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+            <linearGradient id="nodeGradientRoot" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#667eea;stop-opacity:1"/>
+              <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1"/>
+            </linearGradient>
+            <linearGradient id="nodeGradientDecision" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1"/>
+              <stop offset="100%" style="stop-color:#d97706;stop-opacity:1"/>
+            </linearGradient>
+            <linearGradient id="nodeGradientLeaf" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#10b981;stop-opacity:1"/>
+              <stop offset="100%" style="stop-color:#059669;stop-opacity:1"/>
+            </linearGradient>
+          </defs>
+          
           <!-- 连接线 -->
           <g class="connections">
             <path
@@ -113,20 +138,22 @@
               class="branch-option"
               :class="{ 'selected': option.value === branchGroup.selectedValue }"
               @click="selectBranchOption(groupIndex, option.value)"
+              @mouseenter="showTooltip($event, option.value)"
+              @mouseleave="hideTooltip"
             >
               <rect
                 :width="option.width"
-                height="24"
-                rx="4"
+                height="26"
+                rx="5"
                 class="branch-option-bg"
               />
               <text
                 :x="option.width / 2"
-                y="16"
+                y="17"
                 class="branch-option-text"
                 text-anchor="middle"
               >
-                {{ option.value }}
+                {{ option.truncatedValue }}
               </text>
             </g>
           </g>
@@ -143,8 +170,8 @@
               'leaf': node.isLeaf,
               'decision': !node.isLeaf
             }"
-            @mouseenter="hoveredNode = index"
-            @mouseleave="hoveredNode = null"
+            @mouseenter="handleNodeHover(index, $event)"
+            @mouseleave="handleNodeLeave"
           >
             <rect
               :width="nodeWidth"
@@ -152,22 +179,37 @@
               :rx="nodeRx"
               :ry="nodeRy"
               class="node-background"
+              :class="{
+                'root-gradient': index === 0,
+                'decision-gradient': !node.isLeaf && index !== 0,
+                'leaf-gradient': node.isLeaf
+              }"
             />
             
             <text
               v-if="node.significance"
               class="node-significance"
-              :x="nodeWidth - 8"
-              :y="12"
+              :x="nodeWidth - 10"
+              :y="14"
               text-anchor="end"
             >
               {{ node.significance }}
             </text>
             
             <text
+              v-if="node.infoGain && !node.isLeaf"
+              class="node-info-gain"
+              :x="10"
+              :y="14"
+              text-anchor="start"
+            >
+              IG: {{ node.infoGain.toFixed(4) }}
+            </text>
+            
+            <text
               class="node-label"
               :x="nodeWidth / 2"
-              :y="nodeHeight / 2 - 8"
+              :y="nodeHeight / 2 - 10"
               text-anchor="middle"
             >
               {{ node.label }}
@@ -177,11 +219,21 @@
               v-if="node.value"
               class="node-value"
               :x="nodeWidth / 2"
-              :y="nodeHeight / 2 + 10"
+              :y="nodeHeight / 2 + 12"
               text-anchor="middle"
             >
               {{ node.value }}
             </text>
+            
+            <rect
+              v-if="index === 0"
+              :width="12"
+              :height="12"
+              :rx="2"
+              class="node-badge root-badge"
+              :x="nodeWidth - 35"
+              y="28"
+            />
           </g>
           
           <!-- 分支标签 -->
@@ -191,19 +243,32 @@
               :y="label.y"
               :width="label.width"
               :height="label.height"
-              rx="4"
+              rx="6"
               class="branch-label-bg"
             />
             <text
               :x="label.x + label.width / 2"
-              :y="label.y + label.height / 2 + 4"
+              :y="label.y + label.height / 2 + 5"
               class="branch-label-text"
               text-anchor="middle"
             >
-              {{ label.text }}
+              {{ label.truncatedText }}
             </text>
           </g>
         </svg>
+      </div>
+      
+      <!-- 工具提示 -->
+      <div 
+        v-if="tooltip.visible" 
+        class="tooltip"
+        :style="{
+          left: tooltip.x + 'px',
+          top: tooltip.y + 'px'
+        }"
+      >
+        <div class="tooltip-title">{{ tooltip.title }}</div>
+        <div class="tooltip-content">{{ tooltip.content }}</div>
       </div>
     </div>
     
@@ -272,7 +337,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, reactive } from 'vue';
 
 export interface TreePathNode {
   label: string;
@@ -312,9 +377,11 @@ const props = defineProps<{
 const selectedPathId = ref<string | null>(null);
 const hoveredNode = ref<number | null>(null);
 const scale = ref(1);
+const containerWidth = ref(800);
+const containerHeight = ref(600);
 
-const MIN_SCALE = 0.5;
-const MAX_SCALE = 2;
+const MIN_SCALE = 0.4;
+const MAX_SCALE = 2.5;
 const SCALE_STEP = 0.1;
 
 const currentPath = computed(() => {
@@ -327,47 +394,70 @@ const currentPath = computed(() => {
   return null;
 });
 
-const nodeWidth = 160;
-const nodeHeight = 55;
+const nodeWidth = computed(() => {
+  const baseWidth = 160;
+  const pathNodes = currentPath.value?.path || props.nodes || [];
+  let maxLabelWidth = baseWidth;
+  
+  pathNodes.forEach(node => {
+    const labelWidth = node.label.length * 10 + 20;
+    const valueWidth = node.value ? node.value.length * 8 + 20 : 0;
+    maxLabelWidth = Math.max(maxLabelWidth, labelWidth, valueWidth);
+  });
+  
+  return Math.min(Math.max(maxLabelWidth, baseWidth), 220);
+});
+
+const nodeHeight = 60;
 const nodeRx = 8;
 const nodeRy = 8;
-const verticalGap = 60;
-const horizontalPadding = 80;
+const verticalGap = computed(() => {
+  return Math.max(70, containerHeight.value / ((currentPath.value?.path?.length || 4) + 1));
+});
+const horizontalPadding = 100;
 const branchOptionBaseWidth = 80;
 const branchOptionCharWidth = 10;
+const branchOptionGap = 12;
 
 const svgWidth = computed(() => {
-  // 计算所有分支选项所需的宽度
   let maxBranchOptionsWidth = 0;
   const pathNodes = currentPath.value?.path || props.nodes || [];
+  
   pathNodes.forEach(node => {
     if (node.branchOptions && node.branchOptions.length > 0) {
       const totalWidth = node.branchOptions.reduce((sum, opt) => {
         const textWidth = Math.max(branchOptionBaseWidth, opt.value.length * branchOptionCharWidth + 20);
-        return sum + textWidth + 10; // 加上间距
+        return sum + textWidth + branchOptionGap;
       }, 0);
       maxBranchOptionsWidth = Math.max(maxBranchOptionsWidth, totalWidth);
     }
   });
   
-  // 确保足够的宽度容纳主节点和分支选项
-  const requiredWidth = nodeWidth + horizontalPadding * 2 + maxBranchOptionsWidth + 50;
-  return Math.max(600, requiredWidth);
+  const requiredWidth = nodeWidth.value + horizontalPadding * 2 + maxBranchOptionsWidth + 60;
+  return Math.max(700, requiredWidth, containerWidth.value - 40);
 });
 
 const svgHeight = computed(() => {
   const pathNodes = currentPath.value?.path || props.nodes || [];
-  if (pathNodes.length === 0) return 180;
-  return (pathNodes.length - 1) * (verticalGap + 10) + nodeHeight + 60;
+  if (pathNodes.length === 0) return 200;
+  const calculatedHeight = (pathNodes.length - 1) * (verticalGap.value + 10) + nodeHeight + 80;
+  return Math.max(300, calculatedHeight);
 });
 
 const nodes = computed(() => {
   const pathNodes = currentPath.value?.path || props.nodes || [];
-  return pathNodes.map((node, index) => ({
-    ...node,
-    x: (svgWidth.value - nodeWidth) / 2,
-    y: index * (verticalGap + 10) + 30
-  }));
+  const centerX = (svgWidth.value - nodeWidth.value) / 2;
+  
+  return pathNodes.map((node, index) => {
+    const nodeY = index * (verticalGap.value + 10) + 40;
+    return {
+      ...node,
+      x: centerX,
+      y: nodeY,
+      centerX: centerX + nodeWidth.value / 2,
+      bottomY: nodeY + nodeHeight
+    };
+  });
 });
 
 const connections = computed(() => {
@@ -377,20 +467,20 @@ const connections = computed(() => {
     const fromNode = pathNodes[i];
     const toNode = pathNodes[i + 1];
     
-    const startX = fromNode.x + nodeWidth / 2;
-    const startY = fromNode.y + nodeHeight;
-    const endX = toNode.x + nodeWidth / 2;
+    const startX = fromNode.centerX;
+    const startY = fromNode.bottomY;
+    const endX = toNode.centerX;
     const endY = toNode.y;
     
     const controlY = (startY + endY) / 2;
-    const path = `M ${startX} ${startY} Q ${startX} ${controlY} ${endX} ${endY - 10}`;
+    const path = `M ${startX} ${startY} Q ${startX} ${controlY} ${endX} ${endY - 15}`;
     
-    const arrowSize = 8;
+    const arrowSize = 9;
     const angle = Math.atan2(endY - startY, endX - startX);
     const arrowPoints = [
-      endX, endY - 5,
-      endX - arrowSize * Math.cos(angle - Math.PI / 6), endY - 5 - arrowSize * Math.sin(angle - Math.PI / 6),
-      endX - arrowSize * Math.cos(angle + Math.PI / 6), endY - 5 - arrowSize * Math.sin(angle + Math.PI / 6)
+      endX, endY - 8,
+      endX - arrowSize * Math.cos(angle - Math.PI / 6), endY - 8 - arrowSize * Math.sin(angle - Math.PI / 6),
+      endX - arrowSize * Math.cos(angle + Math.PI / 6), endY - 8 - arrowSize * Math.sin(angle + Math.PI / 6)
     ].join(' ');
     
     result.push({
@@ -412,10 +502,10 @@ const branchLabels = computed(() => {
     const fromNode = pathNodesWithPos[i];
     const toNode = pathNodesWithPos[i + 1];
     
-    const labelX = toNode.x - 80;
-    const labelY = (fromNode.y + nodeHeight + toNode.y) / 2 - 15;
-    const labelWidth = 160;
-    const labelHeight = 30;
+    const labelWidth = nodeWidth.value * 0.8;
+    const labelHeight = 32;
+    const labelX = toNode.x - labelWidth / 2;
+    const labelY = (fromNode.bottomY + toNode.y) / 2 - labelHeight / 2;
     
     const splitCriteria = pathNodes[i].splitCriteria || '';
     
@@ -424,7 +514,8 @@ const branchLabels = computed(() => {
       y: labelY,
       width: labelWidth,
       height: labelHeight,
-      text: splitCriteria
+      text: splitCriteria,
+      truncatedText: splitCriteria.length > 20 ? splitCriteria.substring(0, 20) + '...' : splitCriteria
     });
   }
   return result;
@@ -436,23 +527,33 @@ const branchOptionsGroups = computed(() => {
   const pathNodesWithPos = nodes.value;
   
   pathNodesWithPos.forEach((node, index) => {
-    if (node.branchOptions && node.branchOptions.length > 1) {
+    if (node.branchOptions && node.branchOptions.length > 0) {
       const nextNode = pathNodesWithPos[index + 1];
       if (nextNode) {
-        const groupY = (node.y + nodeHeight + nextNode.y) / 2 - 12;
-        const groupX = node.x + nodeWidth + 15;
+        const groupY = (node.bottomY + nextNode.y) / 2 - 14;
+        const groupX = node.x + nodeWidth.value + 20;
         
-        // 为每个选项计算合适的宽度
         const optionsWithWidth = node.branchOptions.map(opt => ({
           ...opt,
-          width: Math.max(branchOptionBaseWidth, opt.value.length * branchOptionCharWidth + 20)
+          width: Math.max(branchOptionBaseWidth, opt.value.length * branchOptionCharWidth + 24),
+          truncatedValue: opt.value.length > 8 ? opt.value.substring(0, 8) + '...' : opt.value
         }));
+        
+        const currentPathValue = pathNodes[index]?.value || '';
+        let selectedValue = '';
+        
+        if (node.label.includes('?')) {
+          selectedValue = currentPathValue === '是' ? node.branchOptions[0]?.value : node.branchOptions[1]?.value;
+        } else {
+          selectedValue = currentPathValue;
+        }
         
         result.push({
           x: groupX,
           y: groupY,
           options: optionsWithWidth,
-          selectedValue: pathNodes[index]?.value?.replace('是', '').replace('?', '') || ''
+          selectedValue: selectedValue || '',
+          nodeIndex: index
         });
       }
     }
@@ -515,13 +616,74 @@ const handleZoomSliderChange = (event: Event) => {
   scale.value = parseFloat(target.value) / 100;
 };
 
+const tooltip = reactive({
+  visible: false,
+  x: 0,
+  y: 0,
+  title: '',
+  content: ''
+});
+
+const showTooltip = (event: MouseEvent, text: string) => {
+  tooltip.visible = true;
+  tooltip.x = event.clientX + 15;
+  tooltip.y = event.clientY + 15;
+  tooltip.title = '完整文本';
+  tooltip.content = text;
+};
+
+const hideTooltip = () => {
+  tooltip.visible = false;
+};
+
+const handleNodeHover = (index: number, event: MouseEvent) => {
+  hoveredNode.value = index;
+  const node = nodes.value[index];
+  if (node) {
+    tooltip.visible = true;
+    tooltip.x = event.clientX + 15;
+    tooltip.y = event.clientY + 15;
+    tooltip.title = node.label;
+    
+    const contentParts = [];
+    if (node.value) contentParts.push(`值: ${node.value}`);
+    if (node.significance) contentParts.push(`显著性: ${node.significance}`);
+    if (node.infoGain) contentParts.push(`信息增益: ${node.infoGain.toFixed(4)}`);
+    if (node.splitCriteria) contentParts.push(`分割条件: ${node.splitCriteria}`);
+    
+    tooltip.content = contentParts.join('\n');
+  }
+};
+
+const handleNodeLeave = () => {
+  hoveredNode.value = null;
+  tooltip.visible = false;
+};
+
+const handleContainerResize = () => {
+  if (containerRef.value) {
+    containerWidth.value = containerRef.value.offsetWidth;
+    containerHeight.value = containerRef.value.offsetHeight;
+  }
+};
+
+const containerRef = ref<HTMLElement | null>(null);
+
 onMounted(() => {
   if (props.paths && props.paths.length > 0 && !selectedPathId.value) {
     selectedPathId.value = props.paths[0].id;
   }
+  
+  if (containerRef.value) {
+    containerWidth.value = containerRef.value.offsetWidth;
+    containerHeight.value = containerRef.value.offsetHeight;
+  }
+  
+  window.addEventListener('resize', handleContainerResize);
 });
 
 onUnmounted(() => {
+  window.removeEventListener('resize', handleContainerResize);
 });
 
 watch(() => props.paths, () => {
@@ -780,11 +942,12 @@ const svgRef = ref<SVGSVGElement | null>(null);
   background: #fafafa;
   border-radius: 8px;
   padding: 16px;
-  min-height: 280px;
-  max-height: 500px;
+  min-height: 320px;
+  max-height: 550px;
   overflow: auto;
   border: 2px solid #e5e7eb;
   position: relative;
+  background: linear-gradient(135deg, #fafafa 0%, #f1f5f9 100%);
 }
 
 .tree-container::before {
@@ -802,12 +965,13 @@ const svgRef = ref<SVGSVGElement | null>(null);
 .tree-content {
   display: flex;
   justify-content: center;
-  align-items: center;
-  min-height: 240px;
+  align-items: flex-start;
+  min-height: 280px;
+  padding: 20px 0;
 }
 
 .tree-svg {
-  width: auto;
+  width: 100%;
   height: auto;
   min-width: 100%;
 }
@@ -877,18 +1041,28 @@ const svgRef = ref<SVGSVGElement | null>(null);
 
 .node-background {
   transition: all 0.3s ease;
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-width: 1;
 }
 
-.tree-node.root .node-background {
-  fill: #667eea;
+.node-background.root-gradient {
+  fill: url(#nodeGradientRoot);
 }
 
-.tree-node.decision .node-background {
-  fill: #f59e0b;
+.node-background.decision-gradient {
+  fill: url(#nodeGradientDecision);
 }
 
-.tree-node.leaf .node-background {
-  fill: #10b981;
+.node-background.leaf-gradient {
+  fill: url(#nodeGradientLeaf);
+}
+
+.node-badge {
+  fill: rgba(255, 255, 255, 0.3);
+}
+
+.node-badge.root-badge {
+  fill: rgba(255, 255, 255, 0.4);
 }
 
 .node-label {
@@ -905,9 +1079,17 @@ const svgRef = ref<SVGSVGElement | null>(null);
 }
 
 .node-significance {
-  fill: rgba(255, 255, 255, 0.8);
+  fill: rgba(255, 255, 255, 0.9);
+  font-size: 10px;
+  pointer-events: none;
+  font-weight: 600;
+}
+
+.node-info-gain {
+  fill: rgba(255, 255, 255, 0.9);
   font-size: 9px;
   pointer-events: none;
+  font-weight: 500;
 }
 
 .branch-label-bg {
@@ -1072,15 +1254,43 @@ const svgRef = ref<SVGSVGElement | null>(null);
 }
 
 .legend-node.root {
-  background: #667eea;
+  background: linear-gradient(135deg, #667eea, #764ba2);
 }
 
 .legend-node.decision {
-  background: #f59e0b;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
 }
 
 .legend-node.leaf {
-  background: #10b981;
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.tooltip {
+  position: fixed;
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  pointer-events: none;
+  max-width: 280px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tooltip-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tooltip-content {
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-line;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .empty-state {

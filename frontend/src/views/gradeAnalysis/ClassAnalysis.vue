@@ -204,7 +204,7 @@
           :default-collapsed="false"
           storage-key="knowledge_discovery"
         >
-          <KnowledgeDiscoveryList :classId="className" />
+          <KnowledgeDiscoveryList :class-id="className" />
         </CollapsibleSection>
       </div>
     </div>
