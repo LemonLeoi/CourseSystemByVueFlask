@@ -1,17 +1,17 @@
 <template>
-  <Layout activePath="/exams">
+  <Layout active-path="/exams">
     <BaseManagePage 
       title="考试管理"
-      :showSearch="true"
-      :showFilter="true"
-      :showPagination="true"
-      :showAddButton="true"
-      :searchPlaceholder="'搜索考试名称或考试代码'"
-      :searchButtonText="'搜索'"
-      :addButtonText="'添加考试'"
-      :totalItems="totalExams"
-      :itemsPerPage="itemsPerPage"
-      :currentPage="currentPage"
+      :show-search="true"
+      :show-filter="true"
+      :show-pagination="true"
+      :show-add-button="true"
+      :search-placeholder="'搜索考试名称或考试代码'"
+      :search-button-text="'搜索'"
+      :add-button-text="'添加考试'"
+      :total-items="totalExams"
+      :items-per-page="itemsPerPage"
+      :current-page="currentPage"
       @search="handleSearch"
       @pageChange="handlePageChange"
       @add="openAddModal"
@@ -101,11 +101,11 @@
         <BaseModal 
           :visible="showModal"
           :title="editingExam ? '编辑考试' : '添加考试'"
-          :showFooter="true"
-          :showCancelButton="true"
-          :showSaveButton="true"
-          :cancelButtonText="'取消'"
-          :saveButtonText="'确定修改'"
+          :show-footer="true"
+          :show-cancel-button="true"
+          :show-save-button="true"
+          :cancel-button-text="'取消'"
+          :save-button-text="'确定修改'"
           @close="closeModal"
           @save="saveExam"
         >
@@ -118,7 +118,7 @@
                 v-model="formData.code" 
                 :disabled="!!editingExam"
                 required
-              >
+              />
             </div>
             <div class="form-group">
               <label for="examName">考试名称</label>
@@ -128,7 +128,7 @@
                 v-model="formData.name" 
                 readonly
                 required
-              >
+              />
             </div>
             <div class="form-group">
               <label for="academicYear">学年</label>
@@ -193,7 +193,7 @@
                 id="startDate" 
                 v-model="formData.startDate" 
                 required
-              >
+              />
             </div>
             <div class="form-group">
               <label for="endDate">结束日期</label>
@@ -202,7 +202,7 @@
                 id="endDate" 
                 v-model="formData.endDate" 
                 required
-              >
+              />
             </div>
             <div class="form-group">
               <label for="examStatus">发布状态</label>
@@ -223,9 +223,9 @@
         <BaseModal 
           :visible="showDetailModal"
           title="考试详情"
-          :showFooter="true"
-          :showCancelButton="true"
-          :cancelButtonText="'取消'"
+          :show-footer="true"
+          :show-cancel-button="true"
+          :cancel-button-text="'取消'"
           @close="closeDetailModal"
         >
           <div class="detail-item">

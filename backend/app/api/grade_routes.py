@@ -14,30 +14,10 @@ from app.analysis.grade_analyzer import (
     analyze_student_schedule,
     analyze_class_schedule
 )
-from app.analysis.statistical_analysis import get_overall_statistics, get_subject_statistics, get_exam_type_statistics
 from app.data_access.grade_data_access import GradeDataAccess
 
 # 创建蓝图
 bp = Blueprint('grade', __name__, url_prefix='/api/grades')
-
-# 获取整体成绩分析
-@bp.route('/analysis', methods=['GET'])
-def get_overall_analysis():
-    try:
-        # 获取整体统计数据
-        overall_stats = get_overall_statistics()
-        subject_stats = get_subject_statistics()
-        exam_stats = get_exam_type_statistics()
-        
-        result = {
-            "overall": overall_stats,
-            "subjects": subject_stats,
-            "exam_types": exam_stats
-        }
-        
-        return jsonify(result), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 # 获取个人成绩分析
 @bp.route('/analysis/<student_id>', methods=['GET'])

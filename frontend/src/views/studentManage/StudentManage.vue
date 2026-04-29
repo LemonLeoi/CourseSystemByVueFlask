@@ -1,21 +1,22 @@
 <template>
-  <Layout activePath="/students">
+  <Layout active-path="/students">
     <BaseManagePage 
       title="学生管理"
-      :showSearch="true"
-      :showFilter="true"
-      :showPagination="true"
-      :showAddButton="true"
-      :searchPlaceholder="'搜索学生姓名或学号'"
-      :searchButtonText="'搜索'"
-      :addButtonText="'添加学生'"
-      :totalItems="totalStudents"
-      :itemsPerPage="itemsPerPage"
-      :currentPage="currentPage"
+      :show-search="true"
+      :show-filter="true"
+      :show-pagination="true"
+      :show-add-button="true"
+      :search-placeholder="'搜索学生姓名或学号'"
+      :search-button-text="'搜索'"
+      :add-button-text="'添加学生'"
+      :total-items="totalStudents"
+      :items-per-page="itemsPerPage"
+      :current-page="currentPage"
       @search="handleSearch"
       @pageChange="handlePageChange"
       @add="openAddModal"
     >
+
       <!-- 筛选区域 -->
       <template #filter>
         <select 
@@ -95,11 +96,11 @@
         <BaseModal 
           :visible="showModal"
           :title="editingStudent ? '编辑学生' : '添加学生'"
-          :showFooter="true"
-          :showCancelButton="true"
-          :showSaveButton="true"
-          :cancelButtonText="'取消'"
-          :saveButtonText="'确定修改'"
+          :show-footer="true"
+          :show-cancel-button="true"
+          :show-save-button="true"
+          :cancel-button-text="'取消'"
+          :save-button-text="'确定修改'"
           @close="closeModal"
           @save="saveStudent"
         >
@@ -112,7 +113,7 @@
                 v-model="formData.id" 
                 :disabled="!!editingStudent"
                 required
-              >
+              />
             </div>
             <div class="form-group">
               <label for="studentName">姓名</label>
@@ -121,7 +122,7 @@
                 id="studentName" 
                 v-model="formData.name" 
                 required
-              >
+              />
             </div>
             <div class="form-group">
               <label for="studentGender">性别</label>
@@ -164,11 +165,11 @@
         <BaseModal 
           :visible="showScoreModal"
           :title="selectedStudent ? selectedStudent.name + '的成绩管理' : '成绩管理'"
-          :showFooter="true"
-          :showCancelButton="true"
-          :showSaveButton="true"
-          :cancelButtonText="'取消'"
-          :saveButtonText="'确定修改'"
+          :show-footer="true"
+          :show-cancel-button="true"
+          :show-save-button="true"
+          :cancel-button-text="'取消'"
+          :save-button-text="'确定修改'"
           @close="closeScoreModal"
           @save="saveAllScores"
         >
@@ -208,7 +209,7 @@
                       class="score-input"
                       min="0" 
                       :max="['语文', '数学', '英语'].includes(score.subject) ? 150 : 100"
-                    >
+                    />
                   </td>
                   <td :class="getGradeClass(score.score, score.subject)">{{ getGrade(score.score, score.subject) }}</td>
                   <td>
@@ -230,11 +231,11 @@
         <BaseModal 
           :visible="showGradeSettingsModal"
           :title="'成绩分级设置'"
-          :showFooter="true"
-          :showCancelButton="true"
-          :showSaveButton="true"
-          :cancelButtonText="'取消'"
-          :saveButtonText="'保存设置'"
+          :show-footer="true"
+          :show-cancel-button="true"
+          :show-save-button="true"
+          :cancel-button-text="'取消'"
+          :save-button-text="'保存设置'"
           @close="closeGradeSettingsModal"
           @save="saveGradeSettings"
         >
@@ -251,19 +252,19 @@
               <h4>按具体分数分级</h4>
               <div class="form-group">
                 <label>A级 (>=)</label>
-                <input type="number" v-model.number="gradeSettings.scoreRules.A" class="form-control" min="0" max="100">
+                <input type="number" v-model.number="gradeSettings.scoreRules.A" class="form-control" min="0" max="100"/>
               </div>
               <div class="form-group">
                 <label>B级 (>=)</label>
-                <input type="number" v-model.number="gradeSettings.scoreRules.B" class="form-control" min="0" max="100">
+                <input type="number" v-model.number="gradeSettings.scoreRules.B" class="form-control" min="0" max="100"/>
               </div>
               <div class="form-group">
                 <label>C级 (>=)</label>
-                <input type="number" v-model.number="gradeSettings.scoreRules.C" class="form-control" min="0" max="100">
+                <input type="number" v-model.number="gradeSettings.scoreRules.C" class="form-control" min="0" max="100"/>
               </div>
               <div class="form-group">
                 <label>D级 (>=)</label>
-                <input type="number" v-model.number="gradeSettings.scoreRules.D" class="form-control" min="0" max="100">
+                <input type="number" v-model.number="gradeSettings.scoreRules.D" class="form-control" min="0" max="100"/>
               </div>
             </div>
             
@@ -271,23 +272,23 @@
               <h4>按得分率百分比分级</h4>
               <div class="form-group">
                 <label>A级 (>= %)</label>
-                <input type="number" v-model.number="gradeSettings.percentageRules.A" class="form-control" min="0" max="100">
+                <input type="number" v-model.number="gradeSettings.percentageRules.A" class="form-control" min="0" max="100"/>
               </div>
               <div class="form-group">
                 <label>B级 (>= %)</label>
-                <input type="number" v-model.number="gradeSettings.percentageRules.B" class="form-control" min="0" max="100">
+                <input type="number" v-model.number="gradeSettings.percentageRules.B" class="form-control" min="0" max="100"/>
               </div>
               <div class="form-group">
                 <label>C级 (>= %)</label>
-                <input type="number" v-model.number="gradeSettings.percentageRules.C" class="form-control" min="0" max="100">
+                <input type="number" v-model.number="gradeSettings.percentageRules.C" class="form-control" min="0" max="100"/>
               </div>
               <div class="form-group">
                 <label>D级 (>= %)</label>
-                <input type="number" v-model.number="gradeSettings.percentageRules.D" class="form-control" min="0" max="100">
+                <input type="number" v-model.number="gradeSettings.percentageRules.D" class="form-control" min="0" max="100"/>
               </div>
               <div class="form-group">
                 <label>E级 (>= %)</label>
-                <input type="number" v-model.number="gradeSettings.percentageRules.E" class="form-control" min="0" max="100">
+                <input type="number" v-model.number="gradeSettings.percentageRules.E" class="form-control" min="0" max="100"/>
               </div>
             </div>
           </div>
@@ -298,7 +299,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import Layout from '@/components/layout/Layout.vue';
 import BaseManagePage from '@/components/business/BaseManagePage.vue';
 import BaseModal from '@/components/business/BaseModal.vue';

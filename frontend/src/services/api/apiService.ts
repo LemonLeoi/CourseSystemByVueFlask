@@ -2,14 +2,66 @@
 const API_BASE_URL = 'http://localhost:5000/api';
 
 // 导入类型定义
-import type { Student, Teacher, Course, Score, ApiResponse } from '@/types';
+import type { Student, Teacher, Course, Score, ApiResponse, Exam } from '@/types';
 // 导入通知服务
 import notificationService from '@/services/ui/uiNotificationService';
+// 导入离线存储服务
+import { offlineStorageService } from '@/services/data/offlineStorageService';
+
+// 教学进度类型
+export interface TeachingProgress {
+  id?: number;
+  course_id: number;
+  subject: string;
+  grade: string;
+  progress: number;
+  note?: string;
+  updated_at?: string;
+}
+
+// 成绩分级设置类型
+export interface GradeSettings {
+  id?: number;
+  excellent_min: number;
+  good_min: number;
+  average_min: number;
+  pass_min: number;
+  updated_at?: string;
+}
+
+// 登录响应类型
+export interface LoginResponse {
+  token: string;
+  user: {
+    id: string;
+    username: string;
+    name: string;
+    role: string;
+  };
+}
+
+// 健康检查响应类型
+export interface HealthResponse {
+  status: string;
+  timestamp: string;
+}
+
+// 检查网络状态
+function isOnline(): boolean {
+  return navigator.onLine;
+}
+
+// 生成缓存键
+function generateCacheKey(endpoint: string, options: RequestInit = {}): string {
+  const method = options.method || 'GET';
+  const body = options.body ? JSON.stringify(options.body) : '';
+  return `${method}:${endpoint}:${body}`;
+}
+
 
 // 通用请求函数
 export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
-  console.log('API请求:', url);
   
   const defaultOptions: RequestInit = {
     headers: {
@@ -26,37 +78,80 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     },
   };
   
+  // 生成缓存键
+  const cacheKey = generateCacheKey(endpoint, mergedOptions);
+  
   try {
-    const response = await fetch(url, mergedOptions);
-    console.log('API响应状态:', response.status);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.message || errorData.error || `API请求失败: ${response.status}`;
-      notificationService.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-    
-    const data = await response.json();
-    console.log('API响应数据:', data);
-    
-    // 对于成功的POST、PUT、DELETE请求显示成功消息
-    if (['POST', 'PUT', 'DELETE'].includes(mergedOptions.method || '')) {
-      notificationService.success(data.message || '操作成功');
-    }
-    
-    // 检查响应数据是否包含data字段
-    if (data && typeof data === 'object' && 'data' in data) {
-      // 返回响应数据中的data字段
-      return data.data;
+    if (isOnline()) {
+      // 网络在线时，从服务器获取数据
+      const response = await fetch(url, mergedOptions);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || errorData.error || `API请求失败: ${response.status}`;
+        notificationService.error(errorMessage);
+        
+        // 尝试从本地缓存获取数据
+        const cachedData = await offlineStorageService.getAppState(cacheKey);
+        if (cachedData) {
+          return cachedData as T;
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      const data = await response.json();
+      
+      // 对于成功的POST、PUT、DELETE请求显示成功消息
+      if (['POST', 'PUT', 'DELETE'].includes(mergedOptions.method || '')) {
+        notificationService.success(data.message || '操作成功');
+      }
+      
+      // 检查响应数据是否包含data字段
+      const result = data && typeof data === 'object' && 'data' in data ? data.data : data;
+      
+      // 缓存响应数据
+      await offlineStorageService.storeAppState(cacheKey, result);
+      
+      return result as T;
     } else {
-      // 直接返回响应数据
-      return data;
+      // 网络离线时，从本地存储获取数据
+      
+      // 对于GET请求，尝试从本地缓存获取数据
+      if (mergedOptions.method === 'GET' || !mergedOptions.method) {
+        const cachedData = await offlineStorageService.getAppState(cacheKey);
+        if (cachedData) {
+          return cachedData as T;
+        }
+      }
+      
+      // 对于非GET请求，添加到同步队列
+      if (['POST', 'PUT', 'DELETE'].includes(mergedOptions.method || '')) {
+        await offlineStorageService.addToSyncQueue({
+          url: endpoint,
+          method: mergedOptions.method || 'POST',
+          data: mergedOptions.body ? JSON.parse(mergedOptions.body as string) : {}
+        });
+        
+        // 模拟成功响应
+        notificationService.success('操作已添加到同步队列，网络恢复后将自动同步');
+        return {} as T;
+      }
+      
+      throw new Error('网络离线且无缓存数据');
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : '网络请求失败，请稍后重试';
     notificationService.error(errorMessage);
-    console.error('API请求错误:', error);
+    
+    // 尝试从本地缓存获取数据
+    if (mergedOptions.method === 'GET' || !mergedOptions.method) {
+      const cachedData = await offlineStorageService.getAppState(cacheKey);
+      if (cachedData) {
+        return cachedData as T;
+      }
+    }
+    
     throw error;
   }
 }
@@ -72,11 +167,7 @@ export const studentApi = {
       if (class_name) query.append('class', class_name);
       endpoint += `?${query.toString()}`;
     }
-    console.log('=== 调用getStudents API ===');
-    console.log('API端点:', endpoint);
     const students = await fetchApi<Student[]>(endpoint);
-    console.log('=== getStudents API响应 ===');
-    console.log('学生数据:', students);
     return students;
   },
   
@@ -146,16 +237,16 @@ export const studentApi = {
 // 认证相关API
 export const authApi = {
   // 登录
-  login: async (username: string, password: string): Promise<any> => {
-    return await fetchApi('/auth/login', {
+  login: async (username: string, password: string): Promise<LoginResponse> => {
+    return await fetchApi<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
   },
   
   // 登出
-  logout: async (): Promise<any> => {
-    return await fetchApi('/auth/logout', {
+  logout: async (): Promise<ApiResponse<boolean>> => {
+    return await fetchApi<ApiResponse<boolean>>('/auth/logout', {
       method: 'POST',
     });
   },
@@ -311,16 +402,16 @@ export const courseApi = {
   },
   
   // 获取教学进度
-  getTeachingProgress: async (course_id?: number): Promise<any[]> => {
+  getTeachingProgress: async (course_id?: number): Promise<TeachingProgress[]> => {
     let endpoint = '/courses/teaching-progress';
     if (course_id) {
       endpoint += `?course_id=${course_id}`;
     }
-    return await fetchApi<any[]>(endpoint);
+    return await fetchApi<TeachingProgress[]>(endpoint);
   },
   
   // 根据科目和年级获取教学进度
-  getTeachingProgressBySubjectGrade: async (subject: string, grade: string): Promise<any[]> => {
+  getTeachingProgressBySubjectGrade: async (subject: string, grade: string): Promise<TeachingProgress[]> => {
     let endpoint = '/courses/teaching-progress';
     const query = new URLSearchParams();
     if (subject) query.append('subject', subject);
@@ -328,20 +419,20 @@ export const courseApi = {
     if (query.toString()) {
       endpoint += `?${query.toString()}`;
     }
-    return await fetchApi<any[]>(endpoint);
+    return await fetchApi<TeachingProgress[]>(endpoint);
   },
   
   // 添加教学进度
-  addTeachingProgress: async (progress: any): Promise<any> => {
-    return await fetchApi<any>('/courses/teaching-progress', {
+  addTeachingProgress: async (progress: Omit<TeachingProgress, 'id'>): Promise<TeachingProgress> => {
+    return await fetchApi<TeachingProgress>('/courses/teaching-progress', {
       method: 'POST',
       body: JSON.stringify(progress),
     });
   },
   
   // 更新教学进度
-  updateTeachingProgress: async (progressId: number, progress: any): Promise<any> => {
-    return await fetchApi<any>(`/courses/teaching-progress/${progressId}`, {
+  updateTeachingProgress: async (progressId: number, progress: Partial<TeachingProgress>): Promise<TeachingProgress> => {
+    return await fetchApi<TeachingProgress>(`/courses/teaching-progress/${progressId}`, {
       method: 'PUT',
       body: JSON.stringify(progress),
     });
@@ -361,40 +452,32 @@ export const courseApi = {
   
   // 获取科目列表
   getSubjects: async (): Promise<string[]> => {
-    console.log('调用getSubjects方法');
-    try {
-      const subjects = await fetchApi<string[]>('/courses/subjects');
-      console.log('getSubjects返回:', subjects);
-      return subjects;
-    } catch (error) {
-      console.error('getSubjects错误:', error);
-      throw error;
-    }
+    return await fetchApi<string[]>('/courses/subjects');
   },
   
   // 获取考试列表
-  getExams: async (): Promise<any[]> => {
-    return await fetchApi<any[]>('/exams/');
+  getExams: async (): Promise<Exam[]> => {
+    return await fetchApi<Exam[]>('/exams/');
   },
 };
 
 // 健康检查
 export const healthApi = {
-  check: async (): Promise<any> => {
-    return await fetchApi('/health');
+  check: async (): Promise<HealthResponse> => {
+    return await fetchApi<HealthResponse>('/health');
   },
 };
 
 // 成绩分级设置相关API
 export const gradeSettingsApi = {
   // 获取成绩分级设置
-  getGradeSettings: async (): Promise<any> => {
-    return await fetchApi<any>('/grade-settings/');
+  getGradeSettings: async (): Promise<GradeSettings> => {
+    return await fetchApi<GradeSettings>('/grade-settings/');
   },
   
   // 更新成绩分级设置
-  updateGradeSettings: async (settings: any): Promise<any> => {
-    return await fetchApi<any>('/grade-settings/', {
+  updateGradeSettings: async (settings: Partial<GradeSettings>): Promise<GradeSettings> => {
+    return await fetchApi<GradeSettings>('/grade-settings/', {
       method: 'PUT',
       body: JSON.stringify(settings),
     });

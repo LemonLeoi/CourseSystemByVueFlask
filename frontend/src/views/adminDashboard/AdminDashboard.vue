@@ -1,5 +1,5 @@
 <template>
-  <Layout activePath="/admin">
+  <Layout active-path="/admin">
     <div class="admin-dashboard">
       <!-- 页面标题和搜索栏 -->
       <div class="header-section">
@@ -12,7 +12,7 @@
             class="search-input"
             @keyup.enter="handleSearch"
             :disabled="isLoading"
-          >
+          />
           <button @click="handleSearch" class="search-button" :disabled="isLoading">
             <i class="fa-solid fa-magnifying-glass"></i> 搜索
           </button>
@@ -187,9 +187,9 @@ const fetchNotifications = async () => {
     notificationService.error('获取通知数据失败');
     // 使用默认通知数据
     allNotices.value = [
-      { date: "2025-05-01", content: "测验：历史科目安排" },
-      { date: "2025-04-30", content: "测试：地理科目安排" },
-      { date: "2025-04-29", content: "考试：历史科目安排" }
+      { date: '2025-05-01', content: '测验：历史科目安排' },
+      { date: '2025-04-30', content: '测试：地理科目安排' },
+      { date: '2025-04-29', content: '考试：历史科目安排' }
     ];
   } finally {
     isLoading.value = false;
@@ -217,8 +217,8 @@ const fetchTodos = async () => {
     notificationService.error('获取待办事项失败');
     // 使用默认待办事项
     todos.value = [
-      "审批学生请假申请",
-      "审核教师课程申请"
+      '审批学生请假申请',
+      '审核教师课程申请'
     ];
   } finally {
     isLoading.value = false;

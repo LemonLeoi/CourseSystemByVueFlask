@@ -1,16 +1,142 @@
 import { defineStore } from 'pinia';
 
+// 学科平均成绩类型
+export interface SubjectAverage {
+  [subject: string]: number;
+}
+
+// 学科强弱项类型
+export interface SubjectStrength {
+  subject: string;
+  avg_score: number;
+  class_avg: number;
+  diff: number;
+}
+
+// 整体评估类型
+export interface OverallEvaluation {
+  personal_avg: number;
+  class_avg: number;
+  diff: number;
+  evaluation: string;
+}
+
+// 学生信息类型
+export interface StudentInfo {
+  name: string;
+  gender: string;
+  class: string;
+  grade: string;
+}
+
+// 班级信息类型
+export interface ClassInfo {
+  class_name: string;
+  grade: string;
+  student_count: number;
+}
+
+// 年级信息类型
+export interface GradeInfo {
+  grade: string;
+  class_count: number;
+}
+
+// 考试趋势类型
+export interface ExamTrend {
+  exam_names: string[];
+  averages: number[];
+}
+
+// 个人分析数据类型
+export interface StudentAnalysisData {
+  student_info: StudentInfo;
+  exam_grades?: {
+    [exam_name: string]: {
+      academic_year: string;
+      semester: string;
+      grade: string;
+      exam_type: string;
+      subjects: { [subject: string]: [number, string] };
+    };
+  };
+  subject_averages: SubjectAverage;
+  class_averages: SubjectAverage;
+  strengths: SubjectStrength[];
+  weaknesses: SubjectStrength[];
+  overall: OverallEvaluation;
+  explanations?: {
+    analysis_steps?: string;
+    statistical_methods?: { [key: string]: string };
+    result_interpretation?: { [key: string]: string };
+  };
+  error?: string;
+}
+
+// 班级分析数据类型
+export interface ClassAnalysisData {
+  class_info: ClassInfo;
+  subject_averages: SubjectAverage;
+  overall_average: number;
+  student_count: number;
+  explanations?: {
+    analysis_steps?: string;
+    statistical_methods?: { [key: string]: string };
+    result_interpretation?: { [key: string]: string };
+  };
+  error?: string;
+}
+
+// 年级分析数据类型
+export interface GradeAnalysisData {
+  grade_info: GradeInfo;
+  class_averages: { [class_name: string]: SubjectAverage };
+  subject_averages: SubjectAverage;
+  overall_average: number;
+  explanations?: {
+    analysis_steps?: string;
+    statistical_methods?: { [key: string]: string };
+    result_interpretation?: { [key: string]: string };
+  };
+  error?: string;
+}
+
+// 整体分析数据类型
+export interface OverallAnalysisData {
+  total_count: number;
+  average: number;
+  std_deviation: number;
+  median: number;
+  min_score: number;
+  max_score: number;
+  distribution: {
+    excellent: number;
+    good: number;
+    average: number;
+    pass: number;
+    fail: number;
+  };
+  distribution_percent: {
+    excellent: number;
+    good: number;
+    average: number;
+    pass: number;
+    fail: number;
+  };
+  error?: string;
+}
+
 // 成绩分析存储
 export const useGradeStore = defineStore('grades', {
   state: () => ({
     // 整体分析数据
-    overallAnalysis: null as any,
+    overallAnalysis: null as OverallAnalysisData | null,
     // 个人分析数据
-    studentAnalysis: null as any,
+    studentAnalysis: null as StudentAnalysisData | null,
     // 班级分析数据
-    classAnalysis: null as any,
+    classAnalysis: null as ClassAnalysisData | null,
     // 年级分析数据
-    gradeAnalysis: null as any,
+    gradeAnalysis: null as GradeAnalysisData | null,
     // 加载状态
     loading: false,
     // 错误状态
@@ -45,22 +171,22 @@ export const useGradeStore = defineStore('grades', {
 
   actions: {
     // 设置整体分析数据
-    setOverallAnalysis(data: any) {
+    setOverallAnalysis(data: OverallAnalysisData) {
       this.overallAnalysis = data;
     },
     
     // 设置个人分析数据
-    setStudentAnalysis(data: any) {
+    setStudentAnalysis(data: StudentAnalysisData) {
       this.studentAnalysis = data;
     },
     
     // 设置班级分析数据
-    setClassAnalysis(data: any) {
+    setClassAnalysis(data: ClassAnalysisData) {
       this.classAnalysis = data;
     },
     
     // 设置年级分析数据
-    setGradeAnalysis(data: any) {
+    setGradeAnalysis(data: GradeAnalysisData) {
       this.gradeAnalysis = data;
     },
     

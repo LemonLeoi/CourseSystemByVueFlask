@@ -84,7 +84,7 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed } from 'vue';
 
 export default {
   name: 'AnalysisProcessVisualizer',
@@ -107,49 +107,49 @@ export default {
     }
   },
   setup(props) {
-    const showDetails = ref({})
-    const hoveredNode = ref(null)
+    const showDetails = ref({});
+    const hoveredNode = ref(null);
     
     const toggleDetails = (index) => {
-      showDetails.value[index] = !showDetails.value[index]
-    }
+      showDetails.value[index] = !showDetails.value[index];
+    };
     
     // 计算节点样式
     const getNodeStyle = (index, totalNodes) => {
-      const diagramWidth = 500
-      const nodeWidth = 120
-      const nodeHeight = 80
-      const padding = 20
+      const diagramWidth = 500;
+      const nodeWidth = 120;
+      const nodeHeight = 80;
+      const padding = 20;
       
       // 水平排列节点
-      const x = padding + (diagramWidth - 2 * padding - nodeWidth) / (totalNodes - 1) * index
-      const y = 60
+      const x = padding + (diagramWidth - 2 * padding - nodeWidth) / (totalNodes - 1) * index;
+      const y = 60;
       
       return {
         left: x + 'px',
         top: y + 'px',
         width: nodeWidth + 'px',
         height: nodeHeight + 'px'
-      }
-    }
+      };
+    };
     
     // 计算连接样式
     const getConnectionStyle = (connection, nodes) => {
-      const nodeWidth = 120
-      const nodeHeight = 80
-      const padding = 20
-      const diagramWidth = 500
+      const nodeWidth = 120;
+      const nodeHeight = 80;
+      const padding = 20;
+      const diagramWidth = 500;
       
-      const fromIndex = connection.from || 0
-      const toIndex = connection.to || 1
+      const fromIndex = connection.from || 0;
+      const toIndex = connection.to || 1;
       
-      const fromX = padding + (diagramWidth - 2 * padding - nodeWidth) / (nodes.length - 1) * fromIndex + nodeWidth
-      const fromY = 60 + nodeHeight / 2
-      const toX = padding + (diagramWidth - 2 * padding - nodeWidth) / (nodes.length - 1) * toIndex
-      const toY = 60 + nodeHeight / 2
+      const fromX = padding + (diagramWidth - 2 * padding - nodeWidth) / (nodes.length - 1) * fromIndex + nodeWidth;
+      const fromY = 60 + nodeHeight / 2;
+      const toX = padding + (diagramWidth - 2 * padding - nodeWidth) / (nodes.length - 1) * toIndex;
+      const toY = 60 + nodeHeight / 2;
       
-      const distance = toX - fromX
-      const angle = Math.atan2(toY - fromY, distance) * 180 / Math.PI
+      const distance = toX - fromX;
+      const angle = Math.atan2(toY - fromY, distance) * 180 / Math.PI;
       
       return {
         left: fromX + 'px',
@@ -157,8 +157,8 @@ export default {
         width: distance + 'px',
         height: '2px',
         transform: `rotate(${angle}deg)`
-      }
-    }
+      };
+    };
     
     return {
       showDetails,
@@ -166,9 +166,9 @@ export default {
       hoveredNode,
       getNodeStyle,
       getConnectionStyle
-    }
+    };
   }
-}
+};
 </script>
 
 <style scoped>

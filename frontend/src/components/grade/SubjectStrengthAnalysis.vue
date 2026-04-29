@@ -76,7 +76,7 @@
 </template>
 
 <script>
-import { defineProps } from 'vue'
+import { defineProps } from 'vue';
 
 export default {
   name: 'SubjectStrengthAnalysis',
@@ -94,7 +94,7 @@ export default {
       default: ''
     }
   }
-}
+};
 </script>
 
 <style scoped>

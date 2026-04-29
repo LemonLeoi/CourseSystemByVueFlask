@@ -1,21 +1,14 @@
 <template>
-  <Layout activePath="/grade-analysis">
+  <Layout active-path="/grade-analysis">
     <BaseManagePage 
       title="成绩分析系统"
-      :totalItems="0"
-      :showAddButton="false"
+      :total-items="0"
+      :show-add-button="false"
     >
       <template #data>
         <div class="grade-analysis">
           <!-- 路由导航选项卡 -->
           <div class="analysis-tabs">
-            <router-link 
-              to="/grade-analysis/overall" 
-              class="analysis-tab"
-              active-class="active"
-            >
-              整体分析
-            </router-link>
             <router-link 
               to="/grade-analysis/individual" 
               class="analysis-tab"

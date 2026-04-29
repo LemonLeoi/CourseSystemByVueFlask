@@ -1,17 +1,17 @@
 <template>
-  <Layout activePath="/teachers">
+  <Layout active-path="/teachers">
     <BaseManagePage 
       title="教师管理"
-      :showSearch="true"
-      :showFilter="true"
-      :showPagination="true"
-      :showAddButton="true"
-      :searchPlaceholder="'搜索教师姓名或工号'"
-      :searchButtonText="'搜索'"
-      :addButtonText="'添加教师'"
-      :totalItems="totalTeachers"
-      :itemsPerPage="itemsPerPage"
-      :currentPage="currentPage"
+      :show-search="true"
+      :show-filter="true"
+      :show-pagination="true"
+      :show-add-button="true"
+      :search-placeholder="'搜索教师姓名或工号'"
+      :search-button-text="'搜索'"
+      :add-button-text="'添加教师'"
+      :total-items="totalTeachers"
+      :items-per-page="itemsPerPage"
+      :current-page="currentPage"
       @search="handleSearch"
       @pageChange="handlePageChange"
       @add="openAddModal"
@@ -90,11 +90,11 @@
         <BaseModal 
           :visible="showModal"
           :title="editingTeacher ? '编辑教师' : '添加教师'"
-          :showFooter="true"
-          :showCancelButton="true"
-          :showSaveButton="true"
-          :cancelButtonText="'取消'"
-          :saveButtonText="'确定修改'"
+          :show-footer="true"
+          :show-cancel-button="true"
+          :show-save-button="true"
+          :cancel-button-text="'取消'"
+          :save-button-text="'确定修改'"
           @close="closeModal"
           @save="saveTeacher"
         >
@@ -107,7 +107,7 @@
                 v-model="formData.teacher_id" 
                 :disabled="!!editingTeacher"
                 required
-              >
+              />
             </div>
             <div class="form-group">
               <label for="teacherName">姓名</label>
@@ -116,7 +116,7 @@
                 id="teacherName" 
                 v-model="formData.name" 
                 required
-              >
+              />
             </div>
             <div class="form-group">
               <label for="teacherGender">性别</label>
@@ -139,7 +139,7 @@
                 min="20" 
                 max="65" 
                 required
-              >
+              />
             </div>
             <div class="form-group">
               <label for="teacherSubject">学科</label>
@@ -170,7 +170,7 @@
                 id="teacherContact" 
                 v-model="formData.contact" 
                 required
-              >
+              />
             </div>
             <div class="form-group">
               <label for="teacherTeachingClasses">任教班级</label>

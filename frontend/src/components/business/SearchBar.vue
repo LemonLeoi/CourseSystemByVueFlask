@@ -6,7 +6,7 @@
       v-model="searchValue" 
       class="search-input"
       @keyup.enter="handleSearch"
-    >
+    />
     <button @click="handleSearch" class="btn btn-primary">
       <i class="fa-solid fa-magnifying-glass"></i> {{ buttonText }}
     </button>

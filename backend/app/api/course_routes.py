@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from app import db
-from app.models import Course, StudentCourse, TeacherCourse, TeachingProgress, Classroom
+from app.models import Course, StudentCourse, TeacherCourse, TeachingProgress, Classroom, CourseSchedule
+from app.services.sync_service import SyncService
+from app.services.conflict_service import ConflictService
 
 # 创建Blueprint
 bp = Blueprint('courses', __name__)
@@ -694,3 +696,157 @@ def delete_teaching_progress(id):
     db.session.commit()
     
     return jsonify({'message': '进度删除成功'})
+
+@bp.route('/schedules', methods=['GET'])
+def get_course_schedules():
+    """获取所有课程安排"""
+    class_id = request.args.get('class_id', '')
+    teacher_id = request.args.get('teacher_id', '')
+    
+    query = CourseSchedule.query
+    
+    if class_id:
+        query = query.filter(CourseSchedule.class_id == class_id)
+    if teacher_id:
+        query = query.filter(CourseSchedule.teacher_id == teacher_id)
+    
+    schedules = query.all()
+    return jsonify([schedule.to_dict() for schedule in schedules])
+
+@bp.route('/schedules/<int:id>', methods=['GET'])
+def get_course_schedule(id):
+    """获取单个课程安排"""
+    schedule = CourseSchedule.query.get(id)
+    if not schedule:
+        return jsonify({'error': '课程安排不存在'}), 404
+    return jsonify(schedule.to_dict())
+
+@bp.route('/schedules', methods=['POST'])
+def create_course_schedule():
+    """创建新课程安排"""
+    data = request.get_json()
+    
+    required_fields = ['class_id', 'course_code', 'day_of_week', 'period_start', 'period_end']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'error': f'缺少必填字段: {field}'}), 400
+    
+    schedule = CourseSchedule(
+        class_id=data['class_id'],
+        course_code=data['course_code'],
+        teacher_id=data.get('teacher_id'),
+        day_of_week=data['day_of_week'],
+        period_start=data['period_start'],
+        period_end=data['period_end'],
+        classroom_id=data.get('classroom_id')
+    )
+    
+    validation = ConflictService.validate_schedule(schedule)
+    if not validation['valid']:
+        return jsonify({'error': '冲突检测失败', 'details': validation['errors']}), 400
+    
+    db.session.add(schedule)
+    db.session.commit()
+    
+    SyncService.sync_to_teacher_courses(schedule)
+    SyncService.sync_to_student_courses(schedule)
+    
+    return jsonify(schedule.to_dict()), 201
+
+@bp.route('/schedules/<int:id>', methods=['PUT'])
+def update_course_schedule(id):
+    """更新课程安排"""
+    schedule = CourseSchedule.query.get(id)
+    if not schedule:
+        return jsonify({'error': '课程安排不存在'}), 404
+    
+    data = request.get_json()
+    
+    if 'class_id' in data:
+        schedule.class_id = data['class_id']
+    if 'course_code' in data:
+        schedule.course_code = data['course_code']
+    if 'teacher_id' in data:
+        schedule.teacher_id = data['teacher_id']
+    if 'day_of_week' in data:
+        schedule.day_of_week = data['day_of_week']
+    if 'period_start' in data:
+        schedule.period_start = data['period_start']
+    if 'period_end' in data:
+        schedule.period_end = data['period_end']
+    if 'classroom_id' in data:
+        schedule.classroom_id = data['classroom_id']
+    
+    validation = ConflictService.validate_schedule(schedule, id)
+    if not validation['valid']:
+        return jsonify({'error': '冲突检测失败', 'details': validation['errors']}), 400
+    
+    db.session.commit()
+    
+    SyncService.sync_to_teacher_courses(schedule)
+    SyncService.sync_to_student_courses(schedule)
+    
+    return jsonify(schedule.to_dict())
+
+@bp.route('/schedules/<int:id>', methods=['DELETE'])
+def delete_course_schedule(id):
+    """删除课程安排"""
+    schedule = CourseSchedule.query.get(id)
+    if not schedule:
+        return jsonify({'error': '课程安排不存在'}), 404
+    
+    teacher_id = schedule.teacher_id
+    class_id = schedule.class_id
+    day_of_week = schedule.day_of_week
+    period_start = schedule.period_start
+    period_end = schedule.period_end
+    
+    db.session.delete(schedule)
+    
+    grade = class_id[:2]
+    class_ = class_id[2:] if len(class_id) > 2 else ''
+    
+    TeacherCourse.query.filter(
+        TeacherCourse.teacher_id == teacher_id,
+        TeacherCourse.grade == grade,
+        TeacherCourse.class_ == class_,
+        TeacherCourse.day_of_week == day_of_week,
+        TeacherCourse.period >= period_start,
+        TeacherCourse.period <= period_end
+    ).delete()
+    
+    StudentCourse.query.filter(
+        StudentCourse.grade == grade,
+        StudentCourse.class_ == class_,
+        StudentCourse.day_of_week == day_of_week,
+        StudentCourse.period >= period_start,
+        StudentCourse.period <= period_end
+    ).delete()
+    
+    db.session.commit()
+    
+    return jsonify({'message': '课程安排删除成功'})
+
+@bp.route('/schedules/validate', methods=['POST'])
+def validate_course_schedule():
+    """验证课程安排（不保存）"""
+    data = request.get_json()
+    
+    schedule = CourseSchedule(
+        class_id=data.get('class_id', ''),
+        course_code=data.get('course_code', ''),
+        teacher_id=data.get('teacher_id'),
+        day_of_week=data.get('day_of_week', 0),
+        period_start=data.get('period_start', 0),
+        period_end=data.get('period_end', 0),
+        classroom_id=data.get('classroom_id')
+    )
+    
+    validation = ConflictService.validate_schedule(schedule)
+    return jsonify(validation)
+
+@bp.route('/schedules/sync-all', methods=['POST'])
+def sync_all_schedules():
+    """同步所有课程安排到关联表"""
+    count = SyncService.sync_all()
+    return jsonify({'message': f'成功同步{count}条课程安排'})

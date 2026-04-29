@@ -31,8 +31,8 @@
 </template>
 
 <script>
-import BaseECharts from '../common/BaseECharts.vue'
-import { computed, defineProps } from 'vue'
+import BaseECharts from '../common/BaseECharts.vue';
+import { computed, defineProps } from 'vue';
 
 export default {
   name: 'GradeComparison',
@@ -60,47 +60,47 @@ export default {
   setup(props) {
     // 计算参与数量
     const participantCount = computed(() => {
-      if (!props.data) return 0
+      if (!props.data) return 0;
       if (props.comparisonType === '班级' && props.data.class_averages) {
-        return Object.keys(props.data.class_averages).length
+        return Object.keys(props.data.class_averages).length;
       }
       if (props.comparisonType === '学科' && props.data.subject_averages) {
-        return Object.keys(props.data.subject_averages).length
+        return Object.keys(props.data.subject_averages).length;
       }
-      return 0
-    })
+      return 0;
+    });
     
     // 计算平均水平
     const averageLevel = computed(() => {
-      if (!props.data) return 'N/A'
+      if (!props.data) return 'N/A';
       if (props.data.overall_average) {
-        return props.data.overall_average.toFixed(2)
+        return props.data.overall_average.toFixed(2);
       }
-      return 'N/A'
-    })
+      return 'N/A';
+    });
     
     // 计算图表类型
     const chartType = computed(() => {
-      return props.comparisonType === '班级' ? 'radar' : 'bar'
-    })
+      return props.comparisonType === '班级' ? 'radar' : 'bar';
+    });
     
     // 计算图表数据
     const chartData = computed(() => {
-      return props.data || {}
-    })
+      return props.data || {};
+    });
     
     // 计算图表配置
     const chartOptions = computed(() => {
-      if (!props.data) return {}
+      if (!props.data) return {};
       
       if (props.comparisonType === '班级' && props.data.class_averages) {
-        const classes = Object.keys(props.data.class_averages)
-        const subjects = props.data.subject_averages ? Object.keys(props.data.subject_averages) : []
+        const classes = Object.keys(props.data.class_averages);
+        const subjects = props.data.subject_averages ? Object.keys(props.data.subject_averages) : [];
         
         const series = subjects.map((subject) => {
           const data = classes.map(className => {
-            return props.data.class_averages[className][subject] || 0
-          })
+            return props.data.class_averages[className][subject] || 0;
+          });
           
           return {
             name: subject,
@@ -109,8 +109,8 @@ export default {
               value: data,
               name: subject
             }]
-          }
-        })
+          };
+        });
         
         return {
           title: {
@@ -129,10 +129,10 @@ export default {
             }))
           },
           series: series
-        }
+        };
       } else if (props.comparisonType === '学科' && props.data.subject_averages) {
-        const subjects = Object.keys(props.data.subject_averages)
-        const averages = subjects.map(subject => props.data.subject_averages[subject])
+        const subjects = Object.keys(props.data.subject_averages);
+        const averages = subjects.map(subject => props.data.subject_averages[subject]);
         
         return {
           title: {
@@ -165,11 +165,11 @@ export default {
               color: '#5470c6'
             }
           }]
-        }
+        };
       }
       
-      return {}
-    })
+      return {};
+    });
     
     return {
       participantCount,
@@ -178,9 +178,9 @@ export default {
       chartData,
       chartOptions,
       comparisonType: props.comparisonType
-    }
+    };
   }
-}
+};
 </script>
 
 <style scoped>

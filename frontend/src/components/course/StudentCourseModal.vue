@@ -2,26 +2,26 @@
   <BaseModal 
     :visible="visible"
     :title="editingCourse ? '编辑课程' : '添加课程'"
-    :showFooter="true"
-    :showCancelButton="true"
-    :showSaveButton="true"
-    :cancelButtonText="'取消'"
-    :saveButtonText="'确定修改'"
+    :show-footer="true"
+    :show-cancel-button="true"
+    :show-save-button="true"
+    :cancel-button-text="'取消'"
+    :save-button-text="'确定修改'"
     @close="$emit('close')"
     @save="$emit('save', formData)"
   >
     <form @submit.prevent="$emit('save', formData)">
       <div class="form-group">
         <label>星期:</label>
-        <input type="text" v-model="formData.day" disabled>
+        <input type="text" v-model="formData.day" disabled/>
       </div>
       <div class="form-group">
         <label>节次:</label>
-        <input type="text" :value="getSlotName(formData.timeSlot)" disabled>
+        <input type="text" :value="getSlotName(formData.timeSlot)" disabled/>
       </div>
       <div class="form-group">
         <label>课程名称:</label>
-        <input type="text" v-model="formData.name" required>
+        <input type="text" v-model="formData.name" required/>
       </div>
       <div class="form-group">
         <label>任课教师:</label>
@@ -72,7 +72,7 @@
       </div>
       <div class="form-group">
         <label>教室:</label>
-        <input type="text" v-model="formData.classroom" required>
+        <input type="text" v-model="formData.classroom" required/>
       </div>
     </form>
   </BaseModal>

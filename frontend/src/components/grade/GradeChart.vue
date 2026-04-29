@@ -13,8 +13,8 @@
 </template>
 
 <script>
-import BaseECharts from '../common/BaseECharts.vue'
-import { computed, defineProps } from 'vue'
+import BaseECharts from '../common/BaseECharts.vue';
+import { computed, defineProps } from 'vue';
 
 export default {
   name: 'GradeChart',
@@ -55,7 +55,7 @@ export default {
           }
         },
         ...props.options
-      }
+      };
       
       switch (props.chartType) {
         case 'bar':
@@ -73,7 +73,7 @@ export default {
               name: props.data.yAxisName || '分数'
             },
             series: props.data.series || []
-          }
+          };
         case 'line':
           return {
             ...baseOption,
@@ -86,7 +86,7 @@ export default {
               name: props.data.yAxisName || '分数'
             },
             series: props.data.series || []
-          }
+          };
         case 'pie':
           return {
             ...baseOption,
@@ -100,7 +100,7 @@ export default {
               data: props.data.labels || []
             },
             series: props.data.series || []
-          }
+          };
         case 'radar':
           return {
             ...baseOption,
@@ -108,17 +108,17 @@ export default {
               indicator: props.data.indicator || []
             },
             series: props.data.series || []
-          }
+          };
         default:
-          return baseOption
+          return baseOption;
       }
-    })
+    });
     
     return {
       chartOptions
-    }
+    };
   }
-}
+};
 </script>
 
 <style scoped>

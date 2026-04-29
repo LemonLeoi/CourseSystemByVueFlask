@@ -1,6 +1,7 @@
 <template>
   <ErrorBoundary>
     <div class="app">
+      <OfflineNotification />
       <router-view />
       <Notification />
     </div>
@@ -11,6 +12,7 @@
 // App.vue - 主应用组件
 import Notification from '@/components/common/Notification.vue';
 import ErrorBoundary from '@/components/common/ErrorBoundary.vue';
+import OfflineNotification from '@/components/common/OfflineNotification.vue';
 </script>
 
 <style>

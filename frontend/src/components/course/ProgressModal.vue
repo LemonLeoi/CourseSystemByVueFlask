@@ -2,22 +2,22 @@
   <BaseModal 
     :visible="visible"
     :title="editingProgress ? '编辑进度' : '添加进度'"
-    :showFooter="true"
-    :showCancelButton="true"
-    :showSaveButton="true"
-    :cancelButtonText="'取消'"
-    :saveButtonText="'确定修改'"
+    :show-footer="true"
+    :show-cancel-button="true"
+    :show-save-button="true"
+    :cancel-button-text="'取消'"
+    :save-button-text="'确定修改'"
     @close="$emit('close')"
     @save="$emit('save', formData)"
   >
     <form @submit.prevent="$emit('save', formData)">
       <div class="form-group">
         <label>章节:</label>
-        <input type="text" v-model="formData.chapter" required>
+        <input type="text" v-model="formData.chapter" required/>
       </div>
       <div class="form-group">
         <label>课时:</label>
-        <input type="number" v-model.number="formData.hours" min="1" required>
+        <input type="number" v-model.number="formData.hours" min="1" required/>
       </div>
       <div class="form-group">
         <label>教学目标:</label>
@@ -26,7 +26,7 @@
       <div class="form-group">
         <label>进度:</label>
         <div class="progress-input">
-          <input type="range" v-model.number="formData.progress" min="0" max="100" step="1">
+          <input type="range" v-model.number="formData.progress" min="0" max="100" step="1"/>
           <span>{{ formData.progress }}%</span>
         </div>
       </div>

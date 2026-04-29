@@ -17,10 +17,7 @@ const routes = [
     path: '/',
     redirect: '/login'
   },
-  {
-    path: '/overall',
-    redirect: '/grade-analysis/overall'
-  },
+
   {
     path: '/login',
     name: 'Login',
@@ -61,10 +58,7 @@ const routes = [
         name: 'TeachingProgress',
         component: ProgressPage
       },
-      {
-        path: 'overall',
-        redirect: '/grade-analysis/overall'
-      }
+
     ]
   },
   {
@@ -83,11 +77,6 @@ const routes = [
     component: GradeAnalysis,
     children: [
       {
-        path: 'overall',
-        name: 'OverallAnalysis',
-        component: () => import('../views/gradeAnalysis/OverallAnalysis.vue')
-      },
-      {
         path: 'individual',
         name: 'IndividualAnalysis',
         component: () => import('../views/gradeAnalysis/IndividualAnalysis.vue')
@@ -105,7 +94,7 @@ const routes = [
       {
         path: '',
         name: 'GradeAnalysisRedirect',
-        redirect: 'overall'
+        redirect: 'individual'
       }
     ]
   }

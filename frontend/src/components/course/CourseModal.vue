@@ -2,11 +2,11 @@
   <BaseModal 
     :visible="visible"
     :title="editingCourse ? '编辑课程' : '添加课程'"
-    :showFooter="true"
-    :showCancelButton="true"
-    :showSaveButton="true"
-    :cancelButtonText="'取消'"
-    :saveButtonText="'确定修改'"
+    :show-footer="true"
+    :show-cancel-button="true"
+    :show-save-button="true"
+    :cancel-button-text="'取消'"
+    :save-button-text="'确定修改'"
     @close="$emit('close')"
     @save="$emit('save', formData)"
   >

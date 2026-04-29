@@ -2,21 +2,21 @@
   <div class="student-course-page">
     <BaseManagePage 
       title="学生课程表"
-      :totalItems="0"
-      :showAddButton="true"
-      :addButtonText="'添加课程'"
+      :total-items="0"
+      :show-add-button="true"
+      :add-button-text="'添加课程'"
       @add="openAddStudentCourseModal"
     >
       <template #data>
         <StudentCourseTab 
-          v-model:studentGrade="studentGrade"
-          v-model:studentClass="studentClass"
-          :studentCourses="studentCourses"
-          :timeSlots="timeSlots"
-          :weekDays="weekDays"
-          :isLoading="isLoading"
+          v-model:student-grade="studentGrade"
+          v-model:student-class="studentClass"
+          :student-courses="studentCourses"
+          :time-slots="timeSlots"
+          :week-days="weekDays"
+          :is-loading="isLoading"
           :error="error"
-          :successMessage="successMessage"
+          :success-message="successMessage"
           @refreshStudentSchedule="refreshStudentSchedule"
           @openAddStudentCourseModal="openAddStudentCourseModal"
           @openEditStudentCourseModal="openEditStudentCourseModal"
@@ -28,8 +28,8 @@
     <!-- 学生课程模态框 -->
     <CourseModal
       :visible="showStudentCourseModal"
-      :editingCourse="editingStudentCourse"
-      :formData="studentCourseForm"
+      :editing-course="editingStudentCourse"
+      :form-data="studentCourseForm"
       :type="'student'"
       :teachers="filteredTeachers"
       :courses="courses"

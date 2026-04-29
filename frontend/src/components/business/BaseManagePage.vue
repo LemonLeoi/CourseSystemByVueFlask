@@ -8,7 +8,7 @@
       <SearchBar 
         v-if="showSearch"
         :placeholder="searchPlaceholder" 
-        :buttonText="searchButtonText"
+        :button-text="searchButtonText"
         @search="handleSearch"
       />
       <div class="filter-section" v-if="showFilter">
@@ -24,21 +24,22 @@
     <!-- 分页控件 -->
     <Pagination 
       v-if="showPagination"
-      :currentPage="currentPage || 1"
-      :totalItems="totalItems"
-      :itemsPerPage="itemsPerPage || 10"
+      :current-page="currentPage || 1"
+      :total-items="totalItems"
+      :items-per-page="itemsPerPage || 10"
       @pageChange="handlePageChange"
     />
     
     <!-- 添加按钮 -->
-    <button 
-      v-if="showAddButton"
-      class="btn btn-success btn-lg"
-      style="position: fixed; bottom: 30px; right: 30px; z-index: var(--z-index-fixed); box-shadow: var(--shadow-md);"
-      @click="handleAdd"
-    >
-      <i class="fa-solid fa-plus"></i> {{ addButtonText }}
-    </button>
+    <div v-if="showAddButton" class="action-button-container">
+      <button
+        class="btn btn-success btn-lg"
+        style="position: fixed; bottom: 30px; right: 30px; z-index: var(--z-index-fixed); box-shadow: var(--shadow-md);"
+        @click="handleAdd"
+      >
+        <i class="fa-solid fa-plus"></i> {{ addButtonText }}
+      </button>
+    </div>
     
     <!-- 模态框 -->
     <slot name="modal"></slot>
@@ -46,7 +47,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import SearchBar from './SearchBar.vue';
 import Pagination from './Pagination.vue';
 
@@ -114,8 +114,6 @@ h1 {
 .data-container {
   margin-bottom: 20px;
 }
-
-
 
 @media (max-width: 768px) {
   .search-filter-section {

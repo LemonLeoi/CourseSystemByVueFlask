@@ -2,22 +2,22 @@
   <div class="teacher-course-page">
     <BaseManagePage 
       title="教师课程表"
-      :totalItems="0"
-      :showAddButton="true"
-      :addButtonText="'添加课程'"
+      :total-items="0"
+      :show-add-button="true"
+      :add-button-text="'添加课程'"
       @add="openAddTeacherCourseModal"
     >
       <template #data>
         <TeacherCourseTab 
-          v-model:selectedTeacher="selectedTeacher"
+          v-model:selected-teacher="selectedTeacher"
           :teachers="teachers"
-          :teacherCourses="teacherCourses"
-          :teacherStats="teacherStats"
-          :timeSlots="timeSlots"
-          :weekDays="weekDays"
-          :isLoading="isLoading"
+          :teacher-courses="teacherCourses"
+          :teacher-stats="teacherStats"
+          :time-slots="timeSlots"
+          :week-days="weekDays"
+          :is-loading="isLoading"
           :error="error"
-          :successMessage="successMessage"
+          :success-message="successMessage"
           @refreshTeacherSchedule="refreshTeacherSchedule"
           @openAddTeacherCourseModal="openAddTeacherCourseModal"
           @openEditTeacherCourseModal="openEditTeacherCourseModal"
@@ -29,8 +29,8 @@
     <!-- 教师课程模态框 -->
     <CourseModal
       :visible="showTeacherCourseModal"
-      :editingCourse="editingTeacherCourse"
-      :formData="teacherCourseForm"
+      :editing-course="editingTeacherCourse"
+      :form-data="teacherCourseForm"
       :type="'teacher'"
       :classrooms="classrooms"
       :courses="courses"

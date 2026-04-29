@@ -6,28 +6,33 @@
       重新加载
     </button>
   </div>
-  <slot v-else></slot>
+  <div v-else-if="isReady" class="error-boundary-content">
+    <slot></slot>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onErrorCaptured } from 'vue';
+import { ref, onMounted } from 'vue';
 
 const hasError = ref(false);
 const errorMessage = ref('');
+const isReady = ref(false);
 
 const resetError = () => {
   hasError.value = false;
   errorMessage.value = '';
-  // 触发组件重新渲染
   window.location.reload();
 };
 
-onErrorCaptured((error, instance, info) => {
-  hasError.value = true;
-  errorMessage.value = error instanceof Error ? error.message : '未知错误';
-  console.error('组件错误:', error);
-  console.error('错误信息:', info);
-  return false; // 阻止错误继续向上传播
+onMounted(() => {
+  isReady.value = true;
+});
+
+window.addEventListener('error', (event) => {
+  if (event.error && event.error.message) {
+    hasError.value = true;
+    errorMessage.value = event.error.message;
+  }
 });
 </script>
 
@@ -49,6 +54,11 @@ onErrorCaptured((error, instance, info) => {
 .error-boundary p {
   margin-bottom: 24px;
   color: #606266;
+}
+
+.error-boundary-content {
+  width: 100%;
+  height: 100%;
 }
 
 .btn {

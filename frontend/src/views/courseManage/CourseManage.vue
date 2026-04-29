@@ -1,9 +1,9 @@
 <template>
-  <Layout activePath="/courses">
+  <Layout active-path="/courses">
     <BaseManagePage 
       title="课程管理"
-      :totalItems="0"
-      :showAddButton="false"
+      :total-items="0"
+      :show-add-button="false"
     >
       <template #data>
         <div class="course-manage">

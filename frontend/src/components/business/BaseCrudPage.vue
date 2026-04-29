@@ -8,7 +8,7 @@
       <SearchBar 
         v-if="showSearch"
         :placeholder="searchPlaceholder" 
-        :buttonText="searchButtonText"
+        :button-text="searchButtonText"
         @search="handleSearch"
       />
       <div class="filter-section" v-if="showFilter">
@@ -43,9 +43,9 @@
     <!-- 分页控件 -->
     <Pagination 
       v-if="showPagination && !loading && !error && !emptyState"
-      :currentPage="currentPage"
-      :totalItems="totalItems"
-      :itemsPerPage="itemsPerPage || 10"
+      :current-page="currentPage"
+      :total-items="totalItems"
+      :items-per-page="itemsPerPage || 10"
       @pageChange="handlePageChange"
     />
     

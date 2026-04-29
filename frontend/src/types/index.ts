@@ -82,7 +82,7 @@ export interface PaginationParams {
 // 搜索参数类型
 export interface SearchParams {
   query: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>;
 }
 
 // 响应数据类型

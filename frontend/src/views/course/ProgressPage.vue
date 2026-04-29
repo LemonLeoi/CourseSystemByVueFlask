@@ -2,19 +2,19 @@
   <div class="progress-page">
     <BaseManagePage 
       title="教学进度管理"
-      :totalItems="0"
-      :showAddButton="true"
-      :addButtonText="'添加进度'"
+      :total-items="0"
+      :show-add-button="true"
+      :add-button-text="'添加进度'"
       @add="openAddProgressModal"
     >
       <template #data>
         <ProgressTab 
-          v-model:progressSubject="progressSubject"
-          v-model:progressGrade="progressGrade"
-          :teachingProgress="teachingProgress"
-          :isLoading="isLoading"
+          v-model:progress-subject="progressSubject"
+          v-model:progress-grade="progressGrade"
+          :teaching-progress="teachingProgress"
+          :is-loading="isLoading"
           :error="error"
-          :successMessage="successMessage"
+          :success-message="successMessage"
           @refreshProgress="refreshProgress"
           @openAddProgressModal="openAddProgressModal"
           @editProgress="editProgress"
@@ -27,8 +27,8 @@
     <!-- 教学进度模态框 -->
     <ProgressModal
       :visible="showProgressModal"
-      :editingProgress="editingProgress"
-      :formData="progressForm"
+      :editing-progress="editingProgress"
+      :form-data="progressForm"
       @close="closeProgressModal"
       @save="saveProgress"
     />

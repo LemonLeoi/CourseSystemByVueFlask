@@ -10,7 +10,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, watch, defineProps, defineEmits } from 'vue'
+import { ref, onMounted, onUnmounted, watch, defineProps, defineEmits } from 'vue';
 
 export default {
   name: 'BaseECharts',
@@ -50,136 +50,136 @@ export default {
   },
   emits: ['chart-init', 'chart-update', 'chart-error'],
   setup(props, { emit }) {
-    const chartRef = ref(null)
-    let chartInstance = null
-    let echarts = null
+    const chartRef = ref(null);
+    let chartInstance = null;
+    let echarts = null;
     
     // 动态导入 ECharts
     const loadECharts = async () => {
       try {
         // 按需导入核心模块和需要的图表类型
-        const echartsCore = await import('echarts/core')
-        const charts = await import('echarts/charts')
-        const components = await import('echarts/components')
-        const renderers = await import('echarts/renderers')
+        const echartsCore = await import('echarts/core');
+        const charts = await import('echarts/charts');
+        const components = await import('echarts/components');
+        const renderers = await import('echarts/renderers');
         
         // 注册必要的组件
-        const { use, init } = echartsCore
-        const { BarChart, LineChart, RadarChart, PieChart, BoxplotChart, HeatmapChart, ScatterChart } = charts
+        const { use, init } = echartsCore;
+        const { BarChart, LineChart, RadarChart, PieChart, BoxplotChart, HeatmapChart, ScatterChart } = charts;
         const { 
           TitleComponent, TooltipComponent, LegendComponent, 
           GridComponent, DataZoomComponent, ToolboxComponent,
           VisualMapComponent
-        } = components
-        const { CanvasRenderer } = renderers
+        } = components;
+        const { CanvasRenderer } = renderers;
         
         use([
           BarChart, LineChart, RadarChart, PieChart, BoxplotChart, HeatmapChart, ScatterChart,
           TitleComponent, TooltipComponent, LegendComponent, GridComponent,
           DataZoomComponent, ToolboxComponent, VisualMapComponent,
           CanvasRenderer
-        ])
+        ]);
         
-        echarts = echartsCore
-        return true
+        echarts = echartsCore;
+        return true;
       } catch (err) {
-        emit('chart-error', err.message)
-        return false
+        emit('chart-error', err.message);
+        return false;
       }
-    }
+    };
     
     // 初始化图表
     const initChart = async () => {
-      if (!chartRef.value) return
+      if (!chartRef.value) return;
       
       // 确保 ECharts 已加载
       if (!echarts) {
-        const loaded = await loadECharts()
-        if (!loaded) return
+        const loaded = await loadECharts();
+        if (!loaded) return;
       }
       
       // 销毁现有实例
       if (chartInstance) {
-        chartInstance.dispose()
+        chartInstance.dispose();
       }
       
       try {
-        chartInstance = echarts.init(chartRef.value)
-        updateChart()
-        emit('chart-init', chartInstance)
+        chartInstance = echarts.init(chartRef.value);
+        updateChart();
+        emit('chart-init', chartInstance);
       } catch (err) {
-        emit('chart-error', err.message)
+        emit('chart-error', err.message);
       }
-    }
+    };
     
     // 更新图表
     const updateChart = () => {
-      if (!chartInstance || !props.data) return
+      if (!chartInstance || !props.data) return;
       
       try {
-        const option = getChartOption()
-        chartInstance.setOption(option)
-        emit('chart-update', chartInstance)
+        const option = getChartOption();
+        chartInstance.setOption(option);
+        emit('chart-update', chartInstance);
       } catch (err) {
-        emit('chart-error', err.message)
+        emit('chart-error', err.message);
       }
-    }
+    };
     
     // 获取图表配置
     const getChartOption = () => {
       const baseOption = {
         ...props.options
-      }
+      };
       
-      return baseOption
-    }
+      return baseOption;
+    };
     
     // 窗口大小变化时调整图表
     const handleResize = () => {
-      chartInstance?.resize()
-    }
+      chartInstance?.resize();
+    };
     
     // 监听容器大小变化
-    let resizeObserver = null
+    let resizeObserver = null;
     
     const observeResize = () => {
       if (chartRef.value) {
         resizeObserver = new ResizeObserver(() => {
-          handleResize()
-        })
-        resizeObserver.observe(chartRef.value)
+          handleResize();
+        });
+        resizeObserver.observe(chartRef.value);
       }
-    }
+    };
     
     // 监听数据变化
     watch(() => props.data, () => {
-      updateChart()
-    }, { deep: true })
+      updateChart();
+    }, { deep: true });
     
     // 监听选项变化
     watch(() => props.options, () => {
-      updateChart()
-    }, { deep: true })
+      updateChart();
+    }, { deep: true });
     
     onMounted(() => {
-      initChart()
-      window.addEventListener('resize', handleResize)
-      observeResize()
-    })
+      initChart();
+      window.addEventListener('resize', handleResize);
+      observeResize();
+    });
     
     onUnmounted(() => {
-      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('resize', handleResize);
       if (resizeObserver) {
-        resizeObserver.disconnect()
+        resizeObserver.disconnect();
       }
-      chartInstance?.dispose()
-    })
+      chartInstance?.dispose();
+    });
     
     return {
       chartRef
-    }
+    };
   }
-}
+};
 </script>
 
 <style scoped>

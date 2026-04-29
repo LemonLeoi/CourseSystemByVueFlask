@@ -8,19 +8,25 @@
       >
         <option value="">请选择学生</option>
         <option v-for="student in students" :key="student.id" :value="student.id">
-            {{ student.name }} ({{ student.id }})
-          </option>
+          {{ student.name }} ({{ student.id }})
+        </option>
       </select>
       <button @click="loadStudents">加载学生</button>
       <button @click="analyzeStudent">分析</button>
     </div>
     
-    <div v-if="loading" class="loading">
-      <div class="loading-spinner"></div>
-      <p>正在分析 {{ selectedStudentName }} 的成绩...</p>
-      <p class="loading-detail">{{ loadingStep }}</p>
-    </div>
-    <div v-else-if="studentError" class="error">{{ studentError }}</div>
+    <LoadingAnimator
+      v-if="loading || studentError"
+      :status="studentError ? 'error' : 'loading'"
+      :message="`正在分析 ${selectedStudentName} 的成绩...`"
+      :loading-step="loadingStep"
+      :error-message="'数据加载失败'"
+      :error-details="studentError"
+      :hints="analysisHints"
+      :retryable="true"
+      size="large"
+      @retry="analyzeStudent"
+    />
     <div v-else-if="studentAnalysis && studentAnalysis.student_info" class="student-analysis">
       <!-- 分析过程展示 -->
       <CollapsibleSection 
@@ -192,18 +198,20 @@
 </template>
 
 <script>
-import BaseECharts from '../../components/common/BaseECharts.vue'
-import CollapsibleSection from '../../components/common/CollapsibleSection.vue'
-import AnalysisProcessVisualizer from '../../components/common/AnalysisProcessVisualizer.vue'
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
-import { useIndividualGrade } from '../../composables/grade/useIndividualGrade'
+import BaseECharts from '../../components/common/BaseECharts.vue';
+import CollapsibleSection from '../../components/common/CollapsibleSection.vue';
+import AnalysisProcessVisualizer from '../../components/common/AnalysisProcessVisualizer.vue';
+import LoadingAnimator from '../../components/common/LoadingAnimator.vue';
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
+import { useIndividualGrade } from '../../composables/grade/useIndividualGrade';
 
 export default {
   name: 'IndividualAnalysis',
   components: {
     BaseECharts,
     CollapsibleSection,
-    AnalysisProcessVisualizer
+    AnalysisProcessVisualizer,
+    LoadingAnimator
   },
   setup() {
     const {
@@ -223,17 +231,17 @@ export default {
       getStudentSubjectAnalysis,
       getStudentTrend,
       getStudentScheduleAnalysis
-    } = useIndividualGrade()
+    } = useIndividualGrade();
     
-    const studentId = ref('')
-    const students = ref([])
-    const isLoadingStudents = ref(false)
-    const selectedStudentName = ref('')
-    const selectedSubject = ref('')
-    const subjects = ref([])
+    const studentId = ref('');
+    const students = ref([]);
+    const isLoadingStudents = ref(false);
+    const selectedStudentName = ref('');
+    const selectedSubject = ref('');
+    const subjects = ref([]);
     
     // 分析过程相关状态
-    const loadingStep = ref('正在获取各科成绩数据，请稍候...')
+    const loadingStep = ref('正在获取各科成绩数据，请稍候...');
     const analysisProcessSteps = ref([
       {
         title: '数据获取',
@@ -284,8 +292,8 @@ export default {
           output: '学生成绩分析报告'
         }
       }
-    ])
-    const currentAnalysisStep = ref(0)
+    ]);
+    const currentAnalysisStep = ref(0);
     const analysisDataFlow = ref({
       nodes: [
         { name: '原始数据', type: 'source', description: '从数据库提取的原始成绩数据' },
@@ -296,7 +304,7 @@ export default {
         { from: 0, to: 1 },
         { from: 1, to: 2 }
       ]
-    })
+    });
     const analysisCalculations = ref([
       {
         name: '个人平均分计算',
@@ -318,191 +326,201 @@ export default {
         formula: 'sqrt(sum((x - μ)^2) / n)',
         result: '计算成绩的离散程度'
       }
-    ])
+    ]);
+    
+    // 加载提示数组
+    const analysisHints = ref([
+      '正在获取学生成绩数据...',
+      '正在预处理数据...',
+      '正在计算统计指标...',
+      '正在分析学科表现...',
+      '正在生成趋势图表...',
+      '即将完成分析...'
+    ]);
     
     // 图表引用
-    const studentSubjectChart = ref(null)
-    const subjectDistributionChart = ref(null)
-    const subjectBoxPlotChart = ref(null)
-    const examTrendChart = ref(null)
-    const scheduleScatterChart = ref(null)
+    const studentSubjectChart = ref(null);
+    const subjectDistributionChart = ref(null);
+    const subjectBoxPlotChart = ref(null);
+    const examTrendChart = ref(null);
+    const scheduleScatterChart = ref(null);
     
     // 图表实例
-    let studentSubjectChartInstance = null
-    let subjectDistributionChartInstance = null
-    let subjectBoxPlotChartInstance = null
-    let examTrendChartInstance = null
-    let scheduleScatterChartInstance = null
+    let studentSubjectChartInstance = null;
+    let subjectDistributionChartInstance = null;
+    let subjectBoxPlotChartInstance = null;
+    let examTrendChartInstance = null;
+    let scheduleScatterChartInstance = null;
     
     // ECharts 实例
-    let echarts = null
+    let echarts = null;
     
     // 动态导入 ECharts
     const loadECharts = async () => {
       try {
         // 按需导入核心模块和需要的图表类型
-        const echartsCore = await import('echarts/core')
-        const charts = await import('echarts/charts')
-        const components = await import('echarts/components')
-        const renderers = await import('echarts/renderers')
+        const echartsCore = await import('echarts/core');
+        const charts = await import('echarts/charts');
+        const components = await import('echarts/components');
+        const renderers = await import('echarts/renderers');
         
         // 注册必要的组件
-        const { use, init } = echartsCore
-        const { BarChart, LineChart, RadarChart, PieChart, BoxplotChart, ScatterChart } = charts
+        const { use, init } = echartsCore;
+        const { BarChart, LineChart, RadarChart, PieChart, BoxplotChart, ScatterChart } = charts;
         const { 
           TitleComponent, TooltipComponent, LegendComponent, 
           GridComponent, DataZoomComponent, ToolboxComponent,
           VisualMapComponent
-        } = components
-        const { CanvasRenderer } = renderers
+        } = components;
+        const { CanvasRenderer } = renderers;
         
         use([
           BarChart, LineChart, RadarChart, PieChart, BoxplotChart, ScatterChart,
           TitleComponent, TooltipComponent, LegendComponent, GridComponent,
           DataZoomComponent, ToolboxComponent, VisualMapComponent,
           CanvasRenderer
-        ])
+        ]);
         
-        echarts = echartsCore
-        return true
+        echarts = echartsCore;
+        return true;
       } catch (err) {
-        console.error('加载 ECharts 失败:', err)
-        return false
+        console.error('加载 ECharts 失败:', err);
+        return false;
       }
-    }
+    };
     
     // 加载学生列表
     const loadStudents = async () => {
-      console.log('开始加载学生列表')
-      isLoadingStudents.value = true
+      console.log('开始加载学生列表');
+      isLoadingStudents.value = true;
       try {
-        console.log('发起API请求')
-        const { studentApi } = await import('../../services/api/apiService')
-        const data = await studentApi.getStudents()
-        console.log('获取到学生数据:', data)
-        students.value = data
+        console.log('发起API请求');
+        const { studentApi } = await import('../../services/api/apiService');
+        const data = await studentApi.getStudents();
+        console.log('获取到学生数据:', data);
+        students.value = data;
       } catch (error) {
-        console.error('获取学生列表失败:', error)
+        console.error('获取学生列表失败:', error);
       } finally {
-        isLoadingStudents.value = false
-        console.log('加载学生列表完成')
+        isLoadingStudents.value = false;
+        console.log('加载学生列表完成');
       }
-    }
+    };
     
     // 分析学生成绩
     const analyzeStudent = async () => {
       if (studentId.value) {
         // 查找选中的学生姓名
-        const selectedStudent = students.value.find(student => student.id === studentId.value)
+        const selectedStudent = students.value.find(student => student.id === studentId.value);
         if (selectedStudent) {
-          selectedStudentName.value = selectedStudent.name
+          selectedStudentName.value = selectedStudent.name;
         }
         
         // 重置分析步骤
-        currentAnalysisStep.value = 0
+        currentAnalysisStep.value = 0;
         
         // 步骤1：数据获取
-        loadingStep.value = '正在获取学生基本信息和成绩数据...'
-        currentAnalysisStep.value = 0
-        await getStudentAnalysis(studentId.value)
+        loadingStep.value = '正在获取学生基本信息和成绩数据...';
+        currentAnalysisStep.value = 0;
+        await getStudentAnalysis(studentId.value);
         
         // 步骤2：数据预处理
-        loadingStep.value = '正在预处理数据，确保数据质量...'
-        currentAnalysisStep.value = 1
+        loadingStep.value = '正在预处理数据，确保数据质量...';
+        currentAnalysisStep.value = 1;
         // 模拟预处理时间
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         // 步骤3：统计分析
-        loadingStep.value = '正在计算统计指标，如平均分、中位数、标准差等...'
-        currentAnalysisStep.value = 2
+        loadingStep.value = '正在计算统计指标，如平均分、中位数、标准差等...';
+        currentAnalysisStep.value = 2;
         // 模拟统计分析时间
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         // 步骤4：学科分析
-        loadingStep.value = '正在分析学生各学科表现，识别强项和弱项...'
-        currentAnalysisStep.value = 3
+        loadingStep.value = '正在分析学生各学科表现，识别强项和弱项...';
+        currentAnalysisStep.value = 3;
         // 提取科目列表
         if (subjectAverages.value) {
-          subjects.value = Object.keys(subjectAverages.value)
+          subjects.value = Object.keys(subjectAverages.value);
         }
         
         // 步骤5：趋势分析
-        loadingStep.value = '正在分析学生历次考试的成绩变化趋势...'
-        currentAnalysisStep.value = 4
-        await getStudentTrend(studentId.value)
+        loadingStep.value = '正在分析学生历次考试的成绩变化趋势...';
+        currentAnalysisStep.value = 4;
+        await getStudentTrend(studentId.value);
         
         // 步骤6：结果生成
-        loadingStep.value = '正在生成分析报告...'
-        currentAnalysisStep.value = 5
-        await getStudentScheduleAnalysis(studentId.value)
+        loadingStep.value = '正在生成分析报告...';
+        currentAnalysisStep.value = 5;
+        await getStudentScheduleAnalysis(studentId.value);
         
         // 完成分析
-        currentAnalysisStep.value = 6
+        currentAnalysisStep.value = 6;
       }
-    }
+    };
     
     // 分析学科成绩
     const analyzeSubject = async () => {
       if (studentId.value && selectedSubject.value) {
-        await getStudentSubjectAnalysis(studentId.value, selectedSubject.value)
+        await getStudentSubjectAnalysis(studentId.value, selectedSubject.value);
       }
-    }
+    };
     
     // 监听学生分析数据变化，更新图表
     watch([subjectAverages, classAverages], async () => {
       if (subjectAverages.value && Object.keys(subjectAverages.value).length > 0) {
         // 使用nextTick确保DOM渲染完成后再初始化图表
         setTimeout(async () => {
-          await initStudentSubjectChart()
-        }, 0)
+          await initStudentSubjectChart();
+        }, 0);
       }
-    }, { deep: true })
+    }, { deep: true });
     
     // 监听科目分析数据变化，更新图表
     watch(subjectAnalysis, async () => {
       if (subjectAnalysis.value) {
         setTimeout(async () => {
-          await initSubjectDistributionChart()
-          await initSubjectBoxPlotChart()
-        }, 0)
+          await initSubjectDistributionChart();
+          await initSubjectBoxPlotChart();
+        }, 0);
       }
-    }, { deep: true })
+    }, { deep: true });
     
     // 监听考试趋势数据变化，更新图表
     watch(examTrend, async () => {
       if (examTrend.value) {
         setTimeout(async () => {
-          await initExamTrendChart()
-        }, 0)
+          await initExamTrendChart();
+        }, 0);
       }
-    }, { deep: true })
+    }, { deep: true });
     
     // 监听课程安排分析数据变化，更新图表
     watch(scheduleAnalysis, async () => {
       if (scheduleAnalysis.value) {
         setTimeout(async () => {
-          await initScheduleScatterChart()
-        }, 0)
+          await initScheduleScatterChart();
+        }, 0);
       }
-    }, { deep: true })
+    }, { deep: true });
     
     // 初始化学生学科成绩图表
     const initStudentSubjectChart = async () => {
       if (studentSubjectChart.value && subjectAverages.value) {
         // 确保 ECharts 已加载
         if (!echarts) {
-          const loaded = await loadECharts()
-          if (!loaded) return
+          const loaded = await loadECharts();
+          if (!loaded) return;
         }
         
         if (studentSubjectChartInstance) {
-          studentSubjectChartInstance.dispose()
+          studentSubjectChartInstance.dispose();
         }
-        studentSubjectChartInstance = echarts.init(studentSubjectChart.value)
+        studentSubjectChartInstance = echarts.init(studentSubjectChart.value);
         
-        const subjects = Object.keys(subjectAverages.value)
-        const personalAverages = subjects.map(subject => subjectAverages.value[subject])
-        const classAverages = subjects.map(subject => classAverages.value[subject] || 0)
+        const subjects = Object.keys(subjectAverages.value);
+        const personalAverages = subjects.map(subject => subjectAverages.value[subject]);
+        const classAverages = subjects.map(subject => classAverages.value[subject] || 0);
         
         const option = {
           title: {
@@ -548,35 +566,35 @@ export default {
               }
             }
           ]
-        }
+        };
         
-        studentSubjectChartInstance.setOption(option)
+        studentSubjectChartInstance.setOption(option);
       }
-    }
+    };
     
     // 初始化科目分布图表
     const initSubjectDistributionChart = async () => {
       if (subjectDistributionChart.value && subjectAnalysis.value) {
         // 确保 ECharts 已加载
         if (!echarts) {
-          const loaded = await loadECharts()
-          if (!loaded) return
+          const loaded = await loadECharts();
+          if (!loaded) return;
         }
         
         if (subjectDistributionChartInstance) {
-          subjectDistributionChartInstance.dispose()
+          subjectDistributionChartInstance.dispose();
         }
-        subjectDistributionChartInstance = echarts.init(subjectDistributionChart.value)
+        subjectDistributionChartInstance = echarts.init(subjectDistributionChart.value);
         
-        const distribution = subjectAnalysis.value.statistics.distribution
-        const categories = ['优秀', '良好', '中等', '及格', '不及格']
+        const distribution = subjectAnalysis.value.statistics.distribution;
+        const categories = ['优秀', '良好', '中等', '及格', '不及格'];
         const data = [
           distribution.excellent,
           distribution.good,
           distribution.average,
           distribution.pass,
           distribution.fail
-        ]
+        ];
         
         const option = {
           title: {
@@ -607,25 +625,25 @@ export default {
               }
             }
           ]
-        }
+        };
         
-        subjectDistributionChartInstance.setOption(option)
+        subjectDistributionChartInstance.setOption(option);
       }
-    }
+    };
     
     // 初始化科目箱线图
     const initSubjectBoxPlotChart = async () => {
       if (subjectBoxPlotChart.value && subjectAnalysis.value) {
         // 确保 ECharts 已加载
         if (!echarts) {
-          const loaded = await loadECharts()
-          if (!loaded) return
+          const loaded = await loadECharts();
+          if (!loaded) return;
         }
         
         if (subjectBoxPlotChartInstance) {
-          subjectBoxPlotChartInstance.dispose()
+          subjectBoxPlotChartInstance.dispose();
         }
-        subjectBoxPlotChartInstance = echarts.init(subjectBoxPlotChart.value)
+        subjectBoxPlotChartInstance = echarts.init(subjectBoxPlotChart.value);
         
         // 模拟箱线图数据（实际项目中应该从API获取）
         const boxData = [
@@ -634,7 +652,7 @@ export default {
            subjectAnalysis.value.statistics.median, 
            subjectAnalysis.value.statistics.median + 10, 
            subjectAnalysis.value.statistics.max_score]
-        ]
+        ];
         
         const option = {
           title: {
@@ -681,28 +699,28 @@ export default {
               }
             }
           ]
-        }
+        };
         
-        subjectBoxPlotChartInstance.setOption(option)
+        subjectBoxPlotChartInstance.setOption(option);
       }
-    }
+    };
     
     // 初始化考试趋势图表
     const initExamTrendChart = async () => {
       if (examTrendChart.value && examTrend.value) {
         // 确保 ECharts 已加载
         if (!echarts) {
-          const loaded = await loadECharts()
-          if (!loaded) return
+          const loaded = await loadECharts();
+          if (!loaded) return;
         }
         
         if (examTrendChartInstance) {
-          examTrendChartInstance.dispose()
+          examTrendChartInstance.dispose();
         }
-        examTrendChartInstance = echarts.init(examTrendChart.value)
+        examTrendChartInstance = echarts.init(examTrendChart.value);
         
-        const examNames = examTrend.value.exam_trend.exam_names
-        const averages = examTrend.value.exam_trend.averages
+        const examNames = examTrend.value.exam_trend.exam_names;
+        const averages = examTrend.value.exam_trend.averages;
         
         const option = {
           title: {
@@ -748,38 +766,38 @@ export default {
               }
             }
           ]
-        }
+        };
         
-        examTrendChartInstance.setOption(option)
+        examTrendChartInstance.setOption(option);
       }
-    }
+    };
     
     // 初始化课程安排与成绩关系散点图
     const initScheduleScatterChart = async () => {
       if (scheduleScatterChart.value && scheduleAnalysis.value) {
         // 确保 ECharts 已加载
         if (!echarts) {
-          const loaded = await loadECharts()
-          if (!loaded) return
+          const loaded = await loadECharts();
+          if (!loaded) return;
         }
         
         if (scheduleScatterChartInstance) {
-          scheduleScatterChartInstance.dispose()
+          scheduleScatterChartInstance.dispose();
         }
-        scheduleScatterChartInstance = echarts.init(scheduleScatterChart.value)
+        scheduleScatterChartInstance = echarts.init(scheduleScatterChart.value);
         
         // 处理散点图数据
-        const scatterData = []
+        const scatterData = [];
         if (scheduleAnalysis.value.schedule_analysis) {
           for (const key in scheduleAnalysis.value.schedule_analysis) {
-            const item = scheduleAnalysis.value.schedule_analysis[key]
+            const item = scheduleAnalysis.value.schedule_analysis[key];
             if (item.score) {
               // 使用周几和节次作为x和y坐标，成绩作为点的大小和颜色
               scatterData.push([
                 item.day_of_week,
                 item.period,
                 item.score
-              ])
+              ]);
             }
           }
         }
@@ -792,7 +810,7 @@ export default {
           tooltip: {
             trigger: 'item',
             formatter: function(params) {
-              return `周${params.value[0]} 第${params.value[1]}节<br/>成绩: ${params.value[2]}`
+              return `周${params.value[0]} 第${params.value[1]}节<br/>成绩: ${params.value[2]}`;
             }
           },
           xAxis: {
@@ -811,48 +829,48 @@ export default {
               type: 'scatter',
               data: scatterData,
               symbolSize: function(val) {
-                return val[2] / 10
+                return val[2] / 10;
               },
               itemStyle: {
                 color: function(params) {
-                  const score = params.value[2]
-                  if (score >= 90) return '#52c41a'
-                  if (score >= 80) return '#1890ff'
-                  if (score >= 70) return '#faad14'
-                  if (score >= 60) return '#fa8c16'
-                  return '#f5222d'
+                  const score = params.value[2];
+                  if (score >= 90) return '#52c41a';
+                  if (score >= 80) return '#1890ff';
+                  if (score >= 70) return '#faad14';
+                  if (score >= 60) return '#fa8c16';
+                  return '#f5222d';
                 }
               }
             }
           ]
-        }
+        };
         
-        scheduleScatterChartInstance.setOption(option)
+        scheduleScatterChartInstance.setOption(option);
       }
-    }
+    };
     
     // 窗口大小变化时调整图表
     const handleResize = () => {
-      studentSubjectChartInstance?.resize()
-      subjectDistributionChartInstance?.resize()
-      subjectBoxPlotChartInstance?.resize()
-      examTrendChartInstance?.resize()
-      scheduleScatterChartInstance?.resize()
-    }
+      studentSubjectChartInstance?.resize();
+      subjectDistributionChartInstance?.resize();
+      subjectBoxPlotChartInstance?.resize();
+      examTrendChartInstance?.resize();
+      scheduleScatterChartInstance?.resize();
+    };
     
     onMounted(() => {
-      window.addEventListener('resize', handleResize)
-      loadStudents()
-    })
+      window.addEventListener('resize', handleResize);
+      loadStudents();
+    });
     
     onUnmounted(() => {
-      window.removeEventListener('resize', handleResize)
-      studentSubjectChartInstance?.dispose()
-      subjectDistributionChartInstance?.dispose()
-      subjectBoxPlotChartInstance?.dispose()
-      examTrendChartInstance?.dispose()
-      scheduleScatterChartInstance?.dispose()
-    })
+      window.removeEventListener('resize', handleResize);
+      studentSubjectChartInstance?.dispose();
+      subjectDistributionChartInstance?.dispose();
+      subjectBoxPlotChartInstance?.dispose();
+      examTrendChartInstance?.dispose();
+      scheduleScatterChartInstance?.dispose();
+    });
     
     // 计算属性，实时更新 studentAnalysis
     const studentAnalysis = computed(() => ({
@@ -862,18 +880,18 @@ export default {
       class_averages: classAverages.value,
       strengths: strengths.value,
       weaknesses: weaknesses.value
-    }))
+    }));
     
     // 学生学科成绩配置
     const studentSubjectOptions = computed(() => {
-      if (!subjectAverages.value || !classAverages.value) return {}
+      if (!subjectAverages.value || !classAverages.value) return {};
       
-      const subjects = Object.keys(subjectAverages.value)
-      const personalAverages = subjects.map(subject => subjectAverages.value[subject])
-      const classAvgs = subjects.map(subject => classAverages.value[subject] || 0)
+      const subjects = Object.keys(subjectAverages.value);
+      const personalAverages = subjects.map(subject => subjectAverages.value[subject]);
+      const classAvgs = subjects.map(subject => classAverages.value[subject] || 0);
       
       // 响应式配置
-      const isSmallScreen = window.innerWidth < 768
+      const isSmallScreen = window.innerWidth < 768;
       
       return {
         title: {
@@ -938,25 +956,25 @@ export default {
           bottom: isSmallScreen ? '15%' : '10%',
           containLabel: true
         }
-      }
-    })
+      };
+    });
     
     // 科目分布配置
     const subjectDistributionOptions = computed(() => {
-      if (!subjectAnalysis.value || !subjectAnalysis.value.statistics || !subjectAnalysis.value.statistics.distribution) return {}
+      if (!subjectAnalysis.value || !subjectAnalysis.value.statistics || !subjectAnalysis.value.statistics.distribution) return {};
       
-      const distribution = subjectAnalysis.value.statistics.distribution
-      const categories = ['优秀', '良好', '中等', '及格', '不及格']
+      const distribution = subjectAnalysis.value.statistics.distribution;
+      const categories = ['优秀', '良好', '中等', '及格', '不及格'];
       const data = [
         distribution.excellent,
         distribution.good,
         distribution.average,
         distribution.pass,
         distribution.fail
-      ]
+      ];
       
       // 响应式配置
-      const isSmallScreen = window.innerWidth < 768
+      const isSmallScreen = window.innerWidth < 768;
       
       return {
         title: {
@@ -1005,12 +1023,12 @@ export default {
           bottom: isSmallScreen ? '10%' : '5%',
           containLabel: true
         }
-      }
-    })
+      };
+    });
     
     // 科目箱线图配置
     const subjectBoxPlotOptions = computed(() => {
-      if (!subjectAnalysis.value || !subjectAnalysis.value.statistics) return {}
+      if (!subjectAnalysis.value || !subjectAnalysis.value.statistics) return {};
       
       // 模拟箱线图数据
       const boxData = [
@@ -1019,10 +1037,10 @@ export default {
          subjectAnalysis.value.statistics.median, 
          subjectAnalysis.value.statistics.median + 10, 
          subjectAnalysis.value.statistics.max_score]
-      ]
+      ];
       
       // 响应式配置
-      const isSmallScreen = window.innerWidth < 768
+      const isSmallScreen = window.innerWidth < 768;
       
       return {
         title: {
@@ -1081,18 +1099,18 @@ export default {
             }
           }
         ]
-      }
-    })
+      };
+    });
     
     // 考试趋势配置
     const examTrendOptions = computed(() => {
-      if (!examTrend.value || !examTrend.value.exam_trend) return {}
+      if (!examTrend.value || !examTrend.value.exam_trend) return {};
       
-      const examNames = examTrend.value.exam_trend.exam_names
-      const averages = examTrend.value.exam_trend.averages
+      const examNames = examTrend.value.exam_trend.exam_names;
+      const averages = examTrend.value.exam_trend.averages;
       
       // 响应式配置
-      const isSmallScreen = window.innerWidth < 768
+      const isSmallScreen = window.innerWidth < 768;
       
       return {
         title: {
@@ -1154,28 +1172,28 @@ export default {
           bottom: isSmallScreen ? '15%' : '10%',
           containLabel: true
         }
-      }
-    })
+      };
+    });
     
     // 课程安排散点图配置
     const scheduleScatterOptions = computed(() => {
-      if (!scheduleAnalysis.value || !scheduleAnalysis.value.schedule_analysis) return {}
+      if (!scheduleAnalysis.value || !scheduleAnalysis.value.schedule_analysis) return {};
       
       // 处理散点图数据
-      const scatterData = []
+      const scatterData = [];
       for (const key in scheduleAnalysis.value.schedule_analysis) {
-        const item = scheduleAnalysis.value.schedule_analysis[key]
+        const item = scheduleAnalysis.value.schedule_analysis[key];
         if (item.score) {
           scatterData.push([
             item.day_of_week,
             item.period,
             item.score
-          ])
+          ]);
         }
       }
       
       // 响应式配置
-      const isSmallScreen = window.innerWidth < 768
+      const isSmallScreen = window.innerWidth < 768;
       
       return {
         title: {
@@ -1188,7 +1206,7 @@ export default {
         tooltip: {
           trigger: 'item',
           formatter: function(params) {
-            return `周${params.value[0]} 第${params.value[1]}节<br/>成绩: ${params.value[2]}`
+            return `周${params.value[0]} 第${params.value[1]}节<br/>成绩: ${params.value[2]}`;
           }
         },
         xAxis: {
@@ -1219,16 +1237,16 @@ export default {
             type: 'scatter',
             data: scatterData,
             symbolSize: function(val) {
-              return isSmallScreen ? val[2] / 12 : val[2] / 10
+              return isSmallScreen ? val[2] / 12 : val[2] / 10;
             },
             itemStyle: {
               color: function(params) {
-                const score = params.value[2]
-                if (score >= 90) return '#52c41a'
-                if (score >= 80) return '#1890ff'
-                if (score >= 70) return '#faad14'
-                if (score >= 60) return '#fa8c16'
-                return '#f5222d'
+                const score = params.value[2];
+                if (score >= 90) return '#52c41a';
+                if (score >= 80) return '#1890ff';
+                if (score >= 70) return '#faad14';
+                if (score >= 60) return '#fa8c16';
+                return '#f5222d';
               }
             }
           }
@@ -1240,12 +1258,12 @@ export default {
           top: isSmallScreen ? '15%' : '10%',
           containLabel: true
         }
-      }
-    })
+      };
+    });
     
     onMounted(() => {
-      loadStudents()
-    })
+      loadStudents();
+    });
     
     return {
       studentId,
@@ -1274,10 +1292,11 @@ export default {
       analysisProcessSteps,
       currentAnalysisStep,
       analysisDataFlow,
-      analysisCalculations
-    }
+      analysisCalculations,
+      analysisHints
+    };
   }
-}
+};
 </script>
 
 <style scoped>

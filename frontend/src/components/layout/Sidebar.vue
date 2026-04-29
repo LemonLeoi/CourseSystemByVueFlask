@@ -1,7 +1,7 @@
 <template>
   <div class="sidebar" :class="{ collapsed }" id="sidebar">
     <div class="logo">
-      <img :src="logoSrc" alt="西十高级中学" class="logo-img">
+      <img :src="logoSrc" alt="西十高级中学" class="logo-img"/>
     </div>
     <div class="toggle-sidebar" id="toggleSidebar" @click="toggleSidebar">
       <i class="fa-solid" :class="collapsed ? 'fa-angle-right' : 'fa-angle-left'"></i>
@@ -46,7 +46,7 @@ const menuItems = props.menuItems || [
   { path: '/students', label: '学生管理', icon: 'fa-solid fa-users' },
   { path: '/teachers', label: '教师管理', icon: 'fa-solid fa-chalkboard-user' },
   { path: '/courses', label: '课程管理', icon: 'fa-solid fa-book-open' },
-  { path: '/grade-analysis', label: '学生成绩分析', icon: 'fa-solid fa-chart-line' },
+  { path: '/grade-analysis/individual', label: '学生成绩分析', icon: 'fa-solid fa-chart-line' },
   { path: '/exams', label: '考试管理', icon: 'fa-solid fa-file-invoice' },
   { path: '/student-status', label: '学籍管理', icon: 'fa-solid fa-id-card' }
 ];

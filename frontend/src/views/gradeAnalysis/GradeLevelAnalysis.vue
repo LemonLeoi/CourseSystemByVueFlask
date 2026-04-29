@@ -14,12 +14,18 @@
       <button @click="analyzeGrade">分析</button>
     </div>
     
-    <div v-if="loading" class="loading">
-      <div class="loading-spinner"></div>
-      <p>正在分析 {{ gradeName }} 的成绩...</p>
-      <p class="loading-detail">{{ loadingStep }}</p>
-    </div>
-    <div v-else-if="gradeError" class="error">{{ gradeError }}</div>
+    <LoadingAnimator
+      v-if="loading || gradeError"
+      :status="gradeError ? 'error' : 'loading'"
+      :message="`正在分析 ${gradeName} 的成绩...`"
+      :loading-step="loadingStep"
+      :error-message="'数据加载失败'"
+      :error-details="gradeError"
+      :hints="analysisHints"
+      :retryable="true"
+      size="large"
+      @retry="analyzeGrade"
+    />
     <div v-else-if="gradeAnalysis && gradeAnalysis.grade_info" class="grade-analysis-result">
       <!-- 分析过程展示 -->
       <CollapsibleSection 
@@ -173,18 +179,20 @@
 </template>
 
 <script>
-import BaseECharts from '../../components/common/BaseECharts.vue'
-import CollapsibleSection from '../../components/common/CollapsibleSection.vue'
-import AnalysisProcessVisualizer from '../../components/common/AnalysisProcessVisualizer.vue'
-import { ref, onMounted, computed, watch } from 'vue'
-import { useGradeAnalysis } from '../../composables/grade/useGradeAnalysis'
+import BaseECharts from '../../components/common/BaseECharts.vue';
+import CollapsibleSection from '../../components/common/CollapsibleSection.vue';
+import AnalysisProcessVisualizer from '../../components/common/AnalysisProcessVisualizer.vue';
+import LoadingAnimator from '../../components/common/LoadingAnimator.vue';
+import { ref, onMounted, computed, watch } from 'vue';
+import { useGradeAnalysis } from '../../composables/grade/useGradeAnalysis';
 
 export default {
   name: 'GradeLevelAnalysis',
   components: {
     BaseECharts,
     CollapsibleSection,
-    AnalysisProcessVisualizer
+    AnalysisProcessVisualizer,
+    LoadingAnimator
   },
   setup() {
     const { 
@@ -201,16 +209,16 @@ export default {
       getGradeSubjectAnalysis,
       getGradeTrend,
       getTeacherPerformance
-    } = useGradeAnalysis()
+    } = useGradeAnalysis();
     
-    const gradeName = ref('')
-    const grades = ref([])
-    const isLoadingOptions = ref(false)
-    const selectedSubject = ref('')
-    const subjects = ref([])
+    const gradeName = ref('');
+    const grades = ref([]);
+    const isLoadingOptions = ref(false);
+    const selectedSubject = ref('');
+    const subjects = ref([]);
     
     // 分析过程相关状态
-    const loadingStep = ref('正在获取年级成绩数据，请稍候...')
+    const loadingStep = ref('正在获取年级成绩数据，请稍候...');
     const analysisProcessSteps = ref([
       {
         title: '数据获取',
@@ -277,8 +285,8 @@ export default {
           output: '年级成绩分析报告'
         }
       }
-    ])
-    const currentAnalysisStep = ref(0)
+    ]);
+    const currentAnalysisStep = ref(0);
     const analysisDataFlow = ref({
       nodes: [
         { name: '原始数据', type: 'source', description: '从数据库提取的年级原始成绩数据' },
@@ -289,7 +297,7 @@ export default {
         { from: 0, to: 1 },
         { from: 1, to: 2 }
       ]
-    })
+    });
     const analysisCalculations = ref([
       {
         name: '年级平均分计算',
@@ -316,107 +324,118 @@ export default {
         formula: '按分数段统计人数',
         result: '计算年级成绩在各分数段的分布情况'
       }
-    ])
+    ]);
+    
+    // 加载提示数组
+    const analysisHints = ref([
+      '正在获取年级成绩数据...',
+      '正在预处理数据...',
+      '正在计算年级统计指标...',
+      '正在分析学科表现...',
+      '正在分析班级对比...',
+      '正在生成年级趋势图表...',
+      '即将完成分析...'
+    ]);
     
     // 加载年级列表
     const loadGradeOptions = async () => {
-      isLoadingOptions.value = true
+      isLoadingOptions.value = true;
       try {
-        const response = await fetch('/api/students/classes')
+        const response = await fetch('/api/students/classes');
         if (response.ok) {
-          const data = await response.json()
-          grades.value = data.grades || []
+          const data = await response.json();
+          grades.value = data.grades || [];
         }
       } catch (error) {
-        console.error('获取年级列表失败:', error)
+        console.error('获取年级列表失败:', error);
       } finally {
-        isLoadingOptions.value = false
+        isLoadingOptions.value = false;
       }
-    }
+    };
     
     // 分析年级成绩
     const analyzeGrade = async () => {
       if (gradeName.value) {
         // 重置分析步骤
-        currentAnalysisStep.value = 0
+        currentAnalysisStep.value = 0;
         
         // 步骤1：数据获取
-        loadingStep.value = '正在获取年级基本信息和班级成绩数据...'
-        currentAnalysisStep.value = 0
-        await getGradeAnalysis(gradeName.value)
+        loadingStep.value = '正在获取年级基本信息和班级成绩数据...';
+        currentAnalysisStep.value = 0;
+        await getGradeAnalysis(gradeName.value);
         
         // 步骤2：数据预处理
-        loadingStep.value = '正在预处理数据，确保数据质量...'
-        currentAnalysisStep.value = 1
+        loadingStep.value = '正在预处理数据，确保数据质量...';
+        currentAnalysisStep.value = 1;
         // 模拟预处理时间
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         // 步骤3：统计分析
-        loadingStep.value = '正在计算年级统计指标，如平均分、中位数、标准差等...'
-        currentAnalysisStep.value = 2
+        loadingStep.value = '正在计算年级统计指标，如平均分、中位数、标准差等...';
+        currentAnalysisStep.value = 2;
         // 模拟统计分析时间
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         // 步骤4：学科分析
-        loadingStep.value = '正在分析年级各学科表现...'
-        currentAnalysisStep.value = 3
+        loadingStep.value = '正在分析年级各学科表现...';
+        currentAnalysisStep.value = 3;
         // 提取科目列表
         if (gradeAnalysis.value && gradeAnalysis.value.subject_averages) {
-          subjects.value = Object.keys(gradeAnalysis.value.subject_averages)
+          subjects.value = Object.keys(gradeAnalysis.value.subject_averages);
         }
         
         // 步骤5：班级对比
-        loadingStep.value = '正在分析年级内各班级的成绩对比...'
-        currentAnalysisStep.value = 4
+        loadingStep.value = '正在分析年级内各班级的成绩对比...';
+        currentAnalysisStep.value = 4;
         // 模拟班级对比时间
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         // 步骤6：趋势分析
-        loadingStep.value = '正在分析年级历次考试的成绩变化趋势...'
-        currentAnalysisStep.value = 5
-        await getGradeTrend(gradeName.value)
+        loadingStep.value = '正在分析年级历次考试的成绩变化趋势...';
+        currentAnalysisStep.value = 5;
+        await getGradeTrend(gradeName.value);
         
         // 步骤7：教师分析
-        loadingStep.value = '正在分析教师的教学效果...'
-        currentAnalysisStep.value = 6
+        loadingStep.value = '正在分析教师的教学效果...';
+        currentAnalysisStep.value = 6;
         // 模拟教师分析时间
-        await new Promise(resolve => setTimeout(resolve, 300))
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         // 步骤8：结果生成
-        loadingStep.value = '正在生成分析报告...'
-        currentAnalysisStep.value = 7
+        loadingStep.value = '正在生成分析报告...';
+        currentAnalysisStep.value = 7;
         // 模拟结果生成时间
-        await new Promise(resolve => setTimeout(resolve, 300))
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         // 完成分析
-        currentAnalysisStep.value = 8
+        currentAnalysisStep.value = 8;
       }
-    }
+    };
     
     // 分析学科成绩
     const analyzeSubject = async () => {
       if (gradeName.value && selectedSubject.value) {
-        await getGradeSubjectAnalysis(gradeName.value, selectedSubject.value)
+        await getGradeSubjectAnalysis(gradeName.value, selectedSubject.value);
         // 加载教师成绩对比，即使失败也不影响页面显示
         try {
-          await getTeacherPerformance(selectedSubject.value)
+          await getTeacherPerformance(selectedSubject.value);
         } catch (error) {
-          console.log('教师成绩对比数据暂时不可用，将继续显示其他分析结果')
+          console.log('教师成绩对比数据暂时不可用，将继续显示其他分析结果');
         }
       }
-    }
+    };
     
     // 年级学科成绩数据
     const gradeSubjectData = computed(() => {
-      return gradeAnalysis.value || {}
-    })
+      return gradeAnalysis.value || {};
+    });
     
     // 年级学科成绩配置
     const gradeSubjectOptions = computed(() => {
-      if (!gradeAnalysis.value || !gradeAnalysis.value.subject_averages) return {}
+      if (!gradeAnalysis.value || !gradeAnalysis.value.subject_averages) return {};
       
-      const subjects = Object.keys(gradeAnalysis.value.subject_averages)
-      const averages = subjects.map(subject => gradeAnalysis.value.subject_averages[subject])
+      const subjects = Object.keys(gradeAnalysis.value.subject_averages);
+      const averages = subjects.map(subject => gradeAnalysis.value.subject_averages[subject]);
       
       return {
         title: {
@@ -449,34 +468,34 @@ export default {
             }
           }
         ]
-      }
-    })
+      };
+    });
     
     // 班级对比数据
     const classComparisonData = computed(() => {
-      return gradeAnalysis.value || {}
-    })
+      return gradeAnalysis.value || {};
+    });
     
     // 班级对比配置
     const classComparisonOptions = computed(() => {
-      if (!gradeAnalysis.value || !gradeAnalysis.value.class_averages || !gradeAnalysis.value.subject_averages) return {}
+      if (!gradeAnalysis.value || !gradeAnalysis.value.class_averages || !gradeAnalysis.value.subject_averages) return {};
       
-      const classes = Object.keys(gradeAnalysis.value.class_averages)
-      const subjects = Object.keys(gradeAnalysis.value.subject_averages)
+      const classes = Object.keys(gradeAnalysis.value.class_averages);
+      const subjects = Object.keys(gradeAnalysis.value.subject_averages);
       
       // 使用柱状图展示班级间的成绩对比
       const series = classes.map((className) => {
         const data = subjects.map(subject => {
-          return gradeAnalysis.value.class_averages[className][subject] || 0
-        })
+          return gradeAnalysis.value.class_averages[className][subject] || 0;
+        });
         
         return {
           name: className,
           type: 'bar',
           data: data,
           barWidth: '15%'
-        }
-      })
+        };
+      });
       
       return {
         title: {
@@ -505,27 +524,27 @@ export default {
           name: '平均分'
         },
         series: series
-      }
-    })
+      };
+    });
     
     // 科目分布数据
     const subjectDistributionData = computed(() => {
-      return subjectAnalysis.value || {}
-    })
+      return subjectAnalysis.value || {};
+    });
     
     // 科目分布配置
     const subjectDistributionOptions = computed(() => {
-      if (!subjectAnalysis.value || !subjectAnalysis.value.statistics || !subjectAnalysis.value.statistics.distribution) return {}
+      if (!subjectAnalysis.value || !subjectAnalysis.value.statistics || !subjectAnalysis.value.statistics.distribution) return {};
       
-      const distribution = subjectAnalysis.value.statistics.distribution
-      const categories = ['优秀', '良好', '中等', '及格', '不及格']
+      const distribution = subjectAnalysis.value.statistics.distribution;
+      const categories = ['优秀', '良好', '中等', '及格', '不及格'];
       const data = [
         distribution.excellent,
         distribution.good,
         distribution.average,
         distribution.pass,
         distribution.fail
-      ]
+      ];
       
       return {
         title: {
@@ -556,17 +575,17 @@ export default {
             }
           }
         ]
-      }
-    })
+      };
+    });
     
     // 科目箱线图数据
     const subjectBoxPlotData = computed(() => {
-      return subjectAnalysis.value || {}
-    })
+      return subjectAnalysis.value || {};
+    });
     
     // 科目箱线图配置
     const subjectBoxPlotOptions = computed(() => {
-      if (!subjectAnalysis.value || !subjectAnalysis.value.statistics) return {}
+      if (!subjectAnalysis.value || !subjectAnalysis.value.statistics) return {};
       
       // 模拟箱线图数据（实际项目中应该从API获取）
       const boxData = [
@@ -575,7 +594,7 @@ export default {
          subjectAnalysis.value.statistics.median, 
          subjectAnalysis.value.statistics.median + 10, 
          subjectAnalysis.value.statistics.max_score]
-      ]
+      ];
       
       return {
         title: {
@@ -622,20 +641,20 @@ export default {
             }
           }
         ]
-      }
-    })
+      };
+    });
     
     // 考试趋势数据
     const examTrendData = computed(() => {
-      return examTrend.value || {}
-    })
+      return examTrend.value || {};
+    });
     
     // 考试趋势配置
     const examTrendOptions = computed(() => {
-      if (!examTrend.value || !examTrend.value.exam_trend) return {}
+      if (!examTrend.value || !examTrend.value.exam_trend) return {};
       
-      const examNames = examTrend.value.exam_trend.exam_names
-      const averages = examTrend.value.exam_trend.averages
+      const examNames = examTrend.value.exam_trend.exam_names;
+      const averages = examTrend.value.exam_trend.averages;
       
       return {
         title: {
@@ -681,20 +700,20 @@ export default {
             }
           }
         ]
-      }
-    })
+      };
+    });
     
     // 教师对比数据
     const teacherComparisonData = computed(() => {
-      return teacherPerformance.value || {}
-    })
+      return teacherPerformance.value || {};
+    });
     
     // 教师对比配置
     const teacherComparisonOptions = computed(() => {
-      if (!teacherPerformance.value || !teacherPerformance.value.teacher_performance) return {}
+      if (!teacherPerformance.value || !teacherPerformance.value.teacher_performance) return {};
       
-      const teachers = Object.keys(teacherPerformance.value.teacher_performance)
-      const data = teachers.map(teacher => teacherPerformance.value.teacher_performance[teacher].average)
+      const teachers = Object.keys(teacherPerformance.value.teacher_performance);
+      const data = teachers.map(teacher => teacherPerformance.value.teacher_performance[teacher].average);
       
       return {
         title: {
@@ -728,29 +747,29 @@ export default {
             }
           }
         ]
-      }
-    })
+      };
+    });
     
     // 教师热力图数据
     const teacherHeatmapData = computed(() => {
-      return teacherPerformance.value || {}
-    })
+      return teacherPerformance.value || {};
+    });
     
     // 教师热力图配置
     const teacherHeatmapOptions = computed(() => {
-      if (!teacherPerformance.value || !teacherPerformance.value.teacher_performance) return {}
+      if (!teacherPerformance.value || !teacherPerformance.value.teacher_performance) return {};
       
       // 处理热力图数据
-      const heatmapData = []
-      const teachers = Object.keys(teacherPerformance.value.teacher_performance)
-      let index = 0
+      const heatmapData = [];
+      const teachers = Object.keys(teacherPerformance.value.teacher_performance);
+      let index = 0;
       
       teachers.forEach(teacher => {
-        const teacherData = teacherPerformance.value.teacher_performance[teacher]
+        const teacherData = teacherPerformance.value.teacher_performance[teacher];
         // 为每个教师创建一个数据点，使用教师索引作为x轴，平均分为y轴，分数作为热力值
-        heatmapData.push([index, 0, teacherData.average])
-        index++
-      })
+        heatmapData.push([index, 0, teacherData.average]);
+        index++;
+      });
       
       return {
         title: {
@@ -808,12 +827,12 @@ export default {
             }
           }
         ]
-      }
-    })
+      };
+    });
     
     onMounted(() => {
-      loadGradeOptions()
-    })
+      loadGradeOptions();
+    });
     
     return {
       gradeName,
@@ -848,10 +867,11 @@ export default {
       analysisProcessSteps,
       currentAnalysisStep,
       analysisDataFlow,
-      analysisCalculations
-    }
+      analysisCalculations,
+      analysisHints
+    };
   }
-}
+};
 </script>
 
 <style scoped>

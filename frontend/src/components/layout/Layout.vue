@@ -1,6 +1,6 @@
 <template>
   <div class="layout">
-    <Sidebar :menuItems="menuItems" @toggle="handleSidebarToggle" />
+    <Sidebar :menu-items="menuItems" @toggle="handleSidebarToggle" />
     <main class="main-content" :class="{ expanded: sidebarCollapsed }">
       <TopTimeDisplay />
       <slot></slot>
