@@ -8,6 +8,36 @@
       </div>
     </div>
     
+    <!-- 考试选择 -->
+    <div class="filter-row">
+      <div class="selector-item">
+        <div class="selector-label">选择考试:</div>
+        <select 
+          v-model="selectedExam" 
+          class="filter-select exam-select"
+        >
+          <option value="">请选择考试</option>
+          <option value="all">所有考试综合分析</option>
+          <option v-for="exam in exams" :key="exam.code" :value="exam.code">
+            {{ exam.name }}
+          </option>
+        </select>
+      </div>
+      
+      <div class="selector-item">
+        <div class="selector-label">选择学科:</div>
+        <select 
+          v-model="selectedSubject" 
+          class="filter-select subject-select"
+        >
+          <option value="">所有学科</option>
+          <option v-for="subject in subjects" :key="subject" :value="subject">
+            {{ subject }}
+          </option>
+        </select>
+      </div>
+    </div>
+    
     <!-- 班级选择 -->
     <div class="class-selector">
       <div class="selector-label">选择对比班级:</div>
@@ -24,7 +54,8 @@
       </div>
       <button 
         class="compare-btn" 
-        :disabled="selectedClasses.length < 2"
+        :disabled="selectedClasses.length < 2 || !selectedExam"
+        :class="{ disabled: selectedClasses.length < 2 || !selectedExam }"
         @click="executeCompare"
       >
         {{ isLoading ? '对比中...' : '开始对比' }}
@@ -140,8 +171,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { gradeService, type ClassCompareResponse } from '../../services/gradeService';
+import { ref, computed, onMounted } from 'vue';
+import { gradeService, type ClassCompareResponse, type ExamInfo } from '../../services/gradeService';
 
 interface Props {
   currentClass?: string;
@@ -164,12 +195,35 @@ const isLoading = ref(false);
 const error = ref('');
 const comparisonData = ref<ClassCompareResponse | null>(null);
 
+// 考试和学科选择
+const exams = ref<ExamInfo[]>([]);
+const selectedExam = ref('');
+const subjects = ref(['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治']);
+const selectedSubject = ref('');
+
 const displayMetrics = [
   { key: 'average_score', label: '平均分', unit: '分' },
   { key: 'pass_rate', label: '及格率', unit: '%' },
   { key: 'excellent_rate', label: '优秀率', unit: '%' },
   { key: 'improvement_rate', label: '提分率', unit: '%' }
 ];
+
+// 加载考试列表
+const loadExamList = async () => {
+  if (props.currentClass) {
+    const grade = props.currentClass.slice(0, 2);
+    try {
+      exams.value = await gradeService.getExamList(grade);
+    } catch (error) {
+      console.error('获取考试列表失败:', error);
+      exams.value = [];
+    }
+  }
+};
+
+onMounted(() => {
+  loadExamList();
+});
 
 const toggleClass = (cls: string) => {
   const index = selectedClasses.value.indexOf(cls);
@@ -186,14 +240,15 @@ const formatValue = (value: number | undefined): string => {
 };
 
 const executeCompare = async () => {
-  if (selectedClasses.value.length < 2) return;
+  if (selectedClasses.value.length < 2 || !selectedExam.value) return;
   
   isLoading.value = true;
   error.value = '';
   comparisonData.value = null;
   
   try {
-    const response = await gradeService.compareClasses(selectedClasses.value);
+    const examId = selectedExam.value === 'all' ? undefined : selectedExam.value;
+    const response = await gradeService.compareClasses(selectedClasses.value, undefined, examId, selectedSubject.value);
     
     // 过滤掉同教师组的对比选项
     if (response && response.comparisons && response.base_class) {

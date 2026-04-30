@@ -370,4 +370,108 @@ class GradeDataAccess:
         
         return result
     
+    @staticmethod
+    def get_class_grades_by_exam(class_name, grade, exam_code):
+        """获取指定考试的班级所有成绩"""
+        grades = db.session.query(
+            Grade.student_id,
+            Exam.exam_name,
+            Exam.academic_year,
+            Exam.semester,
+            Exam.exam_type,
+            Grade.subject,
+            Grade.score,
+            Grade.grade_level
+        ).join(
+            Student, Grade.student_id == Student.student_id
+        ).join(
+            Exam, Grade.exam_code == Exam.exam_code
+        ).filter(
+            Student.class_ == class_name,
+            Student.grade == grade,
+            Grade.exam_code == exam_code
+        ).order_by(
+            Grade.student_id,
+            Grade.subject
+        ).all()
+        
+        return grades
+    
+    @staticmethod
+    def get_class_subject_grades_by_exam(class_name, grade, subject, exam_code):
+        """获取指定考试的班级指定科目成绩"""
+        grades = db.session.query(
+            Grade.student_id,
+            Student.name,
+            Grade.score
+        ).join(
+            Student, Grade.student_id == Student.student_id
+        ).filter(
+            Student.class_ == class_name,
+            Student.grade == grade,
+            Grade.subject == subject,
+            Grade.exam_code == exam_code
+        ).all()
+        
+        return grades
+    
+    @staticmethod
+    def get_student_grades_by_exam(student_id, exam_code):
+        """获取指定考试的学生成绩"""
+        student = Student.query.filter_by(student_id=student_id).first()
+        if not student:
+            return None, None
+        
+        grades = db.session.query(
+            Exam.exam_name,
+            Exam.academic_year,
+            Exam.semester,
+            Exam.exam_type,
+            Grade.subject,
+            Grade.score,
+            Grade.grade_level
+        ).join(
+            Exam, Grade.exam_code == Exam.exam_code
+        ).filter(
+            Grade.student_id == student_id,
+            Grade.exam_code == exam_code
+        ).all()
+        
+        formatted_grades = []
+        if grades:
+            for grade in grades:
+                formatted_grades.append((
+                    grade[0],  # exam_name
+                    grade[1],  # academic_year
+                    grade[2],  # semester
+                    student.grade,
+                    grade[3],  # exam_type
+                    grade[4],  # subject
+                    grade[5],  # score
+                    grade[6]   # grade_level
+                ))
+        
+        student_info = (student.name, student.gender, student.class_, student.grade)
+        return student_info, formatted_grades
+    
+    @staticmethod
+    def get_exam_list():
+        """获取所有考试列表"""
+        exams = Exam.query.all()
+        
+        result = []
+        for exam in exams:
+            result.append({
+                'exam_code': exam.exam_code,
+                'exam_name': exam.exam_name,
+                'exam_type': exam.exam_type,
+                'grade': exam.grade,
+                'academic_year': exam.academic_year,
+                'semester': exam.semester,
+                'start_date': exam.start_date.isoformat() if exam.start_date else None,
+                'end_date': exam.end_date.isoformat() if exam.end_date else None,
+                'status': exam.status
+            })
+        
+        return result    
     

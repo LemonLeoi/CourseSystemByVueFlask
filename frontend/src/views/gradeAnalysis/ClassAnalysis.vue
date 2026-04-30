@@ -2,16 +2,26 @@
   <div class="class-analysis">
     <h3>班级成绩分析</h3>
     <div class="class-input">
-      <select 
+      <!-- 复用班级选择器组件 -->
+      <ClassSelector 
         v-model="className" 
-        class="filter-select"
+        @change="onClassChange"
+      />
+      
+      <!-- 复用考试选择器组件 -->
+      <ExamSelector 
+        v-model="selectedExam" 
+        :parent-value="className"
+        class="exam-select-wrapper"
+      />
+      
+      <button 
+        @click="analyzeClass"
+        :disabled="!className || !selectedExam || loading"
+        :class="{ disabled: !className || !selectedExam || loading }"
       >
-        <option value="">请选择班级</option>
-        <option v-for="classItem in classes" :key="classItem" :value="classItem">
-          {{ classItem }}
-        </option>
-      </select>
-      <button @click="analyzeClass">分析</button>
+        {{ loading ? '分析中...' : '分析' }}
+      </button>
     </div>
     
     <LoadingAnimator
@@ -105,113 +115,8 @@
           </select>
         </div>
         
-        <!-- 详细成绩指标展示 -->
-        <div v-if="gradeDetail" class="grade-detail-panel">
-          <div class="panel-header">
-            <h4>{{ gradeDetail.subject === '综合' ? '班级综合成绩分析' : gradeDetail.subject + '学科成绩分析' }}</h4>
-          </div>
-          
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-icon">📊</div>
-              <div class="stat-info">
-                <span class="stat-label">平均分（分）</span>
-                <span class="stat-value">{{ gradeDetail.average_score }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">🏆</div>
-              <div class="stat-info">
-                <span class="stat-label">最高分（分）</span>
-                <span class="stat-value">{{ gradeDetail.max_score }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">📉</div>
-              <div class="stat-info">
-                <span class="stat-label">最低分（分）</span>
-                <span class="stat-value">{{ gradeDetail.min_score }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">📈</div>
-              <div class="stat-info">
-                <span class="stat-label">标准差</span>
-                <span class="stat-value">{{ gradeDetail.std_deviation }}</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">✅</div>
-              <div class="stat-info">
-                <span class="stat-label">及格率</span>
-                <span class="stat-value">{{ gradeDetail.pass_rate }}%</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">⭐</div>
-              <div class="stat-info">
-                <span class="stat-label">优秀率</span>
-                <span class="stat-value">{{ gradeDetail.excellent_rate }}%</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">👥</div>
-              <div class="stat-info">
-                <span class="stat-label">学生人数</span>
-                <span class="stat-value">{{ gradeDetail.total_students }}人</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">📝</div>
-              <div class="stat-info">
-                <span class="stat-label">有效成绩数</span>
-                <span class="stat-value">{{ gradeDetail.total_scores }}条</span>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 分数分布图表 -->
-          <div class="distribution-section">
-            <h5>分数分布</h5>
-            <div class="distribution-bars">
-              <div class="dist-bar">
-                <div class="bar-label">优秀(≥90)</div>
-                <div class="bar-container">
-                  <div class="bar excellent" :style="distributionBarStyles[0]"></div>
-                </div>
-                <div class="bar-value">{{ gradeDetail.distribution.excellent }}人</div>
-              </div>
-              <div class="dist-bar">
-                <div class="bar-label">良好(80-89)</div>
-                <div class="bar-container">
-                  <div class="bar good" :style="distributionBarStyles[1]"></div>
-                </div>
-                <div class="bar-value">{{ gradeDetail.distribution.good }}人</div>
-              </div>
-              <div class="dist-bar">
-                <div class="bar-label">中等(60-79)</div>
-                <div class="bar-container">
-                  <div class="bar average" :style="distributionBarStyles[2]"></div>
-                </div>
-                <div class="bar-value">{{ gradeDetail.distribution.average }}人</div>
-              </div>
-              <div class="dist-bar">
-                <div class="bar-label">及格(60-69)</div>
-                <div class="bar-container">
-                  <div class="bar pass" :style="distributionBarStyles[3]"></div>
-                </div>
-                <div class="bar-value">{{ gradeDetail.distribution.pass }}人</div>
-              </div>
-              <div class="dist-bar">
-                <div class="bar-label">不及格(&lt;60)</div>
-                <div class="bar-container">
-                  <div class="bar fail" :style="distributionBarStyles[4]"></div>
-                </div>
-                <div class="bar-value">{{ gradeDetail.distribution.fail }}人</div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- 详细成绩指标展示 - 复用GradeStatsPanel组件 -->
+        <GradeStatsPanel v-if="gradeDetail" :grade-detail="gradeDetail" />
         
         <!-- 无数据提示 -->
         <div v-if="gradeDetail === null" class="empty-data-panel error">
@@ -447,6 +352,9 @@ import BaseECharts from '../../components/common/BaseECharts.vue';
 import CollapsibleSection from '../../components/common/CollapsibleSection.vue';
 import AnalysisProcessVisualizer from '../../components/common/AnalysisProcessVisualizer.vue';
 import LoadingAnimator from '../../components/common/LoadingAnimator.vue';
+import ClassSelector from '../../components/common/ClassSelector.vue';
+import ExamSelector from '../../components/common/ExamSelector.vue';
+import GradeStatsPanel from '../../components/common/GradeStatsPanel.vue';
 import KnowledgeDiscoveryList from '../../components/grade/KnowledgeDiscoveryList.vue';
 import FeatureImportanceChart from '../../components/grade/FeatureImportanceChart.vue';
 import DecisionTreePath from '../../components/grade/DecisionTreePath.vue';
@@ -463,6 +371,9 @@ export default {
     CollapsibleSection,
     AnalysisProcessVisualizer,
     LoadingAnimator,
+    ClassSelector,
+    ExamSelector,
+    GradeStatsPanel,
     KnowledgeDiscoveryList,
     FeatureImportanceChart,
     DecisionTreePath,
@@ -490,6 +401,13 @@ export default {
     const isLoadingOptions = ref(false);
     const selectedSubject = ref('');
     const subjects = ref([]);
+    
+    // 考试相关数据
+    const exams = ref([]);
+    const selectedExam = ref('');
+    
+    // 显示模式
+    const displayMode = ref('score'); // 'score' 或 'percentage'
     
     // 决策可视化相关数据（从API获取）
     const knowledgeDiscoveriesData = ref([]);
@@ -697,11 +615,43 @@ export default {
     // 获取班级详细成绩分析数据
     const fetchGradeDetail = async (classId, subject) => {
       try {
-        const response = await gradeService.getClassGradeDetail(classId, subject);
+        const examId = selectedExam.value === 'all' ? undefined : selectedExam.value;
+        const response = await gradeService.getClassGradeDetail(classId, subject, examId, displayMode.value);
         gradeDetail.value = response.detail;
       } catch (error) {
         console.error('获取班级详细成绩分析失败:', error);
         gradeDetail.value = null;
+      }
+    };
+    
+    // 切换显示模式
+    const toggleDisplayMode = () => {
+      displayMode.value = displayMode.value === 'score' ? 'percentage' : 'score';
+      if (className.value) {
+        fetchGradeDetail(className.value, selectedSubject.value);
+      }
+    };
+    
+    // 加载考试列表
+    const loadExamList = async (grade = '') => {
+      try {
+        const examList = await gradeService.getExamList(grade);
+        exams.value = examList || [];
+      } catch (error) {
+        console.error('获取考试列表失败:', error);
+        exams.value = [];
+      }
+    };
+    
+    // 班级变化时重新加载考试列表
+    const onClassChange = () => {
+      if (className.value) {
+        const grade = className.value.slice(0, 2);
+        loadExamList(grade);
+        selectedExam.value = '';
+      } else {
+        exams.value = [];
+        selectedExam.value = '';
       }
     };
     
@@ -722,6 +672,52 @@ export default {
       const total = gradeDetail.value.total_students;
       return total > 0 ? (value / total) * 100 : 0;
     };
+    
+    // 动态生成分数分布标签
+    const barLabels = computed(() => {
+      if (!gradeDetail.value) {
+        return {
+          excellent: '优秀(≥90)',
+          good: '良好(80-89)',
+          average: '中等(70-79)',
+          pass: '及格(60-69)',
+          fail: '不及格(<60)'
+        };
+      }
+      
+      const thresholds = gradeDetail.value.thresholds;
+      const percentageThresholds = gradeDetail.value.percentage_thresholds;
+      
+      if (displayMode.value === 'percentage') {
+        // 得分率模式
+        const excellent = percentageThresholds?.excellent || 90;
+        const good = percentageThresholds?.good || 85;
+        const average = percentageThresholds?.average || 75;
+        const pass = percentageThresholds?.pass || 60;
+        
+        return {
+          excellent: `优秀(≥${excellent}%)`,
+          good: `良好(${good}%-${excellent - 1}%)`,
+          average: `中等(${average}%-${good - 1}%)`,
+          pass: `及格(${pass}%-${average - 1}%)`,
+          fail: `不及格(<${pass}%)`
+        };
+      } else {
+        // 具体分数模式
+        const excellent = Math.round(thresholds?.excellent || 90);
+        const good = Math.round(thresholds?.good || 80);
+        const average = Math.round(thresholds?.average || 70);
+        const pass = Math.round(thresholds?.pass || 60);
+        
+        return {
+          excellent: `优秀(≥${excellent})`,
+          good: `良好(${good}-${excellent - 1})`,
+          average: `中等(${average}-${good - 1})`,
+          pass: `及格(${pass}-${average - 1})`,
+          fail: `不及格(<${pass})`
+        };
+      }
+    });
     
     // 计算分数分布条形图样式
     const distributionBarStyles = computed(() => {
@@ -1447,6 +1443,7 @@ export default {
     
     onMounted(() => {
       loadClassOptions();
+      loadExamList();
     });
     
     return {
@@ -1494,7 +1491,14 @@ export default {
       gradeDetail,
       classTeachers,
       switchAnalysisType,
-      distributionBarStyles
+      distributionBarStyles,
+      barLabels,
+      // 考试相关数据
+      exams,
+      selectedExam,
+      // 显示模式相关
+      displayMode,
+      toggleDisplayMode
     };
   }
 };
@@ -1517,13 +1521,12 @@ h3 {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
-.class-input select {
+.exam-select-wrapper {
   flex: 1;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  min-width: 220px;
 }
 
 .filter-select {
@@ -1553,15 +1556,23 @@ h3 {
   overflow: hidden;
 }
 
-.class-input button:hover {
+.class-input button:hover:not(:disabled) {
   background: #66b1ff;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
 }
 
-.class-input button:active {
+.class-input button:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: 0 2px 6px rgba(64, 158, 255, 0.3);
+}
+
+.class-input button:disabled,
+.class-input button.disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .loading {

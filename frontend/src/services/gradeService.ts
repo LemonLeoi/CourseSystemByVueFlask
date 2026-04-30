@@ -228,51 +228,51 @@ export class GradeService {
   async getStudentAnalysis(studentId: string): Promise<StudentAnalysisData> {
     return await fetchApi<StudentAnalysisData>(`/grades/analysis/${studentId}`);
   }
-  
+
   async getClassAnalysis(className: string): Promise<ClassAnalysisData> {
     return await fetchApi<ClassAnalysisData>(`/grades/analysis/class/${encodeURIComponent(className)}`);
   }
-  
+
   async getGradeAnalysis(gradeName: string): Promise<GradeAnalysisData> {
     return await fetchApi<GradeAnalysisData>(`/grades/analysis/grade/${encodeURIComponent(gradeName)}`);
   }
-  
+
   async getStudentSubjectAnalysis(studentId: string, subject: string): Promise<StudentAnalysisData> {
     return await fetchApi<StudentAnalysisData>(`/grades/analysis/subject/${studentId}/${encodeURIComponent(subject)}`);
   }
-  
+
   async getClassSubjectAnalysis(className: string, subject: string): Promise<ClassAnalysisData> {
     return await fetchApi<ClassAnalysisData>(`/grades/analysis/class/${encodeURIComponent(className)}/${encodeURIComponent(subject)}`);
   }
-  
+
   async getGradeSubjectAnalysis(gradeName: string, subject: string): Promise<SubjectAnalysisData> {
     return await fetchApi<SubjectAnalysisData>(`/grades/analysis/grade/${encodeURIComponent(gradeName)}/${encodeURIComponent(subject)}`);
   }
-  
+
   async getStudentTrend(studentId: string): Promise<ExamTrendData> {
     return await fetchApi<ExamTrendData>(`/grades/analysis/trend/${studentId}`);
   }
-  
+
   async getClassTrend(className: string): Promise<ExamTrendData> {
     return await fetchApi<ExamTrendData>(`/grades/analysis/class/trend/${encodeURIComponent(className)}`);
   }
-  
+
   async getGradeTrend(gradeName: string): Promise<ExamTrendData> {
     return await fetchApi<ExamTrendData>(`/grades/analysis/grade/trend/${encodeURIComponent(gradeName)}`);
   }
-  
+
   async getTeacherPerformance(subject: string): Promise<TeacherPerformanceData> {
     return await fetchApi<TeacherPerformanceData>(`/grades/analysis/teacher/${encodeURIComponent(subject)}`);
   }
-  
+
   async getStudentScheduleAnalysis(studentId: string): Promise<Record<string, unknown>> {
     return await fetchApi<Record<string, unknown>>(`/grades/analysis/schedule/${studentId}`);
   }
-  
+
   async getClassScheduleAnalysis(className: string): Promise<Record<string, unknown>> {
     return await fetchApi<Record<string, unknown>>(`/grades/analysis/class/schedule/${encodeURIComponent(className)}`);
   }
-  
+
   async getIntermediateResults(analysisId: string, step?: string): Promise<IntermediateResult[]> {
     const params = new URLSearchParams();
     params.append('analysis_id', analysisId);
@@ -281,7 +281,7 @@ export class GradeService {
     }
     return await fetchApi<IntermediateResult[]>(`/analysis/intermediate-results?${params.toString()}`);
   }
-  
+
   async getModelState(analysisId: string, modelName?: string): Promise<ModelState> {
     const params = new URLSearchParams();
     params.append('analysis_id', analysisId);
@@ -290,7 +290,7 @@ export class GradeService {
     }
     return await fetchApi<ModelState>(`/analysis/model-state?${params.toString()}`);
   }
-  
+
   async getConclusions(analysisId: string, level?: string): Promise<Conclusion[]> {
     const params = new URLSearchParams();
     params.append('analysis_id', analysisId);
@@ -299,7 +299,7 @@ export class GradeService {
     }
     return await fetchApi<Conclusion[]>(`/analysis/conclusions?${params.toString()}`);
   }
-  
+
   async getAnalysisLogs(analysisType?: string, startTime?: string, endTime?: string): Promise<AnalysisLog[]> {
     const params = new URLSearchParams();
     if (analysisType) {
@@ -313,7 +313,7 @@ export class GradeService {
     }
     return await fetchApi<AnalysisLog[]>(`/analysis/logs?${params.toString()}`);
   }
-  
+
   async getProcessVisualization(analysisId: string, processType: string): Promise<ProcessVisualizationData> {
     return await fetchApi<ProcessVisualizationData>('/analysis/process-visualization', {
       method: 'POST',
@@ -323,7 +323,7 @@ export class GradeService {
       body: JSON.stringify({ analysis_id: analysisId, process_type: processType })
     });
   }
-  
+
   async getAnalysisHistory(analysisType?: string, limit?: number): Promise<AnalysisHistory[]> {
     const params = new URLSearchParams();
     if (analysisType) {
@@ -334,9 +334,9 @@ export class GradeService {
     }
     return await fetchApi<AnalysisHistory[]>(`/analysis/history?${params.toString()}`);
   }
-  
+
   // 决策可视化相关API
-  
+
   async getKnowledgeDiscoveries(classId?: string, limit?: number): Promise<KnowledgeDiscoveryResponse> {
     const params = new URLSearchParams();
     if (classId) {
@@ -347,7 +347,7 @@ export class GradeService {
     }
     return await fetchApi<KnowledgeDiscoveryResponse>(`/analysis/knowledge-discoveries?${params.toString()}`);
   }
-  
+
   async getFeatureImportance(classId?: string, analysisType?: string): Promise<FeatureImportanceResponse> {
     const params = new URLSearchParams();
     if (classId) {
@@ -358,21 +358,21 @@ export class GradeService {
     }
     return await fetchApi<FeatureImportanceResponse>(`/analysis/feature-importance?${params.toString()}`);
   }
-  
+
   async getDecisionTreePath(classId?: string, studentId?: string, analysisType?: string): Promise<DecisionTreePathResponse> {
     return await fetchApi<DecisionTreePathResponse>('/analysis/decision-tree-path', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ 
-        class_id: classId, 
+      body: JSON.stringify({
+        class_id: classId,
         student_id: studentId,
         analysis_type: analysisType || 'class'
       })
     });
   }
-  
+
   async getFactorImpact(classId?: string, analysisType?: string): Promise<FactorImpactResponse> {
     const params = new URLSearchParams();
     if (classId) {
@@ -383,9 +383,9 @@ export class GradeService {
     }
     return await fetchApi<FactorImpactResponse>(`/analysis/factor-impact?${params.toString()}`);
   }
-  
+
   // 新增API方法
-  
+
   async executeAnalysis(classIds: string[], analysisType: string = 'class'): Promise<ExecuteAnalysisResponse> {
     return await fetchApi<ExecuteAnalysisResponse>('/analysis/execute', {
       method: 'POST',
@@ -395,23 +395,28 @@ export class GradeService {
       body: JSON.stringify({ class_ids: classIds, analysis_type: analysisType })
     });
   }
-  
+
   async getETLStatus(analysisId: string): Promise<ETLStatusResponse> {
     const params = new URLSearchParams();
     params.append('analysis_id', analysisId);
     return await fetchApi<ETLStatusResponse>(`/analysis/etl-status?${params.toString()}`);
   }
-  
-  async compareClasses(classIds: string[], metrics?: string[]): Promise<ClassCompareResponse> {
+
+  async compareClasses(classIds: string[], metrics?: string[], examId?: string, subject?: string): Promise<ClassCompareResponse> {
+    const body: Record<string, unknown> = { class_ids: classIds };
+    if (metrics) body.metrics = metrics;
+    if (examId) body.exam_id = examId;
+    if (subject) body.subject = subject;
+
     return await fetchApi<ClassCompareResponse>('/analysis/class-compare', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ class_ids: classIds, metrics })
+      body: JSON.stringify(body)
     });
   }
-  
+
   async getRealtimeDiscoveries(classId?: string, limit?: number): Promise<RealtimeDiscoveriesResponse> {
     const params = new URLSearchParams();
     if (classId) {
@@ -422,9 +427,9 @@ export class GradeService {
     }
     return await fetchApi<RealtimeDiscoveriesResponse>(`/analysis/discoveries/realtime?${params.toString()}`);
   }
-  
+
   // 学科分析API
-  
+
   async getSubjectAnalysis(classId: string, subjects?: string[]): Promise<SubjectAnalysisResponse> {
     const params = new URLSearchParams();
     params.append('class_id', classId);
@@ -433,7 +438,7 @@ export class GradeService {
     }
     return await fetchApi<SubjectAnalysisResponse>(`/analysis/subject-analysis?${params.toString()}`);
   }
-  
+
   async compareSubjects(classId: string, subjects: string[]): Promise<SubjectComparisonResponse> {
     return await fetchApi<SubjectComparisonResponse>('/analysis/subject-comparison', {
       method: 'POST',
@@ -443,22 +448,56 @@ export class GradeService {
       body: JSON.stringify({ class_id: classId, subjects })
     });
   }
-  
+
   // 获取班级教师信息
   async getClassTeachers(classId: string): Promise<ClassTeachersResponse> {
     const params = new URLSearchParams();
     params.append('class_id', classId);
     return await fetchApi<ClassTeachersResponse>(`/analysis/class-teachers?${params.toString()}`);
   }
-  
+
   // 获取班级详细成绩分析
-  async getClassGradeDetail(classId: string, subject?: string): Promise<ClassGradeDetailResponse> {
+  async getClassGradeDetail(classId: string, subject?: string, examId?: string, displayMode?: string): Promise<ClassGradeDetailResponse> {
     const params = new URLSearchParams();
     params.append('class_id', classId);
     if (subject) {
       params.append('subject', subject);
     }
+    if (examId) {
+      params.append('exam_id', examId);
+    }
+    if (displayMode) {
+      params.append('display_mode', displayMode);
+    }
     return await fetchApi<ClassGradeDetailResponse>(`/analysis/class-grade-detail?${params.toString()}`);
+  }
+
+  // 获取考试列表
+  async getExamList(grade?: string): Promise<ExamInfo[]> {
+    const params = new URLSearchParams();
+    if (grade) {
+      params.append('grade', grade);
+    }
+    const response = await fetchApi<ExamInfo[]>(`/exams/?${params.toString()}`);
+    return response;
+  }
+
+  // 获取学生参与的所有考试列表
+  async getStudentExamList(studentId: string, examCode?: string): Promise<StudentExamListResponse> {
+    const params = new URLSearchParams();
+    params.append('student_id', studentId);
+    if (examCode) {
+      params.append('exam_code', examCode);
+    }
+    return await fetchApi<StudentExamListResponse>(`/exams/student-exams?${params.toString()}`);
+  }
+
+  // 获取学生特定考试的详细成绩信息
+  async getStudentExamDetail(studentId: string, examCode: string): Promise<StudentExamDetailResponse> {
+    const params = new URLSearchParams();
+    params.append('student_id', studentId);
+    params.append('exam_code', examCode);
+    return await fetchApi<StudentExamDetailResponse>(`/exams/student-exams/detail?${params.toString()}`);
   }
 }
 
@@ -544,6 +583,84 @@ export interface ClassTeachersResponse {
   generated_at: string;
 }
 
+// 考试相关类型
+export interface ExamInfo {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  grade: string;
+  academicYear: string;
+  semester: string;
+  startDate?: string;
+  endDate?: string;
+  status: string;
+}
+
+export interface ExamListResponse {
+  exams: ExamInfo[];
+  total: number;
+}
+
+// 学生考试信息相关类型
+export interface StudentExamInfo {
+  examCode: string;
+  examName: string;
+  academicYear: string;
+  semester: string;
+  grade: string;
+  examType: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  subjects: string[];
+  averageScore: number | null;
+  totalSubjects: number;
+  examLocation: string | null;
+  specialNotes: string | null;
+}
+
+export interface StudentExamListResponse {
+  studentId: string;
+  studentName: string;
+  studentClass: string;
+  grade: string;
+  exams: StudentExamInfo[];
+  totalExams: number;
+}
+
+export interface StudentGradeDetail {
+  subject: string;
+  score: number;
+  gradeLevel: string;
+  pass: boolean;
+  excellent: boolean;
+}
+
+export interface StudentExamStatistics {
+  totalSubjects: number;
+  averageScore: number;
+  maxScore: number;
+  minScore: number;
+  passRate: number;
+  excellentRate: number;
+  passCount: number;
+  excellentCount: number;
+}
+
+export interface StudentExamDetail {
+  studentId: string;
+  studentName: string;
+  studentClass: string;
+  exam: ExamInfo;
+  grades: StudentGradeDetail[];
+  statistics: StudentExamStatistics;
+}
+
+export interface StudentExamDetailResponse extends StudentExamDetail {
+  message?: string;
+}
+
 // 班级详细成绩分析相关类型
 export interface ClassGradeDistribution {
   excellent: number;
@@ -565,11 +682,18 @@ export interface ClassGradeDetail {
   pass_rate: number;
   excellent_rate: number;
   distribution: ClassGradeDistribution;
-  data_source: string;
+  rule_type?: string;
+  thresholds?: {
+    excellent: number;
+    good: number;
+    average: number;
+    pass: number;
+  };
 }
 
 export interface ClassGradeDetailResponse {
-  detail: ClassGradeDetail;
+  detail: ClassGradeDetail | null;
+  error?: string;
   generated_at: string;
 }
 

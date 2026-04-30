@@ -5,6 +5,7 @@ from app.analysis.analysis_logger import logger
 from app.analysis.analysis_explainer import explainer
 from app.analysis.etl_manager import etl_manager
 from app.data_access.grade_data_access import GradeDataAccess
+from app.data_access.grade_settings_data_access import GradeSettingsDataAccess
 import threading
 import time
 
@@ -1013,9 +1014,13 @@ def get_class_teachers():
         
         # 解析班级ID
         import re
-        match = re.search(r'(\d+)班', class_id)
-        class_name = match.group(1) if match else '1'
-        grade = class_id[:2]
+        match = re.search(r'([\u4e00-\u9fa5]+)(\d+)(?:班)?', class_id)
+        if match:
+            grade = match.group(1)
+            class_name = f"{match.group(2)}班"
+        else:
+            class_name = '1班'
+            grade = class_id[:2]
         
         # 从数据库获取教师信息
         teachers = GradeDataAccess.get_class_teachers(class_name, grade)
@@ -1037,25 +1042,41 @@ def get_class_grade_detail():
     Query参数:
         class_id: 班级ID（必填）
         subject: 学科名称（可选，默认所有学科）
+        exam_id: 考试ID（可选，默认所有考试）
+        display_mode: 显示模式（可选，'score'表示具体分数模式，'percentage'表示得分率模式，默认使用系统配置）
     """
     try:
         class_id = request.args.get('class_id')
         subject = request.args.get('subject')
+        exam_id = request.args.get('exam_id')
+        display_mode = request.args.get('display_mode')
         
         if not class_id:
             return jsonify({'error': '缺少class_id参数'}), 400
         
         # 解析班级ID
         import re
-        match = re.search(r'(\d+)班', class_id)
-        class_name = match.group(1) if match else '1'
-        grade = class_id[:2]
-        
-        # 如果指定了学科，只分析该学科
-        if subject:
-            grades = GradeDataAccess.get_class_subject_grades(class_name, grade, subject)
+        match = re.search(r'([\u4e00-\u9fa5]+)(\d+)(?:班)?', class_id)
+        if match:
+            grade = match.group(1)
+            class_name = f"{match.group(2)}班"
         else:
-            grades = GradeDataAccess.get_class_grades(class_name, grade)
+            class_name = '1班'
+            grade = class_id[:2]
+        
+        # 根据是否指定考试ID选择不同的数据获取方法
+        if exam_id:
+            # 指定考试ID时，按考试筛选
+            if subject:
+                grades = GradeDataAccess.get_class_subject_grades_by_exam(class_name, grade, subject, exam_id)
+            else:
+                grades = GradeDataAccess.get_class_grades_by_exam(class_name, grade, exam_id)
+        else:
+            # 不指定考试ID时，获取所有考试数据
+            if subject:
+                grades = GradeDataAccess.get_class_subject_grades(class_name, grade, subject)
+            else:
+                grades = GradeDataAccess.get_class_grades(class_name, grade)
         
         if grades:
             # 从数据库计算统计数据
@@ -1073,31 +1094,113 @@ def get_class_grade_detail():
                 min_score = min(scores)
                 std_dev = (sum((s - avg_score) ** 2 for s in scores) / len(scores)) ** 0.5
                 
-                # 计算及格率和优秀率（假设满分100分）
-                pass_count = sum(1 for s in scores if s >= 60)
-                excellent_count = sum(1 for s in scores if s >= 85)
+                # 获取分级设置
+                settings = GradeSettingsDataAccess.get_settings()
                 
-                # 分数分布
-                distribution = {
-                    'excellent': sum(1 for s in scores if s >= 90),
-                    'good': sum(1 for s in scores if s >= 80 and s < 90),
-                    'average': sum(1 for s in scores if s >= 60 and s < 80),
-                    'pass': sum(1 for s in scores if s >= 60 and s < 70),
-                    'fail': sum(1 for s in scores if s < 60)
+                # 确定使用的规则类型：优先使用display_mode参数，否则使用系统配置
+                effective_rule_type = display_mode if display_mode else settings.rule_type
+                
+                # 确定学科满分
+                full_score = 100
+                if subject in ['语文', '数学', '英语']:
+                    full_score = 150
+                elif subject in ['物理', '化学', '生物', '历史', '地理', '政治']:
+                    full_score = 100
+                
+                # 根据规则类型计算分级阈值（用于实际统计）
+                if effective_rule_type == 'percentage':
+                    # 按得分率计算
+                    excellent_threshold = (settings.percentage_rule_a / 100) * full_score
+                    good_threshold = (settings.percentage_rule_b / 100) * full_score
+                    average_threshold = (settings.percentage_rule_c / 100) * full_score
+                    pass_threshold = (settings.percentage_rule_d / 100) * full_score
+                else:
+                    # 按具体分数计算
+                    excellent_threshold = settings.score_rule_a
+                    good_threshold = settings.score_rule_b
+                    average_threshold = settings.score_rule_c
+                    pass_threshold = settings.score_rule_d
+                
+                # 计算百分比阈值（用于前端显示）
+                percentage_thresholds = {
+                    'excellent': settings.percentage_rule_a,
+                    'good': settings.percentage_rule_b,
+                    'average': settings.percentage_rule_c,
+                    'pass': settings.percentage_rule_d
                 }
+                
+                # 获取学生ID集合（去重）
+                student_ids = set(g[0] for g in grades)
+                total_students_count = len(student_ids)
+                
+                # 对于每个学生，获取其最高成绩用于分布统计
+                # 对于特定学科，每个学生只有一个成绩
+                # 对于综合分析，取学生的平均成绩或最高成绩
+                student_scores = {}
+                if subject:
+                    # 指定学科时，每个学生只有一个成绩
+                    for g in grades:
+                        if g[2] is not None:
+                            student_scores[g[0]] = g[2]
+                else:
+                    # 综合分析时，计算每个学生的平均成绩
+                    student_score_sum = {}
+                    student_score_count = {}
+                    for g in grades:
+                        if g[6] is not None:
+                            student_score_sum[g[0]] = student_score_sum.get(g[0], 0) + g[6]
+                            student_score_count[g[0]] = student_score_count.get(g[0], 0) + 1
+                    for student_id in student_score_sum:
+                        student_scores[student_id] = student_score_sum[student_id] / student_score_count[student_id]
+                
+                student_score_list = list(student_scores.values())
+                
+                # 计算及格率和优秀率（基于学生人数）
+                pass_count = sum(1 for s in student_score_list if s >= pass_threshold)
+                excellent_count = sum(1 for s in student_score_list if s >= excellent_threshold)
+                
+                # 分数分布（基于学生人数）
+                distribution = {
+                    'excellent': sum(1 for s in student_score_list if s >= excellent_threshold),
+                    'good': sum(1 for s in student_score_list if s >= good_threshold and s < excellent_threshold),
+                    'average': sum(1 for s in student_score_list if s >= average_threshold and s < good_threshold),
+                    'pass': sum(1 for s in student_score_list if s >= pass_threshold and s < average_threshold),
+                    'fail': sum(1 for s in student_score_list if s < pass_threshold)
+                }
+                
+                # 基于学生人数重新计算统计指标
+                if student_score_list:
+                    avg_score_student = sum(student_score_list) / len(student_score_list)
+                    max_score_student = max(student_score_list)
+                    min_score_student = min(student_score_list)
+                    std_dev_student = (sum((s - avg_score_student) ** 2 for s in student_score_list) / len(student_score_list)) ** 0.5
+                else:
+                    avg_score_student = 0
+                    max_score_student = 0
+                    min_score_student = 0
+                    std_dev_student = 0
                 
                 result = {
                     'class_id': class_id,
                     'subject': subject or '综合',
-                    'total_students': len(set(g[0] for g in grades)),
+                    'total_students': total_students_count,
                     'total_scores': len(scores),
-                    'average_score': round(avg_score, 2),
-                    'max_score': round(max_score, 2),
-                    'min_score': round(min_score, 2),
-                    'std_deviation': round(std_dev, 2),
-                    'pass_rate': round((pass_count / len(scores)) * 100, 2),
-                    'excellent_rate': round((excellent_count / len(scores)) * 100, 2),
-                    'distribution': distribution
+                    'average_score': round(avg_score_student, 2),
+                    'max_score': round(max_score_student, 2),
+                    'min_score': round(min_score_student, 2),
+                    'std_deviation': round(std_dev_student, 2),
+                    'pass_rate': round((pass_count / len(student_score_list)) * 100, 2) if student_score_list else 0,
+                    'excellent_rate': round((excellent_count / len(student_score_list)) * 100, 2) if student_score_list else 0,
+                    'distribution': distribution,
+                    'rule_type': effective_rule_type,
+                    'full_score': full_score,
+                    'thresholds': {
+                        'excellent': round(excellent_threshold, 2),
+                        'good': round(good_threshold, 2),
+                        'average': round(average_threshold, 2),
+                        'pass': round(pass_threshold, 2)
+                    },
+                    'percentage_thresholds': percentage_thresholds
                 }
                 return jsonify({
                     'detail': result,
