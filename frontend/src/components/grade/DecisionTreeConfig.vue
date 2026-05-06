@@ -223,6 +223,159 @@
       </ul>
     </div>
     
+    <!-- 班级类型配置区 -->
+    <div class="section">
+      <div class="section-header">
+        <h4 class="section-title">
+          <span class="section-icon">🏫</span>
+          班级类型分类标准
+        </h4>
+        <span class="section-hint">定义基础薄弱班、普通班、重点班的划分规则</span>
+      </div>
+      
+      <!-- 基础薄弱班分数线 -->
+      <div class="param-item" :class="{ 'has-error': classTypeErrors.thresholdLow }">
+        <div class="param-header">
+          <label class="param-label">基础薄弱班分数线</label>
+          <div class="param-value-wrapper">
+            <span class="param-value">{{ classTypeConfig.thresholdLow }}</span>
+            <span class="param-unit">分</span>
+          </div>
+          <span class="tooltip-wrapper">
+            <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"></path>
+              <path d="M12 8h.01"></path>
+            </svg>
+            <span class="tooltip-text">平均分低于此分数的班级将被划分为基础薄弱班</span>
+          </span>
+        </div>
+        <div class="param-controls">
+          <input 
+            type="number" 
+            v-model.number="classTypeConfig.thresholdLow" 
+            :min="0" 
+            :max="100" 
+            class="number-input-small"
+          />
+          <input 
+            type="range" 
+            v-model.number="classTypeConfig.thresholdLow" 
+            :min="0" 
+            :max="100" 
+            class="slider"
+          />
+        </div>
+        <div class="range-labels">
+          <span>0</span>
+          <span>100</span>
+        </div>
+        <div v-if="classTypeErrors.thresholdLow" class="error-message">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          {{ classTypeErrors.thresholdLow }}
+        </div>
+      </div>
+      
+      <!-- 重点班分数线 -->
+      <div class="param-item" :class="{ 'has-error': classTypeErrors.thresholdHigh }">
+        <div class="param-header">
+          <label class="param-label">重点班分数线</label>
+          <div class="param-value-wrapper">
+            <span class="param-value">{{ classTypeConfig.thresholdHigh }}</span>
+            <span class="param-unit">分</span>
+          </div>
+          <span class="tooltip-wrapper">
+            <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"></path>
+              <path d="M12 8h.01"></path>
+            </svg>
+            <span class="tooltip-text">平均分高于此分数的班级将被划分为重点班</span>
+          </span>
+        </div>
+        <div class="param-controls">
+          <input 
+            type="number" 
+            v-model.number="classTypeConfig.thresholdHigh" 
+            :min="0" 
+            :max="100" 
+            class="number-input-small"
+          />
+          <input 
+            type="range" 
+            v-model.number="classTypeConfig.thresholdHigh" 
+            :min="0" 
+            :max="100" 
+            class="slider"
+          />
+        </div>
+        <div class="range-labels">
+          <span>0</span>
+          <span>100</span>
+        </div>
+        <div v-if="classTypeErrors.thresholdHigh" class="error-message">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          {{ classTypeErrors.thresholdHigh }}
+        </div>
+      </div>
+      
+      <!-- 分类方法 -->
+      <div class="param-item">
+        <div class="param-header">
+          <label class="param-label">分类方法</label>
+          <span class="tooltip-wrapper">
+            <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"></path>
+              <path d="M12 8h.01"></path>
+            </svg>
+            <span class="tooltip-text">选择使用平均分或中位数进行班级类型划分</span>
+          </span>
+        </div>
+        <div class="radio-group">
+          <label class="radio-label" :class="{ active: classTypeConfig.method === 'average' }">
+            <input type="radio" v-model="classTypeConfig.method" value="average" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">平均分</span>
+            <span class="radio-desc">使用班级平均分数</span>
+          </label>
+          <label class="radio-label" :class="{ active: classTypeConfig.method === 'median' }">
+            <input type="radio" v-model="classTypeConfig.method" value="median" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">中位数</span>
+            <span class="radio-desc">使用班级分数中位数</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- 当前分类规则说明 -->
+      <div class="info-card small">
+        <h5 class="info-title">📊 当前分类规则</h5>
+        <div class="class-type-rules">
+          <div class="rule-item weak">
+            <span class="rule-label">基础薄弱班:</span>
+            <span class="rule-desc">{{ classTypeDescription.weakClass }}</span>
+          </div>
+          <div class="rule-item normal">
+            <span class="rule-label">普通班:</span>
+            <span class="rule-desc">{{ classTypeDescription.normalClass }}</span>
+          </div>
+          <div class="rule-item key">
+            <span class="rule-label">重点班:</span>
+            <span class="rule-desc">{{ classTypeDescription.keyClass }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <!-- 操作按钮 -->
     <div class="actions">
       <button class="btn btn-secondary" @click="resetConfig">
@@ -245,9 +398,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { decisionTreeService } from '@/services/gradeService';
-import type { DecisionTreeParams } from '@/services/gradeService';
+import { ref, reactive, onMounted, computed } from 'vue';
+import { decisionTreeService, gradeService } from '@/services/gradeService';
+import type { DecisionTreeParams, ClassTypeConfig } from '@/services/gradeService';
 
 const emit = defineEmits<{
   (e: 'configUpdated', params: DecisionTreeParams): void;
@@ -258,6 +411,17 @@ const config = reactive<DecisionTreeParams>({
   minSamplesSplit: 2,
   threshold: 0.0001,
   algorithm: 'C4.5'
+});
+
+const classTypeConfig = reactive<ClassTypeConfig>({
+  thresholdLow: 60,
+  thresholdHigh: 80,
+  method: 'average',
+  description: {
+    weakClass: '',
+    normalClass: '',
+    keyClass: ''
+  }
 });
 
 const isSaving = ref(false);
@@ -272,11 +436,28 @@ const defaultConfig = {
   algorithm: 'C4.5' as const
 };
 
+const defaultClassTypeConfig = {
+  thresholdLow: 60,
+  thresholdHigh: 80,
+  method: 'average' as const
+};
+
 const validationErrors = reactive({
   maxDepth: '',
   minSamplesSplit: '',
   threshold: ''
 });
+
+const classTypeErrors = reactive({
+  thresholdLow: '',
+  thresholdHigh: ''
+});
+
+const classTypeDescription = computed(() => ({
+  weakClass: `平均分低于${classTypeConfig.thresholdLow}分为基础薄弱班`,
+  normalClass: `平均分在${classTypeConfig.thresholdLow}-${classTypeConfig.thresholdHigh}分为普通班`,
+  keyClass: `平均分高于${classTypeConfig.thresholdHigh}分为重点班`
+}));
 
 const showNotification = (type: 'success' | 'error', message: string) => {
   toastType.value = type;
@@ -314,6 +495,24 @@ const validateParams = (): boolean => {
     validationErrors.threshold = '';
   }
   
+  // 验证班级类型配置
+  if (classTypeConfig.thresholdLow < 0 || classTypeConfig.thresholdLow > 100) {
+    classTypeErrors.thresholdLow = '请输入0-100之间的整数';
+    isValid = false;
+  } else {
+    classTypeErrors.thresholdLow = '';
+  }
+  
+  if (classTypeConfig.thresholdHigh < 0 || classTypeConfig.thresholdHigh > 100) {
+    classTypeErrors.thresholdHigh = '请输入0-100之间的整数';
+    isValid = false;
+  } else if (classTypeConfig.thresholdLow >= classTypeConfig.thresholdHigh) {
+    classTypeErrors.thresholdHigh = '基础薄弱班分数线必须小于重点班分数线';
+    isValid = false;
+  } else {
+    classTypeErrors.thresholdHigh = '';
+  }
+  
   return isValid;
 };
 
@@ -323,13 +522,25 @@ onMounted(() => {
 
 const loadConfig = async () => {
   try {
-    const response = await decisionTreeService.getDecisionTreeConfig();
-    if (response.params) {
-      config.maxDepth = response.params.maxDepth;
-      config.minSamplesSplit = response.params.minSamplesSplit;
-      config.threshold = response.params.threshold;
-      config.algorithm = response.params.algorithm;
+    const [dtResponse, classTypeResponse] = await Promise.all([
+      decisionTreeService.getDecisionTreeConfig(),
+      gradeService.getClassTypeConfig()
+    ]);
+    
+    if (dtResponse.params) {
+      config.maxDepth = dtResponse.params.maxDepth;
+      config.minSamplesSplit = dtResponse.params.minSamplesSplit;
+      config.threshold = dtResponse.params.threshold;
+      config.algorithm = dtResponse.params.algorithm;
     }
+    
+    if (classTypeResponse.config) {
+      classTypeConfig.thresholdLow = classTypeResponse.config.thresholdLow;
+      classTypeConfig.thresholdHigh = classTypeResponse.config.thresholdHigh;
+      classTypeConfig.method = classTypeResponse.config.method;
+      classTypeConfig.description = classTypeResponse.config.description;
+    }
+    
     showNotification('success', '配置加载成功');
   } catch (error) {
     console.error('加载配置失败:', error);
@@ -345,6 +556,13 @@ const resetConfig = () => {
   validationErrors.maxDepth = '';
   validationErrors.minSamplesSplit = '';
   validationErrors.threshold = '';
+  
+  classTypeConfig.thresholdLow = defaultClassTypeConfig.thresholdLow;
+  classTypeConfig.thresholdHigh = defaultClassTypeConfig.thresholdHigh;
+  classTypeConfig.method = defaultClassTypeConfig.method;
+  classTypeErrors.thresholdLow = '';
+  classTypeErrors.thresholdHigh = '';
+  
   showNotification('success', '已恢复默认配置');
 };
 
@@ -357,22 +575,26 @@ const saveConfig = async () => {
   
   isSaving.value = true;
   try {
-    const params: DecisionTreeParams = {
+    // 保存决策树参数
+    await decisionTreeService.updateDecisionTreeConfig({
       maxDepth: config.maxDepth,
       minSamplesSplit: config.minSamplesSplit,
       threshold: config.threshold,
       algorithm: config.algorithm
-    };
-    const response = await decisionTreeService.updateDecisionTreeConfig(params);
-    if (response.success) {
-      showNotification('success', response.message || '配置保存成功');
-      emit('configUpdated', params);
-    } else {
-      showNotification('error', response.message || '保存失败');
-    }
-  } catch (error: any) {
+    });
+    
+    // 保存班级类型配置
+    await gradeService.updateClassTypeConfig({
+      thresholdLow: classTypeConfig.thresholdLow,
+      thresholdHigh: classTypeConfig.thresholdHigh,
+      method: classTypeConfig.method
+    });
+    
+    showNotification('success', '配置保存成功');
+    emit('configUpdated', { ...config });
+  } catch (error) {
     console.error('保存配置失败:', error);
-    showNotification('error', error.message || '保存配置失败');
+    showNotification('error', '保存配置失败');
   } finally {
     isSaving.value = false;
   }

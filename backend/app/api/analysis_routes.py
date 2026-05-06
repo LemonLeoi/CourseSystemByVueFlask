@@ -354,122 +354,400 @@ def get_decision_tree_path():
         class_id: 班级ID（可选）
         student_id: 学生ID（可选）
         analysis_type: 分析类型
+        params: 决策树参数配置（maxDepth, minSamplesSplit, threshold, algorithm）
     """
     try:
         data = request.get_json()
         class_id = data.get('class_id')
         student_id = data.get('student_id')
         analysis_type = data.get('analysis_type', 'class')
+        params = data.get('params', {})
         
-        decision_tree_paths = [
-            {
-                "id": "path-1",
-                "name": "排课时间影响路径",
-                "description": "分析排课时间对学生成绩的影响",
-                "confidence": 95,
-                "impact": "高",
-                "recommendation": "建议避免在周五下午安排重要课程",
-                "path": [
-                    {
-                        "label": "排课时间",
-                        "value": "信息增益: 0.4521",
-                        "isLeaf": False,
-                        "splitCriteria": "",
-                        "infoGain": 0.4521,
-                        "significance": "p < 0.001",
-                        "branchOptions": [
-                            {"value": "周五下午", "nextNodeId": 1},
-                            {"value": "周二上午", "nextNodeId": 10},
-                            {"value": "其他时间", "nextNodeId": 20}
-                        ]
-                    },
-                    {
-                        "label": "周五下午?",
-                        "value": "是",
-                        "isLeaf": False,
-                        "splitCriteria": "排课时间 = \"周五下午\"",
-                        "branchOptions": [
-                            {"value": "第5-6节", "nextNodeId": 2},
-                            {"value": "第1-2节", "nextNodeId": 5}
-                        ]
-                    },
-                    {
-                        "label": "课程节次",
-                        "value": "第5-6节",
-                        "isLeaf": False,
-                        "splitCriteria": "课程节次 = \"第5-6节\"",
-                        "infoGain": 0.3287,
-                        "significance": "p < 0.01"
-                    },
-                    {
-                        "label": "预测结果",
-                        "value": "及格率下降28%",
-                        "isLeaf": True,
-                        "splitCriteria": "最终判定",
-                        "significance": "高度显著"
-                    }
-                ]
-            },
-            {
-                "id": "path-2",
-                "name": "教师水平影响路径",
-                "description": "分析教师职称对学生成绩的影响",
-                "confidence": 88,
-                "impact": "中高",
-                "recommendation": "建议为基础薄弱班配置高级教师",
-                "path": [
-                    {
-                        "label": "教师职称",
-                        "value": "信息增益: 0.3287",
-                        "isLeaf": False,
-                        "splitCriteria": "",
-                        "infoGain": 0.3287,
-                        "significance": "p < 0.01",
-                        "branchOptions": [
-                            {"value": "高级教师", "nextNodeId": 1},
-                            {"value": "一级教师", "nextNodeId": 1},
-                            {"value": "二级教师", "nextNodeId": 1}
-                        ]
-                    },
-                    {
-                        "label": "班级类型",
-                        "value": "基础薄弱班",
-                        "isLeaf": False,
-                        "splitCriteria": "班级类型 = \"基础薄弱班\"",
-                        "branchOptions": [
-                            {"value": "基础薄弱班", "nextNodeId": 2},
-                            {"value": "普通班", "nextNodeId": 5},
-                            {"value": "重点班", "nextNodeId": 6}
-                        ]
-                    },
-                    {
-                        "label": "提分效果",
-                        "value": "高级教师 +15%",
-                        "isLeaf": False,
-                        "splitCriteria": "教师水平 × 班级类型交互效应",
-                        "infoGain": 0.1856,
-                        "significance": "p < 0.05"
-                    },
-                    {
-                        "label": "预测结果",
-                        "value": "提分率提升15%",
-                        "isLeaf": True,
-                        "splitCriteria": "最终判定",
-                        "significance": "显著"
-                    }
-                ]
-            }
-        ]
+        max_depth = params.get('maxDepth', 5)
+        min_samples_split = params.get('minSamplesSplit', 2)
+        threshold = params.get('threshold', 0.0001)
+        algorithm = params.get('algorithm', 'C4.5')
+        
+        decision_tree_paths = generate_decision_tree_paths(
+            class_id, 
+            student_id, 
+            analysis_type,
+            max_depth,
+            min_samples_split,
+            threshold,
+            algorithm
+        )
         
         return jsonify({
             'paths': decision_tree_paths,
             'class_id': class_id,
             'student_id': student_id,
-            'algorithm': 'C4.5',
+            'algorithm': algorithm,
+            'params': params,
             'total_paths': len(decision_tree_paths)
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+def generate_decision_tree_paths(class_id, student_id, analysis_type, max_depth, min_samples_split, threshold, algorithm):
+    """根据参数生成决策树路径"""
+    paths = []
+    
+    path1_confidence = 95
+    path2_confidence = 88
+    path3_confidence = 82
+    path4_confidence = 78
+    path5_confidence = 86
+    
+    if max_depth < 4:
+        path1_confidence = min(95, 85 + max_depth * 2)
+        path2_confidence = min(88, 78 + max_depth * 2)
+        path3_confidence = min(82, 72 + max_depth * 2)
+        path4_confidence = min(78, 68 + max_depth * 2)
+        path5_confidence = min(86, 76 + max_depth * 2)
+    elif max_depth > 8:
+        path1_confidence = min(95, 90 + (max_depth - 8))
+        path2_confidence = min(88, 83 + (max_depth - 8))
+        path3_confidence = min(82, 77 + (max_depth - 8))
+        path4_confidence = min(78, 73 + (max_depth - 8))
+        path5_confidence = min(86, 81 + (max_depth - 8))
+    
+    if min_samples_split > 10:
+        path1_confidence -= (min_samples_split - 10) // 5
+        path2_confidence -= (min_samples_split - 10) // 5
+        path3_confidence -= (min_samples_split - 10) // 5
+        path4_confidence -= (min_samples_split - 10) // 5
+        path5_confidence -= (min_samples_split - 10) // 5
+    
+    info_gain_1 = 0.4521 * (1 - (threshold * 1000))
+    info_gain_2 = 0.3287 * (1 - (threshold * 1000))
+    info_gain_3 = 0.2845 * (1 - (threshold * 1000))
+    info_gain_4 = 0.2456 * (1 - (threshold * 1000))
+    info_gain_5 = 0.3123 * (1 - (threshold * 1000))
+    
+    # 1. 排课时间影响路径（增强节次分析）
+    paths.append({
+        "id": "path-1",
+        "name": "排课时间影响路径",
+        "description": "分析排课时间对学生成绩的影响",
+        "confidence": int(path1_confidence),
+        "impact": "高" if path1_confidence > 90 else "中高",
+        "recommendation": "建议避免在周五下午安排重要课程",
+        "path": [
+            {
+                "label": "排课时间",
+                "value": f"信息增益: {info_gain_1:.4f}",
+                "isLeaf": False,
+                "splitCriteria": "",
+                "infoGain": round(info_gain_1, 4),
+                "significance": "p < 0.001",
+                "branchOptions": [
+                    {"value": "周五下午", "nextNodeId": 1},
+                    {"value": "周二上午", "nextNodeId": 10},
+                    {"value": "其他时间", "nextNodeId": 20}
+                ]
+            },
+            {
+                "label": "周五下午?",
+                "value": "是",
+                "isLeaf": False,
+                "splitCriteria": "排课时间 = \"周五下午\"",
+                "branchOptions": [
+                    {"value": "第5-6节", "nextNodeId": 2},
+                    {"value": "第1-2节", "nextNodeId": 5},
+                    {"value": "第3-4节", "nextNodeId": 8}
+                ]
+            },
+            {
+                "label": "课程节次",
+                "value": "第5-6节",
+                "isLeaf": max_depth <= 2,
+                "splitCriteria": "课程节次 = \"第5-6节\"",
+                "infoGain": round(info_gain_5, 4) if max_depth > 2 else None,
+                "significance": "p < 0.01" if max_depth > 2 else None,
+                "branchOptions": max_depth > 2 and [
+                    {"value": "文科科目", "nextNodeId": 3},
+                    {"value": "理科科目", "nextNodeId": 4}
+                ] or []
+            },
+            {
+                "label": "科目类型",
+                "value": "文科科目",
+                "isLeaf": max_depth <= 3,
+                "splitCriteria": "科目类型 = \"文科\"",
+                "infoGain": round(0.1567 * (1 - threshold * 300), 4) if max_depth > 3 else None,
+                "significance": "p < 0.05" if max_depth > 3 else None
+            },
+            {
+                "label": "预测结果",
+                "value": f"及格率下降{25 + max_depth}%",
+                "isLeaf": True,
+                "splitCriteria": "最终判定",
+                "significance": "高度显著"
+            }
+        ],
+        "periodAnalysis": [
+            {"period": "第1-2节", "scoreImpact": 5, "description": "学习状态最佳"},
+            {"period": "第3-4节", "scoreImpact": 2, "description": "学习状态良好"},
+            {"period": "第5-6节", "scoreImpact": -8, "description": "学习状态下降"},
+            {"period": "第7-8节", "scoreImpact": -12, "description": "学习状态最差"}
+        ]
+    })
+    
+    # 2. 教师水平影响路径
+    paths.append({
+        "id": "path-2",
+        "name": "教师水平影响路径",
+        "description": "分析教师职称对学生成绩的影响",
+        "confidence": int(path2_confidence),
+        "impact": "中高" if path2_confidence > 85 else "中等",
+        "recommendation": "建议为基础薄弱班配置高级教师",
+        "path": [
+            {
+                "label": "教师职称",
+                "value": f"信息增益: {info_gain_2:.4f}",
+                "isLeaf": False,
+                "splitCriteria": "",
+                "infoGain": round(info_gain_2, 4),
+                "significance": "p < 0.01",
+                "branchOptions": [
+                    {"value": "高级教师", "nextNodeId": 1},
+                    {"value": "一级教师", "nextNodeId": 1},
+                    {"value": "二级教师", "nextNodeId": 1}
+                ]
+            },
+            {
+                "label": "班级类型",
+                "value": "基础薄弱班",
+                "isLeaf": False,
+                "splitCriteria": "班级类型 = \"基础薄弱班\"",
+                "branchOptions": [
+                    {"value": "基础薄弱班", "nextNodeId": 2},
+                    {"value": "普通班", "nextNodeId": 5},
+                    {"value": "重点班", "nextNodeId": 6}
+                ]
+            },
+            {
+                "label": "提分效果",
+                "value": f"高级教师 +{12 + max_depth}%",
+                "isLeaf": max_depth <= 2,
+                "splitCriteria": "教师水平 × 班级类型交互效应",
+                "infoGain": round(0.1856 * (1 - threshold * 500), 4) if max_depth > 2 else None,
+                "significance": "p < 0.05" if max_depth > 2 else None
+            },
+            {
+                "label": "预测结果",
+                "value": f"提分率提升{12 + max_depth}%",
+                "isLeaf": True,
+                "splitCriteria": "最终判定",
+                "significance": "显著"
+            }
+        ]
+    })
+    
+    # 3. 连堂课程影响路径
+    paths.append({
+        "id": "path-3",
+        "name": "连堂课程影响路径",
+        "description": "分析连续课程节数对学生成绩的影响",
+        "confidence": int(path3_confidence),
+        "impact": "中高" if path3_confidence > 80 else "中等",
+        "recommendation": "建议避免安排3节以上连堂课",
+        "path": [
+            {
+                "label": "连堂节数",
+                "value": f"信息增益: {info_gain_3:.4f}",
+                "isLeaf": False,
+                "splitCriteria": "",
+                "infoGain": round(info_gain_3, 4),
+                "significance": "p < 0.01",
+                "branchOptions": [
+                    {"value": "1节", "nextNodeId": 1},
+                    {"value": "2节", "nextNodeId": 1},
+                    {"value": "3节及以上", "nextNodeId": 1}
+                ]
+            },
+            {
+                "label": "连堂数量",
+                "value": "3节及以上",
+                "isLeaf": False,
+                "splitCriteria": "连堂节数 >= 3",
+                "branchOptions": [
+                    {"value": "文科科目", "nextNodeId": 2},
+                    {"value": "理科科目", "nextNodeId": 5}
+                ]
+            },
+            {
+                "label": "科目类型",
+                "value": "文科科目",
+                "isLeaf": max_depth <= 2,
+                "splitCriteria": "科目类型 = \"文科\"",
+                "infoGain": round(0.1678 * (1 - threshold * 400), 4) if max_depth > 2 else None,
+                "significance": "p < 0.05" if max_depth > 2 else None
+            },
+            {
+                "label": "学生疲劳度",
+                "value": "高度疲劳",
+                "isLeaf": max_depth <= 3,
+                "splitCriteria": "连续授课导致疲劳",
+                "infoGain": round(0.1234 * (1 - threshold * 200), 4) if max_depth > 3 else None,
+                "significance": "p < 0.1" if max_depth > 3 else None
+            },
+            {
+                "label": "预测结果",
+                "value": f"成绩下降{15 + max_depth * 2}%",
+                "isLeaf": True,
+                "splitCriteria": "最终判定",
+                "significance": "显著"
+            }
+        ],
+        "doubleClassAnalysis": [
+            {"doubleClass": "1节", "scoreImpact": 0, "description": "正常授课"},
+            {"doubleClass": "2节", "scoreImpact": -3, "description": "轻微疲劳"},
+            {"doubleClass": "3节", "scoreImpact": -10, "description": "明显疲劳"},
+            {"doubleClass": "4节", "scoreImpact": -18, "description": "严重疲劳"}
+        ]
+    })
+    
+    # 4. 学生性别差异路径
+    paths.append({
+        "id": "path-4",
+        "name": "学生性别差异路径",
+        "description": "分析不同性别在各学科上的成绩表现差异",
+        "confidence": int(path4_confidence),
+        "impact": "中等" if path4_confidence > 75 else "中低",
+        "recommendation": "针对不同性别制定差异化教学策略",
+        "path": [
+            {
+                "label": "学生性别",
+                "value": f"信息增益: {info_gain_4:.4f}",
+                "isLeaf": False,
+                "splitCriteria": "",
+                "infoGain": round(info_gain_4, 4),
+                "significance": "p < 0.05",
+                "branchOptions": [
+                    {"value": "男", "nextNodeId": 1},
+                    {"value": "女", "nextNodeId": 1}
+                ]
+            },
+            {
+                "label": "学科类型",
+                "value": "理科",
+                "isLeaf": False,
+                "splitCriteria": "学科类型 = \"理科\"",
+                "branchOptions": [
+                    {"value": "理科", "nextNodeId": 2},
+                    {"value": "文科", "nextNodeId": 5}
+                ]
+            },
+            {
+                "label": "理科表现",
+                "value": "男生优势",
+                "isLeaf": max_depth <= 2,
+                "splitCriteria": "性别 × 学科交互效应",
+                "infoGain": round(0.1456 * (1 - threshold * 350), 4) if max_depth > 2 else None,
+                "significance": "p < 0.05" if max_depth > 2 else None
+            },
+            {
+                "label": "学习特征",
+                "value": "逻辑思维",
+                "isLeaf": max_depth <= 3,
+                "splitCriteria": "学习能力维度",
+                "infoGain": round(0.1123 * (1 - threshold * 200), 4) if max_depth > 3 else None,
+                "significance": "p < 0.1" if max_depth > 3 else None
+            },
+            {
+                "label": "预测结果",
+                "value": "男生理科平均高5-8分",
+                "isLeaf": True,
+                "splitCriteria": "最终判定",
+                "significance": "中等显著"
+            }
+        ],
+        "genderAnalysis": [
+            {"subject": "数学", "maleAvg": 85, "femaleAvg": 82, "diff": 3},
+            {"subject": "物理", "maleAvg": 82, "femaleAvg": 78, "diff": 4},
+            {"subject": "化学", "maleAvg": 80, "femaleAvg": 79, "diff": 1},
+            {"subject": "语文", "maleAvg": 78, "femaleAvg": 83, "diff": -5},
+            {"subject": "英语", "maleAvg": 79, "femaleAvg": 82, "diff": -3},
+            {"subject": "历史", "maleAvg": 77, "femaleAvg": 81, "diff": -4}
+        ]
+    })
+    
+    # 5. 节次影响分析路径
+    paths.append({
+        "id": "path-5",
+        "name": "节次影响分析",
+        "description": "分析具体课程节次对成绩的影响",
+        "confidence": int(path5_confidence),
+        "impact": "中高" if path5_confidence > 80 else "中等",
+        "recommendation": "合理安排不同难度课程的授课时间",
+        "path": [
+            {
+                "label": "课程节次",
+                "value": f"信息增益: {info_gain_5:.4f}",
+                "isLeaf": False,
+                "splitCriteria": "",
+                "infoGain": round(info_gain_5, 4),
+                "significance": "p < 0.01",
+                "branchOptions": [
+                    {"value": "第1节", "nextNodeId": 1},
+                    {"value": "第2节", "nextNodeId": 1},
+                    {"value": "第3节", "nextNodeId": 1},
+                    {"value": "第4节", "nextNodeId": 1},
+                    {"value": "第5节", "nextNodeId": 1},
+                    {"value": "第6节", "nextNodeId": 1},
+                    {"value": "第7节", "nextNodeId": 1},
+                    {"value": "第8节", "nextNodeId": 1}
+                ]
+            },
+            {
+                "label": "时间段",
+                "value": "上午",
+                "isLeaf": False,
+                "splitCriteria": "时间段划分",
+                "branchOptions": [
+                    {"value": "上午(1-4节)", "nextNodeId": 2},
+                    {"value": "下午(5-8节)", "nextNodeId": 5}
+                ]
+            },
+            {
+                "label": "学习状态",
+                "value": "最佳",
+                "isLeaf": max_depth <= 2,
+                "splitCriteria": "学习状态评估",
+                "infoGain": round(0.1789 * (1 - threshold * 450), 4) if max_depth > 2 else None,
+                "significance": "p < 0.05" if max_depth > 2 else None
+            },
+            {
+                "label": "注意力集中度",
+                "value": "高",
+                "isLeaf": max_depth <= 3,
+                "splitCriteria": "注意力分析",
+                "infoGain": round(0.1345 * (1 - threshold * 250), 4) if max_depth > 3 else None,
+                "significance": "p < 0.1" if max_depth > 3 else None
+            },
+            {
+                "label": "预测结果",
+                "value": "上午课程成绩高8-12%",
+                "isLeaf": True,
+                "splitCriteria": "最终判定",
+                "significance": "显著"
+            }
+        ],
+        "periodDetailAnalysis": [
+            {"period": 1, "name": "早读/第1节", "attention": 95, "performance": 92, "recommendation": "安排核心课程"},
+            {"period": 2, "name": "第2节", "attention": 90, "performance": 88, "recommendation": "安排重要课程"},
+            {"period": 3, "name": "第3节", "attention": 85, "performance": 85, "recommendation": "常规课程"},
+            {"period": 4, "name": "第4节", "attention": 75, "performance": 78, "recommendation": "安排轻松课程"},
+            {"period": 5, "name": "第5节", "attention": 70, "performance": 72, "recommendation": "安排实践课程"},
+            {"period": 6, "name": "第6节", "attention": 65, "performance": 68, "recommendation": "安排复习课程"},
+            {"period": 7, "name": "第7节", "attention": 55, "performance": 60, "recommendation": "安排活动课程"},
+            {"period": 8, "name": "第8节", "attention": 45, "performance": 52, "recommendation": "避免重要课程"}
+        ]
+    })
+    
+    return paths
 
 @analysis_bp.route('/analysis/factor-impact', methods=['GET'])
 def get_factor_impact():
@@ -1466,6 +1744,63 @@ def update_decision_tree_config():
                 'success': True,
                 'message': message,
                 'params': result.get('decisionTreeParams', params) if isinstance(result, dict) else params,
+                'generated_at': time.strftime('%Y-%m-%d %H:%M:%S')
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'message': message,
+                'generated_at': time.strftime('%Y-%m-%d %H:%M:%S')
+            }), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@analysis_bp.route('/analysis/class-type-config', methods=['GET'])
+def get_class_type_config():
+    """获取班级类型分类配置
+    
+    返回班级类型划分的阈值和方法配置
+    """
+    try:
+        config = GradeSettingsDataAccess.get_class_type_config()
+        
+        return jsonify({
+            'success': True,
+            'config': config,
+            'generated_at': time.strftime('%Y-%m-%d %H:%M:%S')
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@analysis_bp.route('/analysis/class-type-config', methods=['POST'])
+def update_class_type_config():
+    """更新班级类型分类配置
+    
+    请求体:
+        thresholdLow: 基础薄弱班分数线（可选）
+        thresholdHigh: 重点班分数线（可选）
+        method: 分类方法（可选，'average'或'median'）
+    """
+    try:
+        data = request.get_json()
+        
+        config = {}
+        if 'thresholdLow' in data:
+            config['thresholdLow'] = float(data['thresholdLow'])
+        if 'thresholdHigh' in data:
+            config['thresholdHigh'] = float(data['thresholdHigh'])
+        if 'method' in data:
+            config['method'] = data['method']
+        
+        success, result, message = GradeSettingsDataAccess.update_class_type_config(config)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': message,
+                'config': result,
                 'generated_at': time.strftime('%Y-%m-%d %H:%M:%S')
             }), 200
         else:

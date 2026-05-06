@@ -255,7 +255,9 @@
         >
           <DecisionTreePath 
             :paths="decisionTreePathsData" 
-            :factor-impact="factorImpactAnalysisData" 
+            :factor-impact="factorImpactAnalysisData"
+            @refresh="refreshDecisionTree"
+            ref="decisionTreePathRef"
           />
         </CollapsibleSection>
         
@@ -439,6 +441,7 @@ export default {
     const featureImportanceData = ref([]);
     const decisionTreePathsData = ref([]);
     const factorImpactAnalysisData = ref([]);
+    const decisionTreePathRef = ref();
     
     // 学科分析相关数据
     const subjectStrengthData = ref(null);
@@ -611,8 +614,14 @@ export default {
         const featureImportanceResponse = await gradeService.getFeatureImportance(classId);
         featureImportanceData.value = featureImportanceResponse.feature_importance || [];
         
-        // 获取决策树路径
-        const decisionTreeResponse = await gradeService.getDecisionTreePath(classId);
+        // 获取决策树配置和路径
+        const configResponse = await gradeService.getDecisionTreeConfig();
+        const decisionTreeResponse = await gradeService.getDecisionTreePath(
+          classId,
+          undefined,
+          'class',
+          configResponse.params
+        );
         decisionTreePathsData.value = decisionTreeResponse.paths || [];
         
         // 获取因素影响分析
@@ -627,6 +636,29 @@ export default {
         await fetchSubjectAnalysis(classId);
       } catch (error) {
         console.error('获取分析数据失败:', error);
+      }
+    };
+    
+    // 刷新决策树分析
+    const refreshDecisionTree = async () => {
+      try {
+        const configResponse = await gradeService.getDecisionTreeConfig();
+        const decisionTreeResponse = await gradeService.getDecisionTreePath(
+          className.value,
+          undefined,
+          'class',
+          configResponse.params
+        );
+        decisionTreePathsData.value = decisionTreeResponse.paths || [];
+        
+        const factorImpactResponse = await gradeService.getFactorImpact(className.value);
+        factorImpactAnalysisData.value = factorImpactResponse.factor_impact || [];
+      } catch (error) {
+        console.error('重新分析决策路径失败:', error);
+      } finally {
+        if (decisionTreePathRef.value) {
+          decisionTreePathRef.value.setRefreshing(false);
+        }
       }
     };
     
@@ -654,6 +686,25 @@ export default {
       displayMode.value = displayMode.value === 'score' ? 'percentage' : 'score';
       if (className.value) {
         fetchGradeDetail(className.value, selectedSubject.value);
+      }
+    };
+    
+    // 处理决策树配置更新
+    const handleConfigUpdated = async (params) => {
+      console.log('决策树配置更新:', params);
+      if (className.value) {
+        try {
+          const decisionTreeResponse = await gradeService.getDecisionTreePath(
+            className.value,
+            undefined,
+            'class',
+            params
+          );
+          decisionTreePathsData.value = decisionTreeResponse.paths || [];
+          console.log('决策树路径已更新');
+        } catch (error) {
+          console.error('更新决策树路径失败:', error);
+        }
       }
     };
     
@@ -928,23 +979,6 @@ export default {
       } else if (className.value && !selectedSubject.value && analysisType.value === 'all') {
         // 如果没有选择学科且是综合分析，获取综合成绩分析
         await fetchGradeDetail(className.value);
-      }
-    };
-    
-    /**
-     * 处理决策树配置更新
-     * @param {Object} params - 决策树参数对象
-     * @param {number} params.maxDepth - 最大树深度
-     * @param {number} params.minSamplesSplit - 最小分裂样本数
-     * @param {number} params.threshold - 分裂阈值
-     * @param {string} params.algorithm - 算法类型
-     */
-    const handleConfigUpdated = (params) => {
-      console.log('决策树配置已更新:', params);
-      // 配置更新后，可以选择重新分析以应用新参数
-      if (className.value) {
-        // 显示提示，告知用户配置已更新
-        alert(`决策树参数已更新！\n\n最大树深度: ${params.maxDepth}\n最小分裂样本数: ${params.minSamplesSplit}\n分裂阈值: ${params.threshold}\n算法: ${params.algorithm}\n\n请点击"分析"按钮重新运行分析以应用新参数。`);
       }
     };
     

@@ -101,3 +101,76 @@ class GradeSettingsDataAccess:
         except Exception as e:
             db.session.rollback()
             return False, None, f"更新失败: {str(e)}"
+    
+    @staticmethod
+    def get_class_type_config():
+        """获取班级类型分类配置"""
+        settings = GradeSettingsDataAccess.get_settings()
+        return {
+            'thresholdLow': float(settings.class_type_threshold_low),
+            'thresholdHigh': float(settings.class_type_threshold_high),
+            'method': settings.class_type_method,
+            'description': {
+                'weakClass': f'平均分低于{settings.class_type_threshold_low}分为基础薄弱班',
+                'normalClass': f'平均分{settings.class_type_threshold_low}-{settings.class_type_threshold_high}分为普通班',
+                'keyClass': f'平均分高于{settings.class_type_threshold_high}分为重点班'
+            }
+        }
+    
+    @staticmethod
+    def update_class_type_config(config):
+        """更新班级类型分类配置"""
+        try:
+            # 参数验证
+            validation_errors = []
+            
+            # 验证低阈值
+            if 'thresholdLow' in config:
+                threshold_low = config['thresholdLow']
+                if not isinstance(threshold_low, (int, float)) or threshold_low < 0 or threshold_low > 100:
+                    validation_errors.append('基础薄弱班分数线必须是0-100之间的数值')
+            
+            # 验证高阈值
+            if 'thresholdHigh' in config:
+                threshold_high = config['thresholdHigh']
+                if not isinstance(threshold_high, (int, float)) or threshold_high < 0 or threshold_high > 100:
+                    validation_errors.append('重点班分数线必须是0-100之间的数值')
+            
+            # 验证低阈值小于高阈值
+            if 'thresholdLow' in config and 'thresholdHigh' in config:
+                if config['thresholdLow'] >= config['thresholdHigh']:
+                    validation_errors.append('基础薄弱班分数线必须小于重点班分数线')
+            elif 'thresholdLow' in config:
+                settings = GradeSettingsDataAccess.get_settings()
+                if config['thresholdLow'] >= settings.class_type_threshold_high:
+                    validation_errors.append('基础薄弱班分数线必须小于重点班分数线')
+            elif 'thresholdHigh' in config:
+                settings = GradeSettingsDataAccess.get_settings()
+                if config['thresholdHigh'] <= settings.class_type_threshold_low:
+                    validation_errors.append('重点班分数线必须大于基础薄弱班分数线')
+            
+            # 验证分类方法
+            if 'method' in config:
+                method = config['method']
+                if method not in ['average', 'median']:
+                    validation_errors.append("分类方法必须是'average'或'median'")
+            
+            # 如果有验证错误，返回错误信息
+            if validation_errors:
+                return False, None, '参数验证失败: ' + '; '.join(validation_errors)
+            
+            # 更新配置
+            settings = GradeSettingsDataAccess.get_settings()
+            
+            if 'thresholdLow' in config:
+                settings.class_type_threshold_low = config['thresholdLow']
+            if 'thresholdHigh' in config:
+                settings.class_type_threshold_high = config['thresholdHigh']
+            if 'method' in config:
+                settings.class_type_method = config['method']
+            
+            db.session.commit()
+            return True, GradeSettingsDataAccess.get_class_type_config(), "更新成功"
+        except Exception as e:
+            db.session.rollback()
+            return False, None, f"更新失败: {str(e)}"

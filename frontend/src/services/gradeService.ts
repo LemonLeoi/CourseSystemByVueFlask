@@ -377,7 +377,7 @@ export class GradeService {
     return await fetchApi<FeatureImportanceResponse>(`/analysis/feature-importance?${params.toString()}`);
   }
 
-  async getDecisionTreePath(classId?: string, studentId?: string, analysisType?: string): Promise<DecisionTreePathResponse> {
+  async getDecisionTreePath(classId?: string, studentId?: string, analysisType?: string, params?: DecisionTreeParams): Promise<DecisionTreePathResponse> {
     return await fetchApi<DecisionTreePathResponse>('/analysis/decision-tree-path', {
       method: 'POST',
       headers: {
@@ -386,8 +386,27 @@ export class GradeService {
       body: JSON.stringify({
         class_id: classId,
         student_id: studentId,
-        analysis_type: analysisType || 'class'
+        analysis_type: analysisType || 'class',
+        params: params
       })
+    });
+  }
+
+  async getDecisionTreeConfig(): Promise<DecisionTreeConfigResponse> {
+    return await fetchApi<DecisionTreeConfigResponse>('/analysis/decision-tree/config');
+  }
+
+  async getClassTypeConfig(): Promise<ClassTypeConfigResponse> {
+    return await fetchApi<ClassTypeConfigResponse>('/analysis/class-type-config');
+  }
+
+  async updateClassTypeConfig(config: Partial<ClassTypeConfig>): Promise<ClassTypeConfigUpdateResponse> {
+    return await fetchApi<ClassTypeConfigUpdateResponse>('/analysis/class-type-config', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(config)
     });
   }
 
@@ -760,6 +779,31 @@ export interface DecisionTreeConfigUpdateResponse {
   success: boolean;
   message: string;
   params: DecisionTreeParams;
+  generated_at: string;
+}
+
+// 班级类型配置相关类型
+export interface ClassTypeConfig {
+  thresholdLow: number;
+  thresholdHigh: number;
+  method: 'average' | 'median';
+  description: {
+    weakClass: string;
+    normalClass: string;
+    keyClass: string;
+  };
+}
+
+export interface ClassTypeConfigResponse {
+  success: boolean;
+  config: ClassTypeConfig;
+  generated_at: string;
+}
+
+export interface ClassTypeConfigUpdateResponse {
+  success: boolean;
+  message: string;
+  config: ClassTypeConfig;
   generated_at: string;
 }
 

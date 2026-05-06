@@ -6,6 +6,17 @@
         <h3 class="tree-title">决策路径分析</h3>
         <p class="tree-subtitle">Decision Path Analysis</p>
       </div>
+      <div class="header-actions">
+        <button 
+          class="refresh-btn" 
+          :class="{ loading: isRefreshing }"
+          @click="handleRefresh"
+          :disabled="isRefreshing"
+        >
+          <span v-if="isRefreshing" class="spinner">⏳</span>
+          <span v-else>🔄 重新分析</span>
+        </button>
+      </div>
       <div class="path-length">
         <span>路径长度: {{ currentPath?.path.length || 0 }} 个节点</span>
       </div>
@@ -41,6 +52,108 @@
       <div class="info-row full-width">
         <span class="info-label">建议:</span>
         <span class="info-value recommendation">{{ currentPath.recommendation }}</span>
+      </div>
+    </div>
+    
+    <!-- 节次分析面板 -->
+    <div v-if="currentPath?.periodAnalysis" class="analysis-panel period-analysis">
+      <div class="panel-header">
+        <span class="panel-icon">⏰</span>
+        <span class="panel-title">节次影响分析</span>
+      </div>
+      <div class="analysis-grid">
+        <div 
+          v-for="item in currentPath.periodAnalysis" 
+          :key="item.period"
+          class="analysis-card"
+        >
+          <span class="analysis-label">{{ item.period }}</span>
+          <span :class="['analysis-impact', item.scoreImpact >= 0 ? 'positive' : 'negative']">
+            {{ item.scoreImpact >= 0 ? '+' : '' }}{{ item.scoreImpact }}%
+          </span>
+          <span class="analysis-desc">{{ item.description }}</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 连堂课程分析面板 -->
+    <div v-if="currentPath?.doubleClassAnalysis" class="analysis-panel double-class-analysis">
+      <div class="panel-header">
+        <span class="panel-icon">📚</span>
+        <span class="panel-title">连堂课程影响分析</span>
+      </div>
+      <div class="analysis-grid">
+        <div 
+          v-for="item in currentPath.doubleClassAnalysis" 
+          :key="item.doubleClass"
+          class="analysis-card"
+        >
+          <span class="analysis-label">{{ item.doubleClass }}</span>
+          <span :class="['analysis-impact', item.scoreImpact >= 0 ? 'positive' : 'negative']">
+            {{ item.scoreImpact >= 0 ? '+' : '' }}{{ item.scoreImpact }}%
+          </span>
+          <span class="analysis-desc">{{ item.description }}</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 性别差异分析面板 -->
+    <div v-if="currentPath?.genderAnalysis" class="analysis-panel gender-analysis">
+      <div class="panel-header">
+        <span class="panel-icon">👥</span>
+        <span class="panel-title">性别差异分析</span>
+      </div>
+      <div class="gender-table">
+        <table>
+          <thead>
+            <tr>
+              <th>学科</th>
+              <th>男生平均分</th>
+              <th>女生平均分</th>
+              <th>差异</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in currentPath.genderAnalysis" :key="item.subject">
+              <td>{{ item.subject }}</td>
+              <td>{{ item.maleAvg }}</td>
+              <td>{{ item.femaleAvg }}</td>
+              <td :class="['diff-cell', item.diff > 0 ? 'male' : item.diff < 0 ? 'female' : 'neutral']">
+                {{ item.diff > 0 ? '+' : '' }}{{ item.diff }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- 节次详细分析面板 -->
+    <div v-if="currentPath?.periodDetailAnalysis" class="analysis-panel period-detail-analysis">
+      <div class="panel-header">
+        <span class="panel-icon">⏳</span>
+        <span class="panel-title">节次详细分析</span>
+      </div>
+      <div class="period-chart">
+        <div 
+          v-for="item in currentPath.periodDetailAnalysis" 
+          :key="item.period"
+          class="period-bar-item"
+        >
+          <span class="period-number">{{ item.name }}</span>
+          <div class="bar-container">
+            <div 
+              class="attention-bar" 
+              :style="{ width: item.attention + '%' }"
+              :title="`注意力: ${item.attention}%`"
+            ></div>
+            <div 
+              class="performance-bar" 
+              :style="{ width: item.performance + '%' }"
+              :title="`表现: ${item.performance}%`"
+            ></div>
+          </div>
+          <span class="period-recommendation">{{ item.recommendation }}</span>
+        </div>
       </div>
     </div>
     
@@ -374,15 +487,31 @@ const props = defineProps<{
   factorImpact?: FactorImpact[];
 }>();
 
+const emit = defineEmits<{
+  refresh: []
+}>();
+
 const selectedPathId = ref<string | null>(null);
 const hoveredNode = ref<number | null>(null);
 const scale = ref(1);
 const containerWidth = ref(800);
 const containerHeight = ref(600);
+const isRefreshing = ref(false);
 
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 2.5;
 const SCALE_STEP = 0.1;
+
+const handleRefresh = () => {
+  isRefreshing.value = true;
+  emit('refresh');
+};
+
+const setRefreshing = (value: boolean) => {
+  isRefreshing.value = value;
+};
+
+defineExpose({ setRefreshing });
 
 const currentPath = computed(() => {
   if (props.paths && props.paths.length > 0) {
@@ -737,6 +866,53 @@ const svgRef = ref<SVGSVGElement | null>(null);
   border-radius: 4px;
   font-size: 12px;
   color: #6b7280;
+  margin-left: auto;
+}
+
+.header-actions {
+  margin-left: 12px;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.refresh-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.refresh-btn.loading {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+}
+
+.refresh-btn .spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .path-selector {

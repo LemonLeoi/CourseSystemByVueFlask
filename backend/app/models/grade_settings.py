@@ -24,6 +24,11 @@ class GradeSettings(db.Model):
     dt_threshold = db.Column(db.FLOAT, nullable=False, default=0.0001)
     dt_algorithm = db.Column(db.VARCHAR(20), nullable=False, default='C4.5')
     
+    # 班级类型分类配置
+    class_type_threshold_low = db.Column(db.DECIMAL(5,2), nullable=False, default=60)
+    class_type_threshold_high = db.Column(db.DECIMAL(5,2), nullable=False, default=80)
+    class_type_method = db.Column(db.VARCHAR(20), nullable=False, default='average')
+    
     # 时间戳
     created_at = db.Column(db.DateTime, default=db.func.now())
     updated_at = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
@@ -50,6 +55,11 @@ class GradeSettings(db.Model):
                 'maxDepth': self.dt_max_depth,
                 'threshold': self.dt_threshold,
                 'algorithm': self.dt_algorithm
+            },
+            'classTypeConfig': {
+                'thresholdLow': float(self.class_type_threshold_low),
+                'thresholdHigh': float(self.class_type_threshold_high),
+                'method': self.class_type_method
             }
         }
     
