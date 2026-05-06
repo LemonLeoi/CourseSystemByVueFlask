@@ -53,11 +53,11 @@ export function useClassGrade() {
   }
   
   // 获取班级考试趋势
-  const getClassTrend = async (className: string) => {
+  const getClassTrend = async (className: string, subject?: string, examCode?: string) => {
     loading.value = true
     error.value = ''
     try {
-      const response = await gradeService.getClassTrend(className)
+      const response = await gradeService.getClassTrend(className, subject, examCode)
       if (response.error) {
         throw new Error(response.error)
       }

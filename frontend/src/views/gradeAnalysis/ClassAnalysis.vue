@@ -52,6 +52,16 @@
         />
       </CollapsibleSection>
       
+      <!-- 决策树参数配置 -->
+      <CollapsibleSection 
+        title="决策树参数配置" 
+        icon="⚙️"
+        :default-collapsed="true"
+        storage-key="decision_tree_config"
+      >
+        <DecisionTreeConfig @config-updated="handleConfigUpdated" />
+      </CollapsibleSection>
+      
       <CollapsibleSection 
         title="班级信息" 
         icon="🏫" 
@@ -175,11 +185,13 @@
         icon="📈"
         storage-key="class_exam_trend"
       >
-        <BaseECharts
-          chart-type="line"
+        <GradeTrendAnalysis
           :data="examTrend"
-          :options="examTrendOptions"
-          height="400px"
+          :loading="loading"
+          :error="error"
+          :available-subjects="availableSubjects"
+          v-model="selectedTrendSubject"
+          @subject-change="handleTrendSubjectChange"
         />
       </CollapsibleSection>
       
@@ -360,6 +372,8 @@ import FeatureImportanceChart from '../../components/grade/FeatureImportanceChar
 import DecisionTreePath from '../../components/grade/DecisionTreePath.vue';
 import SubjectStrengthAnalysis from '../../components/grade/SubjectStrengthAnalysis.vue';
 import ClassComparePanel from '../../components/grade/ClassComparePanel.vue';
+import GradeTrendAnalysis from '../../components/grade/GradeTrendAnalysis.vue';
+import DecisionTreeConfig from '../../components/grade/DecisionTreeConfig.vue';
 import { ref, onMounted, watch, computed } from 'vue';
 import { useClassGrade } from '../../composables/grade/useClassGrade';
 import { gradeService } from '../../services/gradeService';
@@ -378,7 +392,9 @@ export default {
     FeatureImportanceChart,
     DecisionTreePath,
     SubjectStrengthAnalysis,
-    ClassComparePanel
+    ClassComparePanel,
+    GradeTrendAnalysis,
+    DecisionTreeConfig
   },
   setup() {
     const {
@@ -408,6 +424,15 @@ export default {
     
     // 显示模式
     const displayMode = ref('score'); // 'score' 或 'percentage'
+    
+    // 趋势分析相关
+    const selectedTrendSubject = ref('all');
+    const availableSubjects = computed(() => {
+      if (examTrend.value && examTrend.value.available_subjects) {
+        return examTrend.value.available_subjects;
+      }
+      return [];
+    });
     
     // 决策可视化相关数据（从API获取）
     const knowledgeDiscoveriesData = ref([]);
@@ -832,6 +857,13 @@ export default {
       }
     };
     
+    // 趋势分析科目变化处理
+    const handleTrendSubjectChange = async (subject) => {
+      if (className.value) {
+        await getClassTrend(className.value, subject);
+      }
+    };
+    
     // 分析班级成绩
     const analyzeClass = async () => {
       if (className.value) {
@@ -862,7 +894,7 @@ export default {
         // 步骤5：趋势分析
         loadingStep.value = '正在分析班级历次考试的成绩变化趋势...';
         currentAnalysisStep.value = 4;
-        await getClassTrend(className.value);
+        await getClassTrend(className.value, selectedTrendSubject.value);
         
         // 步骤6：获取决策分析数据
         loadingStep.value = '正在获取决策分析数据...';
@@ -896,6 +928,23 @@ export default {
       } else if (className.value && !selectedSubject.value && analysisType.value === 'all') {
         // 如果没有选择学科且是综合分析，获取综合成绩分析
         await fetchGradeDetail(className.value);
+      }
+    };
+    
+    /**
+     * 处理决策树配置更新
+     * @param {Object} params - 决策树参数对象
+     * @param {number} params.maxDepth - 最大树深度
+     * @param {number} params.minSamplesSplit - 最小分裂样本数
+     * @param {number} params.threshold - 分裂阈值
+     * @param {string} params.algorithm - 算法类型
+     */
+    const handleConfigUpdated = (params) => {
+      console.log('决策树配置已更新:', params);
+      // 配置更新后，可以选择重新分析以应用新参数
+      if (className.value) {
+        // 显示提示，告知用户配置已更新
+        alert(`决策树参数已更新！\n\n最大树深度: ${params.maxDepth}\n最小分裂样本数: ${params.minSamplesSplit}\n分裂阈值: ${params.threshold}\n算法: ${params.algorithm}\n\n请点击"分析"按钮重新运行分析以应用新参数。`);
       }
     };
     
@@ -1498,7 +1547,11 @@ export default {
       selectedExam,
       // 显示模式相关
       displayMode,
-      toggleDisplayMode
+      toggleDisplayMode,
+      // 趋势分析相关
+      selectedTrendSubject,
+      availableSubjects,
+      handleTrendSubjectChange
     };
   }
 };

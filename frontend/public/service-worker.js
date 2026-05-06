@@ -1,5 +1,5 @@
 // 缓存名称和版本
-const CACHE_NAME = 'school-management-v1';
+const CACHE_NAME = 'school-management-v2';
 
 // 需要预缓存的核心静态资源
 const PRECACHE_ASSETS = [

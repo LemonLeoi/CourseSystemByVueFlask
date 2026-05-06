@@ -59,11 +59,11 @@ export function useIndividualGrade() {
   }
   
   // 获取个人考试趋势
-  const getStudentTrend = async (studentId: string) => {
+  const getStudentTrend = async (studentId: string, subject?: string, examCode?: string) => {
     loading.value = true
     error.value = ''
     try {
-      const response = await gradeService.getStudentTrend(studentId)
+      const response = await gradeService.getStudentTrend(studentId, subject, examCode)
       if (response.error) {
         throw new Error(response.error)
       }

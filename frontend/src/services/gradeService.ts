@@ -249,12 +249,30 @@ export class GradeService {
     return await fetchApi<SubjectAnalysisData>(`/grades/analysis/grade/${encodeURIComponent(gradeName)}/${encodeURIComponent(subject)}`);
   }
 
-  async getStudentTrend(studentId: string): Promise<ExamTrendData> {
-    return await fetchApi<ExamTrendData>(`/grades/analysis/trend/${studentId}`);
+  async getStudentTrend(studentId: string, subject?: string, examCode?: string): Promise<ExamTrendData> {
+    const params = new URLSearchParams();
+    if (subject) {
+      params.append('subject', subject);
+    }
+    if (examCode && examCode !== 'all') {
+      params.append('exam', examCode);
+    }
+    const queryString = params.toString();
+    const url = `/grades/analysis/trend/${studentId}${queryString ? '?' + queryString : ''}`;
+    return await fetchApi<ExamTrendData>(url);
   }
 
-  async getClassTrend(className: string): Promise<ExamTrendData> {
-    return await fetchApi<ExamTrendData>(`/grades/analysis/class/trend/${encodeURIComponent(className)}`);
+  async getClassTrend(className: string, subject?: string, examCode?: string): Promise<ExamTrendData> {
+    const params = new URLSearchParams();
+    if (subject) {
+      params.append('subject', subject);
+    }
+    if (examCode && examCode !== 'all') {
+      params.append('exam', examCode);
+    }
+    const queryString = params.toString();
+    const url = `/grades/analysis/class/trend/${encodeURIComponent(className)}${queryString ? '?' + queryString : ''}`;
+    return await fetchApi<ExamTrendData>(url);
   }
 
   async getGradeTrend(gradeName: string): Promise<ExamTrendData> {
@@ -499,6 +517,33 @@ export class GradeService {
     params.append('exam_code', examCode);
     return await fetchApi<StudentExamDetailResponse>(`/exams/student-exams/detail?${params.toString()}`);
   }
+
+  async getGradeSettings(): Promise<GradeSettingsResponse> {
+    return await fetchApi<GradeSettingsResponse>('/grade-settings/');
+  }
+
+  async updateGradeSettings(settings: GradeSettings): Promise<GradeSettingsResponse> {
+    return await fetchApi<GradeSettingsResponse>('/grade-settings/', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(settings)
+    });
+  }
+}
+
+// Grade Settings相关类型
+export interface GradeSettings {
+  ruleType: string;
+  scoreRules: { A: number; B: number; C: number; D: number };
+  percentageRules: { A: number; B: number; C: number; D: number; E: number };
+}
+
+export interface GradeSettingsResponse {
+  success: boolean;
+  message?: string;
+  data?: GradeSettings;
 }
 
 // 学科分析相关类型
@@ -697,4 +742,139 @@ export interface ClassGradeDetailResponse {
   generated_at: string;
 }
 
+// 决策树参数相关类型
+export interface DecisionTreeParams {
+  minSamplesSplit: number;
+  maxDepth: number;
+  threshold: number;
+  algorithm: string;
+}
+
+export interface DecisionTreeConfigResponse {
+  params: DecisionTreeParams;
+  default_params: DecisionTreeParams;
+  generated_at: string;
+}
+
+export interface DecisionTreeConfigUpdateResponse {
+  success: boolean;
+  message: string;
+  params: DecisionTreeParams;
+  generated_at: string;
+}
+
+// 决策树日志相关类型
+export interface CalculationStep {
+  step: string;
+  node_id: number;
+  feature_id: number;
+  feature_name: string;
+  entropy_before: number;
+  entropy_after: number;
+  info_gain: number;
+  gain_ratio?: number;
+  sample_count: number;
+  class_distribution: Record<string, number>;
+}
+
+export interface FeatureRanking {
+  attribute: number;
+  attribute_name: string;
+  gain: number;
+  info_gain: number;
+}
+
+export interface DecisionTreeLog {
+  timestamp: string;
+  analysis_id: string;
+  user_id: string;
+  analysis_type: string;
+  step: string;
+  params: Record<string, unknown>;
+  calculation_steps: CalculationStep[];
+  feature_ranking: FeatureRanking[];
+  result: string;
+  operator: string;
+}
+
+export interface DecisionTreeLogsResponse {
+  logs: DecisionTreeLog[];
+  total: number;
+  generated_at: string;
+}
+
+// 决策树可视化相关类型
+export interface VisualizationNode {
+  id: string;
+  label: string;
+  type: 'leaf' | 'node';
+  depth: number;
+  attribute?: number;
+  attributeName?: string;
+  infoGain?: number;
+  gainRatio?: number;
+  entropyBefore?: number;
+  entropyAfter?: number;
+  sampleCount: number;
+  classDistribution?: Record<string, number>;
+  result?: string;
+  children?: Array<{
+    id: string;
+    parent_id: string;
+    edge_label: string;
+    data: VisualizationNode;
+  }>;
+}
+
+export interface DecisionTreeVisualizationResponse {
+  success: boolean;
+  analysis_id: string;
+  visualization_data: VisualizationNode;
+  calculation_steps: CalculationStep[];
+  feature_ranking: FeatureRanking[];
+  params: DecisionTreeParams;
+  attr_names: string[];
+  generated_at: string;
+}
+
 export const gradeService = new GradeService();
+
+// 决策树相关API方法扩展
+export class DecisionTreeService {
+  async getDecisionTreeConfig(): Promise<DecisionTreeConfigResponse> {
+    return await fetchApi<DecisionTreeConfigResponse>('/analysis/decision-tree/config');
+  }
+
+  async updateDecisionTreeConfig(params: DecisionTreeParams): Promise<DecisionTreeConfigUpdateResponse> {
+    return await fetchApi<DecisionTreeConfigUpdateResponse>('/analysis/decision-tree/config', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(params)
+    });
+  }
+
+  async getDecisionTreeLogs(analysisId?: string, startTime?: string, endTime?: string): Promise<DecisionTreeLogsResponse> {
+    const params = new URLSearchParams();
+    if (analysisId) params.append('analysis_id', analysisId);
+    if (startTime) params.append('start_time', startTime);
+    if (endTime) params.append('end_time', endTime);
+    return await fetchApi<DecisionTreeLogsResponse>(`/analysis/decision-tree/logs?${params.toString()}`);
+  }
+
+  async getDecisionTreeVisualization(classId: string, params?: DecisionTreeParams): Promise<DecisionTreeVisualizationResponse> {
+    const body: Record<string, unknown> = { class_id: classId };
+    if (params) body.params = params;
+    
+    return await fetchApi<DecisionTreeVisualizationResponse>('/analysis/decision-tree/visualization', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+  }
+}
+
+export const decisionTreeService = new DecisionTreeService();

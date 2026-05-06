@@ -17,6 +17,13 @@ class GradeSettings(db.Model):
     percentage_rule_c = db.Column(db.Integer, nullable=False, default=75)
     percentage_rule_d = db.Column(db.Integer, nullable=False, default=60)
     percentage_rule_e = db.Column(db.Integer, nullable=False, default=50)
+    
+    # 决策树参数配置
+    dt_min_samples_split = db.Column(db.Integer, nullable=False, default=2)
+    dt_max_depth = db.Column(db.Integer, nullable=False, default=5)
+    dt_threshold = db.Column(db.FLOAT, nullable=False, default=0.0001)
+    dt_algorithm = db.Column(db.VARCHAR(20), nullable=False, default='C4.5')
+    
     # 时间戳
     created_at = db.Column(db.DateTime, default=db.func.now())
     updated_at = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
@@ -37,6 +44,12 @@ class GradeSettings(db.Model):
                 'C': self.percentage_rule_c,
                 'D': self.percentage_rule_d,
                 'E': self.percentage_rule_e
+            },
+            'decisionTreeParams': {
+                'minSamplesSplit': self.dt_min_samples_split,
+                'maxDepth': self.dt_max_depth,
+                'threshold': self.dt_threshold,
+                'algorithm': self.dt_algorithm
             }
         }
     

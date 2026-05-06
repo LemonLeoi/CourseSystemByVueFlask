@@ -170,11 +170,13 @@
         icon="📈"
         storage-key="exam_trend"
       >
-        <BaseECharts
-          chart-type="line"
+        <GradeTrendAnalysis
           :data="examTrend"
-          :options="examTrendOptions"
-          height="400px"
+          :loading="loading"
+          :error="error"
+          :available-subjects="availableSubjects"
+          v-model="selectedTrendSubject"
+          @subject-change="handleTrendSubjectChange"
         />
       </CollapsibleSection>
 
@@ -202,6 +204,7 @@ import AnalysisProcessVisualizer from '../../components/common/AnalysisProcessVi
 import LoadingAnimator from '../../components/common/LoadingAnimator.vue';
 import ExamSelector from '../../components/common/ExamSelector.vue';
 import GradeStatsPanel from '../../components/common/GradeStatsPanel.vue';
+import GradeTrendAnalysis from '../../components/grade/GradeTrendAnalysis.vue';
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { useIndividualGrade } from '../../composables/grade/useIndividualGrade';
 import { gradeService } from '../../services/gradeService';
@@ -214,7 +217,8 @@ export default {
     AnalysisProcessVisualizer,
     LoadingAnimator,
     ExamSelector,
-    GradeStatsPanel
+    GradeStatsPanel,
+    GradeTrendAnalysis
   },
   setup() {
     const {
@@ -243,6 +247,15 @@ export default {
     const selectedSubject = ref('');
     const subjects = ref([]);
     const selectedExam = ref('');
+    
+    // 趋势分析相关
+    const selectedTrendSubject = ref('all');
+    const availableSubjects = computed(() => {
+      if (examTrend.value && examTrend.value.available_subjects) {
+        return examTrend.value.available_subjects;
+      }
+      return [];
+    });
     const studentClass = ref('');
 
     // 分析过程相关状态
@@ -433,6 +446,13 @@ export default {
       }
     };
 
+    // 趋势分析科目变化处理
+    const handleTrendSubjectChange = async (subject) => {
+      if (studentId.value) {
+        await getStudentTrend(studentId.value, subject);
+      }
+    };
+    
     // 分析学生成绩
     const analyzeStudent = async () => {
       if (studentId.value) {
@@ -464,7 +484,7 @@ export default {
 
         loadingStep.value = '正在分析学生历次考试的成绩变化趋势...';
         currentAnalysisStep.value = 4;
-        await getStudentTrend(studentId.value);
+        await getStudentTrend(studentId.value, selectedTrendSubject.value);
 
         loadingStep.value = '正在生成分析报告...';
         currentAnalysisStep.value = 5;
@@ -1329,7 +1349,11 @@ export default {
       currentAnalysisStep,
       analysisDataFlow,
       analysisCalculations,
-      analysisHints
+      analysisHints,
+      // 趋势分析相关
+      selectedTrendSubject,
+      availableSubjects,
+      handleTrendSubjectChange
     };
   }
 };

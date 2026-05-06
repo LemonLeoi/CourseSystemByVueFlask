@@ -60,6 +60,67 @@ class AnalysisLogger:
         self.logs.append(log_entry)
         self._save_logs()
     
+    def log_decision_tree_calculation(self, analysis_id, params, calculation_steps, feature_ranking, result='success', user_id='system'):
+        """记录决策树信息增益计算过程
+        
+        Args:
+            analysis_id: 分析任务ID
+            params: 使用的决策树参数
+            calculation_steps: 计算步骤列表
+            feature_ranking: 特征增益排序
+            result: 结果状态
+            user_id: 用户ID
+        """
+        log_entry = {
+            'timestamp': datetime.datetime.now().isoformat(),
+            'analysis_id': analysis_id,
+            'user_id': user_id,
+            'analysis_type': 'decision_tree',
+            'step': 'info_gain_calculation',
+            'params': params,
+            'calculation_steps': calculation_steps,
+            'feature_ranking': feature_ranking,
+            'result': result,
+            'operator': user_id
+        }
+        self.logs.append(log_entry)
+        self._save_logs()
+    
+    def log_node_split(self, analysis_id, node_id, depth, attribute, entropy_before, entropy_after, info_gain, gain_ratio, sample_count, class_distribution):
+        """记录决策树节点分裂过程
+        
+        Args:
+            analysis_id: 分析任务ID
+            node_id: 节点ID
+            depth: 节点深度
+            attribute: 分裂属性
+            entropy_before: 分裂前熵值
+            entropy_after: 分裂后熵值
+            info_gain: 信息增益
+            gain_ratio: 信息增益比
+            sample_count: 样本数量
+            class_distribution: 类别分布
+        """
+        log_entry = {
+            'timestamp': datetime.datetime.now().isoformat(),
+            'analysis_id': analysis_id,
+            'analysis_type': 'decision_tree',
+            'step': 'node_split',
+            'details': {
+                'node_id': node_id,
+                'depth': depth,
+                'attribute': attribute,
+                'entropy_before': entropy_before,
+                'entropy_after': entropy_after,
+                'info_gain': info_gain,
+                'gain_ratio': gain_ratio,
+                'sample_count': sample_count,
+                'class_distribution': class_distribution
+            }
+        }
+        self.logs.append(log_entry)
+        self._save_logs()
+    
     def _save_logs(self):
         """保存日志到文件"""
         try:
@@ -82,13 +143,15 @@ class AnalysisLogger:
         except Exception as e:
             print(f"保存日志失败: {e}")
     
-    def get_logs(self, analysis_type=None, start_time=None, end_time=None):
+    def get_logs(self, analysis_type=None, start_time=None, end_time=None, analysis_id=None, user_id=None):
         """获取日志
         
         Args:
             analysis_type: 分析类型
             start_time: 开始时间
             end_time: 结束时间
+            analysis_id: 分析任务ID
+            user_id: 用户ID
             
         Returns:
             日志列表
@@ -108,11 +171,33 @@ class AnalysisLogger:
                 filtered_logs = [log for log in filtered_logs if log.get('timestamp') >= start_time]
             if end_time:
                 filtered_logs = [log for log in filtered_logs if log.get('timestamp') <= end_time]
+            if analysis_id:
+                filtered_logs = [log for log in filtered_logs if log.get('analysis_id') == analysis_id]
+            if user_id:
+                filtered_logs = [log for log in filtered_logs if log.get('user_id') == user_id]
             
             return filtered_logs
         except Exception as e:
             print(f"获取日志失败: {e}")
             return []
+    
+    def get_decision_tree_logs(self, analysis_id=None, start_time=None, end_time=None):
+        """获取决策树分析日志
+        
+        Args:
+            analysis_id: 分析任务ID
+            start_time: 开始时间
+            end_time: 结束时间
+            
+        Returns:
+            决策树日志列表
+        """
+        return self.get_logs(
+            analysis_type='decision_tree',
+            analysis_id=analysis_id,
+            start_time=start_time,
+            end_time=end_time
+        )
     
     def export_logs(self, output_file):
         """导出日志

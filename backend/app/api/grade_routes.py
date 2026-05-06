@@ -122,7 +122,10 @@ def get_grade_subject_analysis(grade_name, subject):
 @bp.route('/analysis/trend/<student_id>', methods=['GET'])
 def get_student_trend(student_id):
     try:
-        result = analyze_student_trend(student_id)
+        # 获取subject和exam查询参数
+        subject = request.args.get('subject')
+        exam_code = request.args.get('exam')
+        result = analyze_student_trend(student_id, subject, exam_code)
         if "error" in result:
             return jsonify(result), 404
         return jsonify(result), 200
@@ -137,6 +140,10 @@ def get_class_trend(class_name):
         import urllib.parse
         class_name = urllib.parse.unquote_plus(class_name)
         
+        # 获取subject和exam查询参数
+        subject = request.args.get('subject')
+        exam_code = request.args.get('exam')
+        
         # 从班级名称中提取年级和班级数字
         import re
         # 更宽松的正则表达式，匹配中文年级 + 数字 + 可选的"班"字
@@ -147,7 +154,7 @@ def get_class_trend(class_name):
         grade = match.group(1)
         class_num = match.group(2)
         
-        result = analyze_class_trend(class_num, grade)
+        result = analyze_class_trend(class_num, grade, subject, exam_code)
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

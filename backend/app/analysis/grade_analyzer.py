@@ -624,7 +624,18 @@ def analyze_grade_subject(grade, subject):
     return result
 
 # 分析学生考试趋势
-def analyze_student_trend(student_id):
+def analyze_student_trend(student_id, subject=None, exam_code=None):
+    """
+    分析学生考试趋势
+    
+    Args:
+        student_id: 学生ID
+        subject: 学科名称（可选），为None或'all'时表示全科分析，为具体学科时表示单科分析
+        exam_code: 考试代码（可选），为None或'all'时表示所有考试，为具体考试代码时表示特定考试
+    
+    Returns:
+        dict: 包含学生信息和考试趋势数据
+    """
     # 获取学生信息和成绩
     student_info, grades = GradeDataAccess.get_student_grades(student_id)
     
@@ -644,9 +655,39 @@ def analyze_student_trend(student_id):
             "error": "该学生暂无成绩记录"
         }
     
+    # 过滤指定考试（如果提供了exam_code参数且不是'all'）
+    if exam_code and exam_code != 'all':
+        grades = [g for g in grades if g[1] == exam_code]
+        if not grades:
+            return {
+                "student_info": {
+                    "name": name,
+                    "gender": gender,
+                    "class": f"{student_grade}{student_class}",
+                    "grade": student_grade
+                },
+                "error": f"该学生在考试{exam_code}中暂无成绩记录"
+            }
+    
+    # 过滤指定学科（如果提供了subject参数且不是'all'）
+    if subject and subject != 'all':
+        grades = [g for g in grades if g[5] == subject]
+        if not grades:
+            return {
+                "student_info": {
+                    "name": name,
+                    "gender": gender,
+                    "class": f"{student_grade}{student_class}",
+                    "grade": student_grade
+                },
+                "error": f"该学生在{subject}科目暂无成绩记录"
+            }
+    
     # 按考试整理成绩
     exam_grades = {}
-    for exam_name, academic_year, semester, grade, exam_type, subject, score, grade_level in grades:
+    all_subjects = set()
+    
+    for exam_name, academic_year, semester, grade, exam_type, subj, score, grade_level in grades:
         if exam_name not in exam_grades:
             exam_grades[exam_name] = {
                 'academic_year': academic_year,
@@ -654,13 +695,20 @@ def analyze_student_trend(student_id):
                 'exam_type': exam_type,
                 'subjects': {}
             }
-        exam_grades[exam_name]['subjects'][subject] = score
+        exam_grades[exam_name]['subjects'][subj] = score
+        all_subjects.add(subj)
     
-    # 计算每次考试的平均成绩
+    # 计算每次考试的平均成绩（或单科成绩）
     exam_averages = {}
+    
     for exam_name, exam_data in exam_grades.items():
         scores = list(exam_data['subjects'].values())
-        exam_averages[exam_name] = round(sum(scores) / len(scores), 2)
+        if subject and subject != 'all':
+            # 单科模式：只显示指定科目的成绩
+            exam_averages[exam_name] = exam_data['subjects'].get(subject, 0)
+        else:
+            # 全科模式：计算平均成绩
+            exam_averages[exam_name] = round(sum(scores) / len(scores), 2) if scores else 0
     
     # 构建结果
     result = {
@@ -670,9 +718,12 @@ def analyze_student_trend(student_id):
             "class": f"{student_grade}{student_class}",
             "grade": student_grade
         },
+        "analysis_type": "单科分析" if (subject and subject != 'all') else "全科分析",
+        "selected_subject": subject if (subject and subject != 'all') else None,
+        "available_subjects": sorted(list(all_subjects)),
         "exam_trend": {
             "exam_names": list(exam_averages.keys()),
-            "averages": list(exam_averages.values())
+            "averages": [round(a, 2) if isinstance(a, float) else a for a in exam_averages.values()]
         },
         "detailed_grades": exam_grades
     }
@@ -680,12 +731,23 @@ def analyze_student_trend(student_id):
     return result
 
 # 分析班级考试趋势
-def analyze_class_trend(class_name, grade):
+def analyze_class_trend(class_name, grade, subject=None, exam_code=None):
+    """
+    分析班级考试趋势
+    
+    Args:
+        class_name: 班级数字（如'1'）
+        grade: 年级（如'高一'）
+        subject: 学科名称（可选），为None或'all'时表示全科分析，为具体学科时表示单科分析
+        exam_code: 考试代码（可选），为None或'all'时表示所有考试，为具体考试代码时表示特定考试
+    
+    Returns:
+        dict: 包含班级信息和考试趋势数据
+    """
     # 处理班级格式
     if class_name.isdigit():
         class_name = f"{class_name}班"
     
-    # 查询班级学生
     students = GradeDataAccess.get_class_students(class_name, grade)
     
     if not students:
@@ -709,9 +771,37 @@ def analyze_class_trend(class_name, grade):
             "error": f"{grade}{class_name} 班级暂无成绩记录"
         }
     
+    # 过滤指定考试（如果提供了exam_code参数且不是'all'）
+    if exam_code and exam_code != 'all':
+        grades = [(sid, en, ay, se, et, su, sc, gl) for sid, en, ay, se, et, su, sc, gl in grades if en == exam_code]
+        if not grades:
+            return {
+                "class_info": {
+                    "class_name": f"{grade}{class_name}",
+                    "grade": grade,
+                    "student_count": len(students)
+                },
+                "error": f"{grade}{class_name} 班级在考试{exam_code}中暂无成绩记录"
+            }
+    
+    # 过滤指定学科（如果提供了subject参数且不是'all'）
+    if subject and subject != 'all':
+        grades = [(sid, en, ay, se, et, su, sc, gl) for sid, en, ay, se, et, su, sc, gl in grades if su == subject]
+        if not grades:
+            return {
+                "class_info": {
+                    "class_name": f"{grade}{class_name}",
+                    "grade": grade,
+                    "student_count": len(students)
+                },
+                "error": f"{grade}{class_name} 班级在{subject}科目暂无成绩记录"
+            }
+    
     # 按考试整理成绩
     exam_grades = {}
-    for student_id, exam_name, academic_year, semester, exam_type, subject, score, grade_level in grades:
+    all_subjects = set()
+    
+    for student_id, exam_name, academic_year, semester, exam_type, subj, score, grade_level in grades:
         if exam_name not in exam_grades:
             exam_grades[exam_name] = {
                 'academic_year': academic_year,
@@ -719,17 +809,25 @@ def analyze_class_trend(class_name, grade):
                 'exam_type': exam_type,
                 'subjects': {}
             }
-        if subject not in exam_grades[exam_name]['subjects']:
-            exam_grades[exam_name]['subjects'][subject] = []
-        exam_grades[exam_name]['subjects'][subject].append(score)
+        if subj not in exam_grades[exam_name]['subjects']:
+            exam_grades[exam_name]['subjects'][subj] = []
+        exam_grades[exam_name]['subjects'][subj].append(score)
+        all_subjects.add(subj)
     
-    # 计算每次考试的班级平均成绩
+    # 计算每次考试的班级平均成绩（或单科平均成绩）
     exam_averages = {}
+    
     for exam_name, exam_data in exam_grades.items():
-        all_scores = []
-        for subject, scores in exam_data['subjects'].items():
-            all_scores.extend(scores)
-        exam_averages[exam_name] = round(sum(all_scores) / len(all_scores), 2) if all_scores else 0
+        if subject and subject != 'all':
+            # 单科模式：只显示指定科目的平均成绩
+            scores = exam_data['subjects'].get(subject, [])
+            exam_averages[exam_name] = round(sum(scores) / len(scores), 2) if scores else 0
+        else:
+            # 全科模式：计算所有科目的平均成绩
+            all_scores = []
+            for subj, scores in exam_data['subjects'].items():
+                all_scores.extend(scores)
+            exam_averages[exam_name] = round(sum(all_scores) / len(all_scores), 2) if all_scores else 0
     
     # 构建结果
     result = {
@@ -738,9 +836,12 @@ def analyze_class_trend(class_name, grade):
             "grade": grade,
             "student_count": len(students)
         },
+        "analysis_type": "单科分析" if (subject and subject != 'all') else "全科分析",
+        "selected_subject": subject if (subject and subject != 'all') else None,
+        "available_subjects": sorted(list(all_subjects)),
         "exam_trend": {
             "exam_names": list(exam_averages.keys()),
-            "averages": list(exam_averages.values())
+            "averages": [round(a, 2) if isinstance(a, float) else a for a in exam_averages.values()]
         }
     }
     

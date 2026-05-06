@@ -1,7 +1,27 @@
 <template>
   <div class="grade-trend-analysis">
-    <h3>成绩趋势分析</h3>
+    <div class="section-header">
+      <h3>成绩趋势分析</h3>
+      <div class="subject-selector" v-if="availableSubjects.length > 0">
+        <label class="selector-label">选择科目:</label>
+        <select 
+          v-model="selectedSubject" 
+          @change="handleSubjectChange"
+          class="filter-select"
+        >
+          <option value="all">全科综合分析</option>
+          <option v-for="subject in availableSubjects" :key="subject" :value="subject">
+            {{ subject }}
+          </option>
+        </select>
+      </div>
+    </div>
+    
     <div v-if="data" class="analysis-content">
+      <div class="analysis-type-badge" v-if="analysisType">
+        {{ analysisType }}
+      </div>
+      
       <div class="chart-container">
         <BaseECharts
           chart-type="line"
@@ -12,6 +32,7 @@
           height="400px"
         />
       </div>
+      
       <div class="trend-stats">
         <div class="stat-item">
           <span class="label">最近成绩:</span>
@@ -27,12 +48,27 @@
         </div>
       </div>
     </div>
+    
+    <div v-else-if="loading" class="loading">
+      <i class="fa fa-spinner fa-spin"></i>
+      <span>加载中...</span>
+    </div>
+    
+    <div v-else-if="error" class="error">
+      <i class="fa fa-exclamation-circle"></i>
+      <span>{{ error }}</span>
+    </div>
+    
+    <div v-else class="empty">
+      <i class="fa fa-bar-chart"></i>
+      <span>暂无成绩数据</span>
+    </div>
   </div>
 </template>
 
 <script>
 import BaseECharts from '../common/BaseECharts.vue';
-import { computed, defineProps } from 'vue';
+import { computed, defineProps, defineEmits, ref, watch } from 'vue';
 
 export default {
   name: 'GradeTrendAnalysis',
@@ -51,65 +87,72 @@ export default {
     error: {
       type: String,
       default: ''
+    },
+    availableSubjects: {
+      type: Array,
+      default: () => []
+    },
+    modelValue: {
+      type: String,
+      default: 'all'
     }
   },
-  setup(props) {
-    // 计算最近成绩
-    const latestScore = computed(() => {
-      if (!props.data || !props.data.exam_grades) return 'N/A';
-      const examTypes = Object.keys(props.data.exam_grades);
-      if (examTypes.length === 0) return 'N/A';
-      
-      // 假设考试类型是按时间顺序排列的，取最后一个
-      const latestExam = examTypes[examTypes.length - 1];
-      const subjects = Object.keys(props.data.exam_grades[latestExam]);
-      if (subjects.length === 0) return 'N/A';
-      
-      // 计算最新考试的平均成绩
-      let total = 0;
-      let count = 0;
-      for (const subject in props.data.exam_grades[latestExam]) {
-        total += props.data.exam_grades[latestExam][subject][0];
-        count++;
-      }
-      return (total / count).toFixed(2);
+  emits: ['update:modelValue', 'subject-change'],
+  setup(props, { emit }) {
+    const selectedSubject = ref(props.modelValue || 'all');
+    
+    watch(() => props.modelValue, (newVal) => {
+      selectedSubject.value = newVal || 'all';
     });
     
-    // 计算平均成绩
+    const handleSubjectChange = () => {
+      emit('update:modelValue', selectedSubject.value);
+      emit('subject-change', selectedSubject.value);
+    };
+    
+    const getYAxisMax = (subject, averages) => {
+      const highScoreSubjects = ['语文', '数学', '英语'];
+      if (highScoreSubjects.includes(subject)) {
+        return 150;
+      }
+      if (subject === 'all') {
+        const maxScore = Math.max(...averages, 0);
+        if (maxScore > 100) {
+          return 150;
+        }
+        return Math.min(Math.max(maxScore * 1.1, 100), 100);
+      }
+      const maxScore = Math.max(...averages, 0);
+      return Math.min(Math.max(maxScore * 1.1, 100), 100);
+    };
+    
+    const analysisType = computed(() => {
+      if (!props.data) return '';
+      return props.data.analysis_type || (selectedSubject.value === 'all' ? '全科分析' : '单科分析');
+    });
+    
+    const latestScore = computed(() => {
+      if (!props.data || !props.data.exam_trend) return 'N/A';
+      const averages = props.data.exam_trend.averages;
+      if (!averages || averages.length === 0) return 'N/A';
+      return averages[averages.length - 1].toFixed(2);
+    });
+    
     const averageScore = computed(() => {
-      if (!props.data || !props.data.subject_averages) return 'N/A';
-      const averages = Object.values(props.data.subject_averages);
-      if (averages.length === 0) return 'N/A';
+      if (!props.data || !props.data.exam_trend) return 'N/A';
+      const averages = props.data.exam_trend.averages;
+      if (!averages || averages.length === 0) return 'N/A';
       const total = averages.reduce((sum, avg) => sum + avg, 0);
       return (total / averages.length).toFixed(2);
     });
     
-    // 计算趋势
     const trendClass = computed(() => {
-      if (!props.data || !props.data.exam_grades) return '';
-      const examTypes = Object.keys(props.data.exam_grades);
-      if (examTypes.length < 2) return '';
+      if (!props.data || !props.data.exam_trend) return '';
+      const averages = props.data.exam_trend.averages;
+      if (!averages || averages.length < 2) return '';
       
-      // 计算第一个和最后一个考试的平均成绩
-      const firstExam = examTypes[0];
-      const lastExam = examTypes[examTypes.length - 1];
-      
-      let firstTotal = 0;
-      let firstCount = 0;
-      for (const subject in props.data.exam_grades[firstExam]) {
-        firstTotal += props.data.exam_grades[firstExam][subject][0];
-        firstCount++;
-      }
-      
-      let lastTotal = 0;
-      let lastCount = 0;
-      for (const subject in props.data.exam_grades[lastExam]) {
-        lastTotal += props.data.exam_grades[lastExam][subject][0];
-        lastCount++;
-      }
-      
-      const firstAvg = firstCount > 0 ? firstTotal / firstCount : 0;
-      const lastAvg = lastCount > 0 ? lastTotal / lastCount : 0;
+      const firstAvg = averages[0];
+      const lastAvg = averages[averages.length - 1];
       
       if (lastAvg > firstAvg) return 'positive';
       if (lastAvg < firstAvg) return 'negative';
@@ -117,103 +160,134 @@ export default {
     });
     
     const trendText = computed(() => {
-      if (!props.data || !props.data.exam_grades) return '无数据';
-      const examTypes = Object.keys(props.data.exam_grades);
-      if (examTypes.length < 2) return '数据不足';
+      if (!props.data || !props.data.exam_trend) return '无数据';
+      const averages = props.data.exam_trend.averages;
+      if (!averages || averages.length < 2) return '数据不足';
       
-      const firstExam = examTypes[0];
-      const lastExam = examTypes[examTypes.length - 1];
-      
-      let firstTotal = 0;
-      let firstCount = 0;
-      for (const subject in props.data.exam_grades[firstExam]) {
-        firstTotal += props.data.exam_grades[firstExam][subject][0];
-        firstCount++;
-      }
-      
-      let lastTotal = 0;
-      let lastCount = 0;
-      for (const subject in props.data.exam_grades[lastExam]) {
-        lastTotal += props.data.exam_grades[lastExam][subject][0];
-        lastCount++;
-      }
-      
-      const firstAvg = firstCount > 0 ? firstTotal / firstCount : 0;
-      const lastAvg = lastCount > 0 ? lastTotal / lastCount : 0;
+      const firstAvg = averages[0];
+      const lastAvg = averages[averages.length - 1];
       
       if (lastAvg > firstAvg) return '上升';
       if (lastAvg < firstAvg) return '下降';
       return '稳定';
     });
     
-    // 计算图表数据
     const chartData = computed(() => {
-      return props.data || {};
+      if (!props.data) return {};
+      if (!props.data.exam_trend) return {};
+      if (!props.data.exam_trend.exam_names || !props.data.exam_trend.averages) return {};
+      if (props.data.exam_trend.exam_names.length !== props.data.exam_trend.averages.length) {
+        console.warn('Exam names and averages length mismatch');
+        return {};
+      }
+      return props.data;
     });
     
-    // 计算图表配置
     const chartOptions = computed(() => {
-      if (!props.data || !props.data.exam_grades) return {};
+      if (!props.data || !props.data.exam_trend) return {};
       
-      const examTypes = Object.keys(props.data.exam_grades);
-      const subjects = new Set();
+      const examNames = props.data.exam_trend.exam_names || [];
+      const averages = props.data.exam_trend.averages || [];
+      const selectedSubj = selectedSubject.value;
       
-      // 收集所有学科
-      examTypes.forEach(exam => {
-        Object.keys(props.data.exam_grades[exam]).forEach(subject => {
-          subjects.add(subject);
-        });
-      });
+      let seriesData = [];
+      let legendData = [];
       
-      const subjectList = Array.from(subjects);
-      
-      // 准备数据
-      const series = subjectList.map(subject => {
-        const data = examTypes.map(exam => {
-          return props.data.exam_grades[exam][subject] ? props.data.exam_grades[exam][subject][0] : 0;
-        });
-        
-        return {
-          name: subject,
+      if (selectedSubj === 'all') {
+        legendData = ['平均分数'];
+        seriesData = [{
+          name: '平均分数',
           type: 'line',
-          data: data,
-          smooth: true
-        };
-      });
+          data: averages,
+          smooth: true,
+          lineStyle: {
+            width: 3
+          },
+          itemStyle: {
+            color: '#5470c6'
+          }
+        }];
+      } else {
+        legendData = [selectedSubj];
+        seriesData = [{
+          name: selectedSubj,
+          type: 'line',
+          data: averages,
+          smooth: true,
+          lineStyle: {
+            width: 3
+          },
+          itemStyle: {
+            color: '#91cc75'
+          }
+        }];
+      }
       
       return {
         title: {
-          text: '成绩趋势',
-          left: 'center'
+          text: selectedSubj === 'all' ? '全科成绩趋势' : `${selectedSubj}成绩趋势`,
+          left: 'center',
+          textStyle: {
+            fontSize: 16,
+            fontWeight: 'bold'
+          }
         },
         tooltip: {
-          trigger: 'axis'
+          trigger: 'axis',
+          formatter: function(params) {
+            if (!params || params.length === 0) return '';
+            const param = params[0];
+            return `<div style="padding: 8px;">
+              <div style="font-weight: bold; margin-bottom: 8px;">${param.name}</div>
+              <div>
+                <span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:${param.color};"></span>
+                <span>${param.seriesName}: <strong>${param.value}</strong>分</span>
+              </div>
+            </div>`;
+          }
         },
         legend: {
-          data: subjectList,
-          bottom: 0
+          data: legendData,
+          bottom: 10
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '15%',
+          top: '15%',
+          containLabel: true
         },
         xAxis: {
           type: 'category',
-          data: examTypes
+          data: examNames,
+          axisLabel: {
+            rotate: 30,
+            fontSize: 12
+          }
         },
         yAxis: {
           type: 'value',
           name: '分数',
           min: 0,
-          max: 100
+          max: getYAxisMax(selectedSubj, averages),
+          axisLabel: {
+            formatter: '{value}分'
+          }
         },
-        series: series
+        series: seriesData
       };
     });
     
     return {
+      selectedSubject,
+      analysisType,
       latestScore,
       averageScore,
       trendClass,
       trendText,
       chartData,
-      chartOptions
+      chartOptions,
+      handleSubjectChange
     };
   }
 };
@@ -228,20 +302,83 @@ export default {
   margin-bottom: 20px;
 }
 
-h3 {
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
-  color: #333;
 }
 
-.loading {
-  text-align: center;
-  padding: 40px;
+h3 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.subject-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.selector-label {
+  font-size: 14px;
+  color: #666;
+}
+
+.filter-select {
+  padding: 8px 16px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.filter-select:hover {
+  border-color: #409eff;
+}
+
+.filter-select:focus {
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
+.analysis-type-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #e8f4fd;
+  color: #409eff;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-bottom: 15px;
+}
+
+.analysis-content {
+  min-height: 450px;
+}
+
+.loading, .error, .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
   color: #999;
 }
 
+.loading i, .error i, .empty i {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.loading {
+  color: #409eff;
+}
+
 .error {
-  text-align: center;
-  padding: 40px;
   color: #f56c6c;
   background: #fef0f0;
   border-radius: 4px;
@@ -249,11 +386,6 @@ h3 {
 
 .chart-container {
   margin-bottom: 20px;
-}
-
-.chart {
-  width: 100%;
-  height: 400px;
 }
 
 .trend-stats {
@@ -294,6 +426,12 @@ h3 {
 }
 
 @media (max-width: 768px) {
+  .section-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
   .trend-stats {
     grid-template-columns: 1fr;
   }
