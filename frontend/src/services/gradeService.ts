@@ -366,7 +366,7 @@ export class GradeService {
     return await fetchApi<KnowledgeDiscoveryResponse>(`/analysis/knowledge-discoveries?${params.toString()}`);
   }
 
-  async getFeatureImportance(classId?: string, analysisType?: string): Promise<FeatureImportanceResponse> {
+  async getFeatureImportance(classId?: string, analysisType?: string, algorithm?: string, forceRefresh: boolean = false): Promise<FeatureImportanceResponse> {
     const params = new URLSearchParams();
     if (classId) {
       params.append('class_id', classId);
@@ -374,10 +374,13 @@ export class GradeService {
     if (analysisType) {
       params.append('analysis_type', analysisType);
     }
-    return await fetchApi<FeatureImportanceResponse>(`/analysis/feature-importance?${params.toString()}`);
+    if (algorithm) {
+      params.append('algorithm', algorithm);
+    }
+    return await fetchApi<FeatureImportanceResponse>(`/analysis/feature-importance?${params.toString()}`, {}, forceRefresh);
   }
 
-  async getDecisionTreePath(classId?: string, studentId?: string, analysisType?: string, params?: DecisionTreeParams): Promise<DecisionTreePathResponse> {
+  async getDecisionTreePath(classId?: string, studentId?: string, analysisType?: string, params?: DecisionTreeParams, forceRefresh: boolean = false): Promise<DecisionTreePathResponse> {
     return await fetchApi<DecisionTreePathResponse>('/analysis/decision-tree-path', {
       method: 'POST',
       headers: {
@@ -389,7 +392,7 @@ export class GradeService {
         analysis_type: analysisType || 'class',
         params: params
       })
-    });
+    }, forceRefresh);
   }
 
   async getDecisionTreeConfig(): Promise<DecisionTreeConfigResponse> {
@@ -410,7 +413,7 @@ export class GradeService {
     });
   }
 
-  async getFactorImpact(classId?: string, analysisType?: string): Promise<FactorImpactResponse> {
+  async getFactorImpact(classId?: string, analysisType?: string, forceRefresh: boolean = false): Promise<FactorImpactResponse> {
     const params = new URLSearchParams();
     if (classId) {
       params.append('class_id', classId);
@@ -418,7 +421,7 @@ export class GradeService {
     if (analysisType) {
       params.append('analysis_type', analysisType);
     }
-    return await fetchApi<FactorImpactResponse>(`/analysis/factor-impact?${params.toString()}`);
+    return await fetchApi<FactorImpactResponse>(`/analysis/factor-impact?${params.toString()}`, {}, forceRefresh);
   }
 
   // 新增API方法
@@ -550,6 +553,105 @@ export class GradeService {
       body: JSON.stringify(settings)
     });
   }
+
+  // 得分率配置API
+  async getScoreRateConfig(): Promise<ScoreRateConfigResponse> {
+    return await fetchApi<ScoreRateConfigResponse>('/analysis/score-rate-config');
+  }
+
+  async updateScoreRateConfig(config: ScoreRateConfig): Promise<ScoreRateConfigUpdateResponse> {
+    return await fetchApi<ScoreRateConfigUpdateResponse>('/analysis/score-rate-config', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(config)
+    });
+  }
+
+  // 分数线配置API
+  async getAdmissionLineConfig(): Promise<AdmissionLineConfigResponse> {
+    return await fetchApi<AdmissionLineConfigResponse>('/analysis/admission-line-config');
+  }
+
+  async updateAdmissionLineConfig(config: AdmissionLineConfig): Promise<AdmissionLineConfigUpdateResponse> {
+    return await fetchApi<AdmissionLineConfigUpdateResponse>('/analysis/admission-line-config', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(config)
+    });
+  }
+
+  // 班级上线率统计API
+  async getClassAdmissionRate(classId: string): Promise<ClassAdmissionRateResponse> {
+    return await fetchApi<ClassAdmissionRateResponse>('/analysis/class-admission-rate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ class_id: classId })
+    });
+  }
+
+  // 获取班级列表
+  async getClasses(): Promise<ClassInfo[]> {
+    return await fetchApi<ClassInfo[]>('/grades/classes');
+  }
+}
+
+// 得分率配置相关类型
+export interface ScoreRateConfig {
+  use_score_rate: boolean;
+  language_total: number;
+  science_total: number;
+}
+
+export interface ScoreRateConfigResponse {
+  success: boolean;
+  config: ScoreRateConfig;
+  generated_at?: string;
+}
+
+export interface ScoreRateConfigUpdateResponse {
+  success: boolean;
+  message: string;
+  config: ScoreRateConfig;
+}
+
+// 分数线配置相关类型
+export interface AdmissionLineConfig {
+  key_university_line: number;
+  undergraduate_line: number;
+}
+
+export interface AdmissionLineConfigResponse extends AdmissionLineConfig {
+}
+
+export interface AdmissionLineConfigUpdateResponse {
+  success: boolean;
+  message: string;
+  config: AdmissionLineConfig;
+}
+
+// 班级上线率相关类型
+export interface ClassAdmissionRateResponse {
+  class_id: string;
+  total_students: number;
+  key_university_count: number;
+  undergraduate_count: number;
+  key_university_rate: number;
+  undergraduate_rate: number;
+  key_university_line: number;
+  undergraduate_line: number;
+}
+
+// 班级信息类型
+export interface ClassInfo {
+  class_id: string;
+  class_name: string;
+  grade: string;
 }
 
 // Grade Settings相关类型

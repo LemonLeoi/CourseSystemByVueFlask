@@ -10,7 +10,7 @@
     
     <div class="academic-note">
       <span class="note-icon">📚</span>
-      <span class="note-text">排序基于 <strong>C4.5算法的信息增益比(Gain Ratio)</strong> 计算</span>
+      <span class="note-text">排序基于 <strong>{{ algorithmInfo }}</strong> 计算</span>
     </div>
     
     <div ref="chartRef" class="chart-container"></div>
@@ -25,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, onUnmounted } from 'vue';
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue';
 
 export interface FeatureImportanceItem {
   name: string;
@@ -36,7 +36,17 @@ export interface FeatureImportanceItem {
 
 const props = defineProps<{
   data: FeatureImportanceItem[];
+  algorithm?: string;
 }>();
+
+const algorithmInfo = computed(() => {
+  const algo = props.algorithm || 'C4.5';
+  if (algo === 'ID3') {
+    return 'ID3算法的信息增益(Information Gain)';
+  } else {
+    return 'C4.5算法的信息增益比(Gain Ratio)';
+  }
+});
 
 const chartRef = ref<HTMLElement | null>(null);
 let chartInstance: any = null;

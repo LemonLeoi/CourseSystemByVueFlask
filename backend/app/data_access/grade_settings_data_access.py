@@ -174,3 +174,75 @@ class GradeSettingsDataAccess:
         except Exception as e:
             db.session.rollback()
             return False, None, f"更新失败: {str(e)}"
+    
+    @staticmethod
+    def get_score_rate_config():
+        """获取得分率配置"""
+        settings = GradeSettingsDataAccess.get_settings()
+        return {
+            'use_score_rate': settings.use_score_rate,
+            'language_total': settings.language_total,
+            'science_total': settings.science_total
+        }
+    
+    @staticmethod
+    def update_score_rate_config(data):
+        """更新得分率配置"""
+        try:
+            settings = GradeSettingsDataAccess.get_settings()
+            
+            if 'use_score_rate' in data:
+                settings.use_score_rate = data['use_score_rate']
+            if 'language_total' in data:
+                language_total = data['language_total']
+                if not isinstance(language_total, int) or language_total < 0 or language_total > 300:
+                    return False, None, '语言科目总分必须是0-300之间的整数'
+                settings.language_total = language_total
+            if 'science_total' in data:
+                science_total = data['science_total']
+                if not isinstance(science_total, int) or science_total < 0 or science_total > 300:
+                    return False, None, '理科科目总分必须是0-300之间的整数'
+                settings.science_total = science_total
+            
+            db.session.commit()
+            return True, GradeSettingsDataAccess.get_score_rate_config(), "更新成功"
+        except Exception as e:
+            db.session.rollback()
+            return False, None, f"更新失败: {str(e)}"
+    
+    @staticmethod
+    def get_admission_line_config():
+        """获取分数线配置"""
+        settings = GradeSettingsDataAccess.get_settings()
+        return {
+            'key_university_line': float(settings.key_university_line),
+            'undergraduate_line': float(settings.undergraduate_line)
+        }
+    
+    @staticmethod
+    def update_admission_line_config(data):
+        """更新分数线配置"""
+        try:
+            settings = GradeSettingsDataAccess.get_settings()
+            
+            if 'key_university_line' in data:
+                key_line = data['key_university_line']
+                if not isinstance(key_line, (int, float)) or key_line < 0 or key_line > 750:
+                    return False, None, '重本线必须是0-750之间的数值'
+                settings.key_university_line = key_line
+            
+            if 'undergraduate_line' in data:
+                undergrad_line = data['undergraduate_line']
+                if not isinstance(undergrad_line, (int, float)) or undergrad_line < 0 or undergrad_line > 750:
+                    return False, None, '本科线必须是0-750之间的数值'
+                settings.undergraduate_line = undergrad_line
+            
+            # 验证重本线大于本科线
+            if settings.key_university_line <= settings.undergraduate_line:
+                return False, None, '重本线必须大于本科线'
+            
+            db.session.commit()
+            return True, GradeSettingsDataAccess.get_admission_line_config(), "更新成功"
+        except Exception as e:
+            db.session.rollback()
+            return False, None, f"更新失败: {str(e)}"

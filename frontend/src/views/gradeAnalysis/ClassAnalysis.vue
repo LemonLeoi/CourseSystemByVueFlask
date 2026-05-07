@@ -243,7 +243,7 @@
           :default-collapsed="false"
           storage-key="feature_importance"
         >
-          <FeatureImportanceChart :data="featureImportanceData" />
+          <FeatureImportanceChart :data="featureImportanceData" :algorithm="currentDecisionTreeConfig.algorithm" />
         </CollapsibleSection>
         
         <!-- 决策路径分析 -->
@@ -443,6 +443,14 @@ export default {
     const factorImpactAnalysisData = ref([]);
     const decisionTreePathRef = ref();
     
+    // 当前决策树配置（用于跟踪算法类型）
+    const currentDecisionTreeConfig = ref({
+      maxDepth: 5,
+      minSamplesSplit: 2,
+      threshold: 0.0001,
+      algorithm: 'C4.5'
+    });
+    
     // 学科分析相关数据
     const subjectStrengthData = ref(null);
     const isSubjectAnalysisLoading = ref(false);
@@ -610,12 +618,19 @@ export default {
     // 获取分析数据（从API）
     const fetchAnalysisData = async (classId) => {
       try {
-        // 获取特征重要性
-        const featureImportanceResponse = await gradeService.getFeatureImportance(classId);
+        // 获取决策树配置
+        const configResponse = await gradeService.getDecisionTreeConfig();
+        currentDecisionTreeConfig.value = configResponse.params;
+        
+        // 获取特征重要性（传递当前算法类型）
+        const featureImportanceResponse = await gradeService.getFeatureImportance(
+          classId,
+          'class',
+          configResponse.params.algorithm
+        );
         featureImportanceData.value = featureImportanceResponse.feature_importance || [];
         
-        // 获取决策树配置和路径
-        const configResponse = await gradeService.getDecisionTreeConfig();
+        // 获取决策树路径
         const decisionTreeResponse = await gradeService.getDecisionTreePath(
           classId,
           undefined,
@@ -625,7 +640,7 @@ export default {
         decisionTreePathsData.value = decisionTreeResponse.paths || [];
         
         // 获取因素影响分析
-        const factorImpactResponse = await gradeService.getFactorImpact(classId);
+        const factorImpactResponse = await gradeService.getFactorImpact(classId, undefined, true);
         factorImpactAnalysisData.value = factorImpactResponse.factor_impact || [];
         
         // 获取挖掘发现
@@ -647,11 +662,12 @@ export default {
           className.value,
           undefined,
           'class',
-          configResponse.params
+          configResponse.params,
+          true
         );
         decisionTreePathsData.value = decisionTreeResponse.paths || [];
         
-        const factorImpactResponse = await gradeService.getFactorImpact(className.value);
+        const factorImpactResponse = await gradeService.getFactorImpact(className.value, undefined, true);
         factorImpactAnalysisData.value = factorImpactResponse.factor_impact || [];
       } catch (error) {
         console.error('重新分析决策路径失败:', error);
@@ -694,14 +710,28 @@ export default {
       console.log('决策树配置更新:', params);
       if (className.value) {
         try {
+          // 保存新的配置
+          currentDecisionTreeConfig.value = params;
+          
           const decisionTreeResponse = await gradeService.getDecisionTreePath(
             className.value,
             undefined,
             'class',
-            params
+            params,
+            true
           );
           decisionTreePathsData.value = decisionTreeResponse.paths || [];
-          console.log('决策树路径已更新');
+          
+          // 获取算法类型并更新特征重要性分析
+          const algorithm = params?.algorithm || 'C4.5';
+          const featureImportanceResponse = await gradeService.getFeatureImportance(
+            className.value,
+            'class',
+            algorithm,
+            true
+          );
+          featureImportanceData.value = featureImportanceResponse.feature_importance || [];
+          console.log('特征重要性分析已更新，算法:', algorithm);
         } catch (error) {
           console.error('更新决策树路径失败:', error);
         }
@@ -1560,6 +1590,7 @@ export default {
       featureImportanceData,
       decisionTreePathsData,
       factorImpactAnalysisData,
+      currentDecisionTreeConfig,
       // 学科分析数据
       subjectStrengthData,
       isSubjectAnalysisLoading,

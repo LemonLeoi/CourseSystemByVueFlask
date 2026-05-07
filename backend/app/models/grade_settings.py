@@ -29,6 +29,15 @@ class GradeSettings(db.Model):
     class_type_threshold_high = db.Column(db.DECIMAL(5,2), nullable=False, default=80)
     class_type_method = db.Column(db.VARCHAR(20), nullable=False, default='average')
     
+    # 得分率配置
+    use_score_rate = db.Column(db.Boolean, nullable=False, default=True)
+    language_total = db.Column(db.Integer, nullable=False, default=150)
+    science_total = db.Column(db.Integer, nullable=False, default=100)
+    
+    # 分数线配置
+    key_university_line = db.Column(db.DECIMAL(5,2), nullable=False, default=520)
+    undergraduate_line = db.Column(db.DECIMAL(5,2), nullable=False, default=430)
+    
     # 时间戳
     created_at = db.Column(db.DateTime, default=db.func.now())
     updated_at = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
@@ -60,6 +69,15 @@ class GradeSettings(db.Model):
                 'thresholdLow': float(self.class_type_threshold_low),
                 'thresholdHigh': float(self.class_type_threshold_high),
                 'method': self.class_type_method
+            },
+            'scoreRateConfig': {
+                'use_score_rate': self.use_score_rate,
+                'language_total': self.language_total,
+                'science_total': self.science_total
+            },
+            'admissionLineConfig': {
+                'key_university_line': float(self.key_university_line),
+                'undergraduate_line': float(self.undergraduate_line)
             }
         }
     

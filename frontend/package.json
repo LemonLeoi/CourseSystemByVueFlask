@@ -22,8 +22,11 @@
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/eslint-config-typescript": "^14.7.0",
     "eslint": "^10.0.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-vue": "^10.9.0",
     "globals": "^17.5.0",
+    "prettier": "^3.8.3",
     "typescript": "^5.9.3",
     "vite": "^7.2.4",
     "vue-eslint-parser": "^10.4.0"

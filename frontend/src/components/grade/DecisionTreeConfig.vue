@@ -223,6 +223,127 @@
       </ul>
     </div>
     
+    <!-- 得分率配置区 -->
+    <div class="section">
+      <div class="section-header">
+        <h4 class="section-title">
+          <span class="section-icon">📊</span>
+          得分率设置
+        </h4>
+        <span class="section-hint">配置各科总分及权重，用于计算得分率</span>
+      </div>
+      
+      <!-- 是否使用得分率 -->
+      <div class="param-item">
+        <div class="param-header">
+          <label class="param-label">使用得分率评估</label>
+        </div>
+        <div class="radio-group">
+          <label class="radio-label" :class="{ active: scoreRateConfig.use_score_rate }">
+            <input type="radio" v-model="scoreRateConfig.use_score_rate" :value="true" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">是</span>
+            <span class="radio-desc">按得分率进行评估</span>
+          </label>
+          <label class="radio-label" :class="{ active: !scoreRateConfig.use_score_rate }">
+            <input type="radio" v-model="scoreRateConfig.use_score_rate" :value="false" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">否</span>
+            <span class="radio-desc">按原始分数进行评估</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- 语言科目总分 -->
+      <div class="param-item">
+        <div class="param-header">
+          <label class="param-label">语言科目总分（语文、数学、外语）</label>
+          <div class="param-value-wrapper">
+            <span class="param-value">{{ scoreRateConfig.language_total }}</span>
+            <span class="param-unit">分</span>
+          </div>
+          <span class="tooltip-wrapper">
+            <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"></path>
+              <path d="M12 8h.01"></path>
+            </svg>
+            <span class="tooltip-text">语文、数学、外语三科的单科满分分值</span>
+          </span>
+        </div>
+        <div class="param-controls">
+          <input 
+            type="number" 
+            v-model.number="scoreRateConfig.language_total" 
+            :min="0" 
+            :max="300" 
+            class="number-input-small"
+          />
+          <input 
+            type="range" 
+            v-model.number="scoreRateConfig.language_total" 
+            :min="0" 
+            :max="300" 
+            class="slider"
+          />
+        </div>
+        <div class="range-labels">
+          <span>0</span>
+          <span>300</span>
+        </div>
+      </div>
+      
+      <!-- 理科科目总分 -->
+      <div class="param-item">
+        <div class="param-header">
+          <label class="param-label">理科科目总分（物理、化学、生物等）</label>
+          <div class="param-value-wrapper">
+            <span class="param-value">{{ scoreRateConfig.science_total }}</span>
+            <span class="param-unit">分</span>
+          </div>
+          <span class="tooltip-wrapper">
+            <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"></path>
+              <path d="M12 8h.01"></path>
+            </svg>
+            <span class="tooltip-text">物理、化学、生物等理科科目单科满分分值</span>
+          </span>
+        </div>
+        <div class="param-controls">
+          <input 
+            type="number" 
+            v-model.number="scoreRateConfig.science_total" 
+            :min="0" 
+            :max="300" 
+            class="number-input-small"
+          />
+          <input 
+            type="range" 
+            v-model.number="scoreRateConfig.science_total" 
+            :min="0" 
+            :max="300" 
+            class="slider"
+          />
+        </div>
+        <div class="range-labels">
+          <span>0</span>
+          <span>300</span>
+        </div>
+      </div>
+      
+      <!-- 得分率计算公式说明 -->
+      <div class="info-card small">
+        <h5 class="info-title">📝 得分率计算公式</h5>
+        <div class="formula">
+          <p>得分率 = (实际得分 ÷ 科目总分) × 100%</p>
+        </div>
+        <div class="example">
+          <p><strong>示例：</strong>语文135分（满分150分）→ 得分率 = (135 ÷ 150) × 100% = 90%</p>
+        </div>
+      </div>
+    </div>
+    
     <!-- 班级类型配置区 -->
     <div class="section">
       <div class="section-header">
@@ -233,13 +354,13 @@
         <span class="section-hint">定义基础薄弱班、普通班、重点班的划分规则</span>
       </div>
       
-      <!-- 基础薄弱班分数线 -->
+      <!-- 基础薄弱班评分率阈值 -->
       <div class="param-item" :class="{ 'has-error': classTypeErrors.thresholdLow }">
         <div class="param-header">
-          <label class="param-label">基础薄弱班分数线</label>
+          <label class="param-label">基础薄弱班评分率阈值</label>
           <div class="param-value-wrapper">
             <span class="param-value">{{ classTypeConfig.thresholdLow }}</span>
-            <span class="param-unit">分</span>
+            <span class="param-unit">%</span>
           </div>
           <span class="tooltip-wrapper">
             <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -247,7 +368,7 @@
               <path d="M12 16v-4"></path>
               <path d="M12 8h.01"></path>
             </svg>
-            <span class="tooltip-text">平均分低于此分数的班级将被划分为基础薄弱班</span>
+            <span class="tooltip-text">评分率低于此值的班级将被划分为基础薄弱班</span>
           </span>
         </div>
         <div class="param-controls">
@@ -267,8 +388,8 @@
           />
         </div>
         <div class="range-labels">
-          <span>0</span>
-          <span>100</span>
+          <span>0%</span>
+          <span>100%</span>
         </div>
         <div v-if="classTypeErrors.thresholdLow" class="error-message">
           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -280,13 +401,13 @@
         </div>
       </div>
       
-      <!-- 重点班分数线 -->
+      <!-- 重点班评分率阈值 -->
       <div class="param-item" :class="{ 'has-error': classTypeErrors.thresholdHigh }">
         <div class="param-header">
-          <label class="param-label">重点班分数线</label>
+          <label class="param-label">重点班评分率阈值</label>
           <div class="param-value-wrapper">
             <span class="param-value">{{ classTypeConfig.thresholdHigh }}</span>
-            <span class="param-unit">分</span>
+            <span class="param-unit">%</span>
           </div>
           <span class="tooltip-wrapper">
             <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -294,7 +415,7 @@
               <path d="M12 16v-4"></path>
               <path d="M12 8h.01"></path>
             </svg>
-            <span class="tooltip-text">平均分高于此分数的班级将被划分为重点班</span>
+            <span class="tooltip-text">评分率高于此值的班级将被划分为重点班</span>
           </span>
         </div>
         <div class="param-controls">
@@ -314,8 +435,8 @@
           />
         </div>
         <div class="range-labels">
-          <span>0</span>
-          <span>100</span>
+          <span>0%</span>
+          <span>100%</span>
         </div>
         <div v-if="classTypeErrors.thresholdHigh" class="error-message">
           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -337,21 +458,21 @@
               <path d="M12 16v-4"></path>
               <path d="M12 8h.01"></path>
             </svg>
-            <span class="tooltip-text">选择使用平均分或中位数进行班级类型划分</span>
+            <span class="tooltip-text">选择使用平均评分率或中位数评分率进行班级类型划分</span>
           </span>
         </div>
         <div class="radio-group">
           <label class="radio-label" :class="{ active: classTypeConfig.method === 'average' }">
             <input type="radio" v-model="classTypeConfig.method" value="average" />
             <span class="radio-circle"></span>
-            <span class="radio-text">平均分</span>
-            <span class="radio-desc">使用班级平均分数</span>
+            <span class="radio-text">平均评分率</span>
+            <span class="radio-desc">使用班级平均评分率</span>
           </label>
           <label class="radio-label" :class="{ active: classTypeConfig.method === 'median' }">
             <input type="radio" v-model="classTypeConfig.method" value="median" />
             <span class="radio-circle"></span>
-            <span class="radio-text">中位数</span>
-            <span class="radio-desc">使用班级分数中位数</span>
+            <span class="radio-text">中位数评分率</span>
+            <span class="radio-desc">使用班级评分率中位数</span>
           </label>
         </div>
       </div>
@@ -424,6 +545,12 @@ const classTypeConfig = reactive<ClassTypeConfig>({
   }
 });
 
+const scoreRateConfig = reactive({
+  use_score_rate: false,
+  language_total: 150,
+  science_total: 100
+});
+
 const isSaving = ref(false);
 const showToast = ref(false);
 const toastType = ref<'success' | 'error'>('success');
@@ -442,6 +569,12 @@ const defaultClassTypeConfig = {
   method: 'average' as const
 };
 
+const defaultScoreRateConfig = {
+  use_score_rate: false,
+  language_total: 150,
+  science_total: 100
+};
+
 const validationErrors = reactive({
   maxDepth: '',
   minSamplesSplit: '',
@@ -454,9 +587,9 @@ const classTypeErrors = reactive({
 });
 
 const classTypeDescription = computed(() => ({
-  weakClass: `平均分低于${classTypeConfig.thresholdLow}分为基础薄弱班`,
-  normalClass: `平均分在${classTypeConfig.thresholdLow}-${classTypeConfig.thresholdHigh}分为普通班`,
-  keyClass: `平均分高于${classTypeConfig.thresholdHigh}分为重点班`
+  weakClass: `评分率低于${classTypeConfig.thresholdLow}%为基础薄弱班`,
+  normalClass: `评分率在${classTypeConfig.thresholdLow}%-${classTypeConfig.thresholdHigh}%为普通班`,
+  keyClass: `评分率高于${classTypeConfig.thresholdHigh}%为重点班`
 }));
 
 const showNotification = (type: 'success' | 'error', message: string) => {
@@ -522,9 +655,10 @@ onMounted(() => {
 
 const loadConfig = async () => {
   try {
-    const [dtResponse, classTypeResponse] = await Promise.all([
+    const [dtResponse, classTypeResponse, scoreRateResponse] = await Promise.all([
       decisionTreeService.getDecisionTreeConfig(),
-      gradeService.getClassTypeConfig()
+      gradeService.getClassTypeConfig(),
+      gradeService.getScoreRateConfig()
     ]);
     
     if (dtResponse.params) {
@@ -539,6 +673,12 @@ const loadConfig = async () => {
       classTypeConfig.thresholdHigh = classTypeResponse.config.thresholdHigh;
       classTypeConfig.method = classTypeResponse.config.method;
       classTypeConfig.description = classTypeResponse.config.description;
+    }
+    
+    if (scoreRateResponse.config) {
+      scoreRateConfig.use_score_rate = scoreRateResponse.config.use_score_rate;
+      scoreRateConfig.language_total = scoreRateResponse.config.language_total;
+      scoreRateConfig.science_total = scoreRateResponse.config.science_total;
     }
     
     showNotification('success', '配置加载成功');
@@ -562,6 +702,10 @@ const resetConfig = () => {
   classTypeConfig.method = defaultClassTypeConfig.method;
   classTypeErrors.thresholdLow = '';
   classTypeErrors.thresholdHigh = '';
+  
+  scoreRateConfig.use_score_rate = defaultScoreRateConfig.use_score_rate;
+  scoreRateConfig.language_total = defaultScoreRateConfig.language_total;
+  scoreRateConfig.science_total = defaultScoreRateConfig.science_total;
   
   showNotification('success', '已恢复默认配置');
 };
@@ -588,6 +732,13 @@ const saveConfig = async () => {
       thresholdLow: classTypeConfig.thresholdLow,
       thresholdHigh: classTypeConfig.thresholdHigh,
       method: classTypeConfig.method
+    });
+    
+    // 保存评分率配置
+    await gradeService.updateScoreRateConfig({
+      use_score_rate: scoreRateConfig.use_score_rate,
+      language_total: scoreRateConfig.language_total,
+      science_total: scoreRateConfig.science_total
     });
     
     showNotification('success', '配置保存成功');

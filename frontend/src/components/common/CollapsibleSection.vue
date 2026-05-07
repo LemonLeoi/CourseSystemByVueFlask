@@ -138,11 +138,33 @@ onMounted(() => {
 .section-content {
   padding: 20px;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-  max-height: 2000px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 200px);
+  min-height: 100px;
   opacity: 1;
   background: #ffffff;
   border-top: 1px solid #f0f0f0;
+  scrollbar-width: thin;
+  scrollbar-color: #409eff #f0f0f0;
+}
+
+.section-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.section-content::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 3px;
+}
+
+.section-content::-webkit-scrollbar-thumb {
+  background: #409eff;
+  border-radius: 3px;
+}
+
+.section-content::-webkit-scrollbar-thumb:hover {
+  background: #66b1ff;
 }
 
 .section-content.collapsed {
@@ -150,6 +172,7 @@ onMounted(() => {
   max-height: 0;
   opacity: 0;
   border-top: none;
+  overflow: hidden;
 }
 
 /* 加载动画 */

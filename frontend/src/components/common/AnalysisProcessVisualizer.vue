@@ -267,11 +267,13 @@ export default {
 
 .details-content {
   margin-top: 10px;
-  max-height: 300px;
+  max-height: calc(100vh - 350px);
   overflow-y: auto;
   background: #fafafa;
   padding: 10px;
   border-radius: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #409eff #e0e0e0;
 }
 
 .details-content pre {

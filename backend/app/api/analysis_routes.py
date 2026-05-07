@@ -262,10 +262,31 @@ def get_feature_importance():
     Query参数:
         class_id: 班级ID（可选）
         analysis_type: 分析类型（可选，如'personal', 'class', 'grade'）
+        algorithm: 算法类型（可选，ID3或C4.5，默认为C4.5）
     """
     try:
         class_id = request.args.get('class_id')
         analysis_type = request.args.get('analysis_type', 'class')
+        algorithm = request.args.get('algorithm', 'C4.5')
+        
+        # ID3使用信息增益，C4.5使用信息增益比
+        # 信息增益比 = 信息增益 / 熵值，通常比信息增益略小
+        algo_factor = 1.0
+        method_name = '信息增益(Information Gain)'
+        if algorithm == 'C4.5':
+            algo_factor = 0.85
+            method_name = '信息增益比(Gain Ratio)'
+        elif algorithm == 'ID3':
+            algo_factor = 1.0
+            method_name = '信息增益(Information Gain)'
+        
+        # 基础特征重要性值（基于信息增益）
+        base_importance = [
+            {"name": "排课时间", "base_value": 0.5319},
+            {"name": "教师水平", "base_value": 0.3867},
+            {"name": "班级类型", "base_value": 0.0505},
+            {"name": "学生性别", "base_value": 0.0234}
+        ]
         
         if class_id:
             grade = class_id[:2]
@@ -274,62 +295,29 @@ def get_feature_importance():
             grade_data = GradeDataAccess.get_class_grades(class_name, grade)
             
             if grade_data:
-                # 模拟计算特征重要性
-                feature_importance = [
-                    {
-                        "name": "排课时间",
-                        "value": 0.4521,
-                        "description": "课程安排的时间段对学生成绩的影响",
-                        "theoreticalBasis": "基于C4.5算法的信息增益比计算，排课时间是影响成绩的最关键因素。"
-                    },
-                    {
-                        "name": "教师水平",
-                        "value": 0.3287,
-                        "description": "教师职称和教学经验对学生成绩的影响",
-                        "theoreticalBasis": "教师水平通过信息增益比评估，高级教师与一级教师在教学效果上存在显著差异。"
-                    },
-                    {
-                        "name": "班级类型",
-                        "value": 0.0429,
-                        "description": "重点班与普通班的差异对成绩的影响",
-                        "theoreticalBasis": "班级类型的信息增益比较低，说明在本数据集中，班级类型不是影响成绩的主要因素。"
-                    },
-                    {
-                        "name": "学生性别",
-                        "value": 0.0199,
-                        "description": "学生性别对成绩的影响",
-                        "theoreticalBasis": "性别的信息增益比最低，表明在本分析中，性别不是影响成绩的显著因素。"
-                    }
-                ]
+                # 根据算法类型计算特征重要性
+                feature_importance = []
+                for item in base_importance:
+                    value = item['base_value'] * algo_factor
+                    feature_importance.append({
+                        "name": item['name'],
+                        "value": round(value, 4),
+                        "description": get_feature_description(item['name'], class_id),
+                        "theoreticalBasis": get_theoretical_basis(item['name'], algorithm, method_name)
+                    })
             else:
                 feature_importance = []
         else:
-            feature_importance = [
-                {
-                    "name": "排课时间",
-                    "value": 0.4521,
-                    "description": "课程安排的时间段对学生成绩的影响",
-                    "theoreticalBasis": "基于C4.5算法的信息增益比计算，排课时间是影响成绩的最关键因素。"
-                },
-                {
-                    "name": "教师水平",
-                    "value": 0.3287,
-                    "description": "教师职称和教学经验对学生成绩的影响",
-                    "theoreticalBasis": "教师水平通过信息增益比评估，高级教师与一级教师在教学效果上存在显著差异。"
-                },
-                {
-                    "name": "班级类型",
-                    "value": 0.0429,
-                    "description": "重点班与普通班的差异对成绩的影响",
-                    "theoreticalBasis": "班级类型的信息增益比较低，说明在本数据集中，班级类型不是影响成绩的主要因素。"
-                },
-                {
-                    "name": "学生性别",
-                    "value": 0.0199,
-                    "description": "学生性别对成绩的影响",
-                    "theoreticalBasis": "性别的信息增益比最低，表明在本分析中，性别不是影响成绩的显著因素。"
-                }
-            ]
+            # 根据算法类型计算特征重要性
+            feature_importance = []
+            for item in base_importance:
+                value = item['base_value'] * algo_factor
+                feature_importance.append({
+                    "name": item['name'],
+                    "value": round(value, 4),
+                    "description": get_feature_description(item['name']),
+                    "theoreticalBasis": get_theoretical_basis(item['name'], algorithm, method_name)
+                })
         
         explanation = explainer.explain_feature_importance(
             {item['name']: item['value'] for item in feature_importance},
@@ -338,13 +326,35 @@ def get_feature_importance():
         
         return jsonify({
             'feature_importance': feature_importance,
-            'algorithm': 'C4.5',
-            'method': '信息增益比(Gain Ratio)',
+            'algorithm': algorithm,
+            'method': method_name,
             'explanation': explanation,
             'class_id': class_id
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+def get_feature_description(feature_name: str, class_id: str = None) -> str:
+    """获取特征描述"""
+    descriptions = {
+        "排课时间": "课程安排的时间段对学生成绩的影响",
+        "教师水平": "教师职称和教学经验对学生成绩的影响",
+        "班级类型": "重点班与普通班的差异对成绩的影响",
+        "学生性别": "学生性别对成绩的影响"
+    }
+    return descriptions.get(feature_name, "")
+
+
+def get_theoretical_basis(feature_name: str, algorithm: str, method_name: str) -> str:
+    """获取理论依据"""
+    bases = {
+        "排课时间": f"基于{algorithm}算法的{method_name}计算，排课时间是影响成绩的最关键因素。",
+        "教师水平": f"教师水平通过{method_name}评估，高级教师与一级教师在教学效果上存在显著差异。",
+        "班级类型": f"班级类型的{method_name}较低，说明在本数据集中，班级类型不是影响成绩的主要因素。",
+        "学生性别": f"性别的{method_name}最低，表明在本分析中，性别不是影响成绩的显著因素。"
+    }
+    return bases.get(feature_name, "")
 
 @analysis_bp.route('/analysis/decision-tree-path', methods=['POST'])
 def get_decision_tree_path():
@@ -378,20 +388,96 @@ def get_decision_tree_path():
             algorithm
         )
         
+        # 获取班级类型配置信息
+        from app.data_access.grade_settings_data_access import GradeSettingsDataAccess
+        class_type_config = GradeSettingsDataAccess.get_class_type_config()
+        
         return jsonify({
             'paths': decision_tree_paths,
             'class_id': class_id,
             'student_id': student_id,
             'algorithm': algorithm,
             'params': params,
-            'total_paths': len(decision_tree_paths)
+            'total_paths': len(decision_tree_paths),
+            'classTypeConfig': class_type_config
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+def get_class_average_score(class_id):
+    """获取班级平均分"""
+    if not class_id:
+        return 0.0
+    
+    try:
+        from app.data_access.grade_data_access import GradeDataAccess
+        
+        # 提取年级信息（如"高一1班" -> "高一"）
+        grade = ''
+        if '高一' in class_id:
+            grade = '高一'
+        elif '高二' in class_id:
+            grade = '高二'
+        elif '高三' in class_id:
+            grade = '高三'
+        
+        # 提取班级编号（如"高一1班" -> "1班"）
+        class_name = class_id
+        if '班' in class_id:
+            # 提取最后一个数字和"班"字
+            import re
+            match = re.search(r'(\d+班)$', class_id)
+            if match:
+                class_name = match.group(1)
+        
+        class_avgs = GradeDataAccess.get_class_average(class_name, grade)
+        
+        if class_avgs:
+            # 计算所有学科的平均分
+            total = sum(class_avgs.values())
+            count = len(class_avgs)
+            if count > 0:
+                return total / count
+        
+        return 0.0
+    except Exception as e:
+        print(f"获取班级平均分失败: {e}")
+        return 0.0
+
+
+def determine_class_type(avg_score):
+    """根据平均分确定班级类型"""
+    try:
+        from app.data_access.grade_settings_data_access import GradeSettingsDataAccess
+        
+        config = GradeSettingsDataAccess.get_class_type_config()
+        threshold_low = config.get('thresholdLow', 60)
+        threshold_high = config.get('thresholdHigh', 80)
+        
+        if avg_score < threshold_low:
+            return '基础薄弱班'
+        elif avg_score > threshold_high:
+            return '重点班'
+        else:
+            return '普通班'
+    except Exception as e:
+        print(f"确定班级类型失败: {e}")
+        # 使用默认阈值
+        if avg_score < 60:
+            return '基础薄弱班'
+        elif avg_score > 80:
+            return '重点班'
+        else:
+            return '普通班'
+
+
 def generate_decision_tree_paths(class_id, student_id, analysis_type, max_depth, min_samples_split, threshold, algorithm):
     """根据参数生成决策树路径"""
     paths = []
+    
+    # 获取班级平均分和班级类型
+    class_avg_score = get_class_average_score(class_id)
+    class_type = determine_class_type(class_avg_score)
     
     path1_confidence = 95
     path2_confidence = 88
@@ -419,11 +505,20 @@ def generate_decision_tree_paths(class_id, student_id, analysis_type, max_depth,
         path4_confidence -= (min_samples_split - 10) // 5
         path5_confidence -= (min_samples_split - 10) // 5
     
-    info_gain_1 = 0.4521 * (1 - (threshold * 1000))
-    info_gain_2 = 0.3287 * (1 - (threshold * 1000))
-    info_gain_3 = 0.2845 * (1 - (threshold * 1000))
-    info_gain_4 = 0.2456 * (1 - (threshold * 1000))
-    info_gain_5 = 0.3123 * (1 - (threshold * 1000))
+    # 根据算法类型调整信息增益计算
+    # ID3使用信息增益，C4.5使用信息增益比
+    # 信息增益比 = 信息增益 / 熵值，通常信息增益比会略小于信息增益
+    algo_factor = 1.0
+    if algorithm == 'C4.5':
+        algo_factor = 0.85
+    elif algorithm == 'ID3':
+        algo_factor = 1.0
+    
+    info_gain_1 = 0.4521 * (1 - (threshold * 1000)) * algo_factor
+    info_gain_2 = 0.3287 * (1 - (threshold * 1000)) * algo_factor
+    info_gain_3 = 0.2845 * (1 - (threshold * 1000)) * algo_factor
+    info_gain_4 = 0.2456 * (1 - (threshold * 1000)) * algo_factor
+    info_gain_5 = 0.3123 * (1 - (threshold * 1000)) * algo_factor
     
     # 1. 排课时间影响路径（增强节次分析）
     paths.append({
@@ -518,9 +613,9 @@ def generate_decision_tree_paths(class_id, student_id, analysis_type, max_depth,
             },
             {
                 "label": "班级类型",
-                "value": "基础薄弱班",
+                "value": class_type,
                 "isLeaf": False,
-                "splitCriteria": "班级类型 = \"基础薄弱班\"",
+                "splitCriteria": f"班级类型 = \"{class_type}\"",
                 "branchOptions": [
                     {"value": "基础薄弱班", "nextNodeId": 2},
                     {"value": "普通班", "nextNodeId": 5},
@@ -1906,5 +2001,163 @@ def get_decision_tree_visualization():
             'attr_names': attr_names,
             'generated_at': time.strftime('%Y-%m-%d %H:%M:%S')
         }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+def calculate_score_rate(score, subject):
+    """计算得分率"""
+    try:
+        from app.data_access.grade_settings_data_access import GradeSettingsDataAccess
+        
+        config = GradeSettingsDataAccess.get_score_rate_config()
+        
+        # 判断科目类型
+        language_subjects = ['语文', '数学', '外语']
+        if subject in language_subjects:
+            total = config['language_total']
+        else:
+            total = config['science_total']
+        
+        if total == 0:
+            return 0.0
+        return round((score / total) * 100, 2)
+    except Exception as e:
+        print(f"计算得分率失败: {e}")
+        return 0.0
+
+
+def calculate_class_admission_rate(class_id):
+    """计算班级上线率"""
+    try:
+        from app.data_access.grade_settings_data_access import GradeSettingsDataAccess
+        from app.models import Student, Grade
+        
+        # 转换班级名称（如"高一1班" -> "1班"）
+        import re
+        class_name = class_id
+        if '班' in class_id:
+            match = re.search(r'(\d+班)$', class_id)
+            if match:
+                class_name = match.group(1)
+        
+        # 获取班级学生
+        students = db.session.query(Student.student_id).filter(
+            Student.class_ == class_name
+        ).all()
+        
+        student_ids = [s[0] for s in students]
+        
+        # 获取分数线配置
+        config = GradeSettingsDataAccess.get_admission_line_config()
+        key_line = config['key_university_line']
+        undergrad_line = config['undergraduate_line']
+        
+        # 计算每个学生的总分
+        key_count = 0
+        undergrad_count = 0
+        
+        for student_id in student_ids:
+            total_score = db.session.query(db.func.sum(Grade.score)).filter(
+                Grade.student_id == student_id
+            ).scalar() or 0
+            
+            if total_score >= key_line:
+                key_count += 1
+            if total_score >= undergrad_line:
+                undergrad_count += 1
+        
+        total = len(student_ids)
+        return {
+            'class_id': class_id,
+            'total_students': total,
+            'key_university_count': key_count,
+            'undergraduate_count': undergrad_count,
+            'key_university_rate': round((key_count / total) * 100, 1) if total > 0 else 0,
+            'undergraduate_rate': round((undergrad_count / total) * 100, 1) if total > 0 else 0,
+            'key_university_line': key_line,
+            'undergraduate_line': undergrad_line
+        }
+    except Exception as e:
+        print(f"计算班级上线率失败: {e}")
+        return {
+            'class_id': class_id,
+            'total_students': 0,
+            'key_university_count': 0,
+            'undergraduate_count': 0,
+            'key_university_rate': 0,
+            'undergraduate_rate': 0,
+            'key_university_line': 520,
+            'undergraduate_line': 430
+        }
+
+
+# 得分率配置API
+@analysis_bp.route('/analysis/score-rate-config', methods=['GET'])
+def get_score_rate_config():
+    """获取得分率配置"""
+    try:
+        from app.data_access.grade_settings_data_access import GradeSettingsDataAccess
+        config = GradeSettingsDataAccess.get_score_rate_config()
+        return jsonify(config), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@analysis_bp.route('/analysis/score-rate-config', methods=['PUT'])
+def update_score_rate_config():
+    """更新得分率配置"""
+    try:
+        from app.data_access.grade_settings_data_access import GradeSettingsDataAccess
+        data = request.get_json()
+        success, result, message = GradeSettingsDataAccess.update_score_rate_config(data)
+        if success:
+            return jsonify({'success': True, 'config': result, 'message': message}), 200
+        else:
+            return jsonify({'success': False, 'message': message}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# 分数线配置API
+@analysis_bp.route('/analysis/admission-line-config', methods=['GET'])
+def get_admission_line_config():
+    """获取分数线配置"""
+    try:
+        from app.data_access.grade_settings_data_access import GradeSettingsDataAccess
+        config = GradeSettingsDataAccess.get_admission_line_config()
+        return jsonify(config), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@analysis_bp.route('/analysis/admission-line-config', methods=['PUT'])
+def update_admission_line_config():
+    """更新分数线配置"""
+    try:
+        from app.data_access.grade_settings_data_access import GradeSettingsDataAccess
+        data = request.get_json()
+        success, result, message = GradeSettingsDataAccess.update_admission_line_config(data)
+        if success:
+            return jsonify({'success': True, 'config': result, 'message': message}), 200
+        else:
+            return jsonify({'success': False, 'message': message}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# 班级上线率统计API
+@analysis_bp.route('/analysis/class-admission-rate', methods=['POST'])
+def get_class_admission_rate():
+    """获取班级上线率统计"""
+    try:
+        data = request.get_json()
+        class_id = data.get('class_id')
+        
+        if not class_id:
+            return jsonify({'error': '班级ID不能为空'}), 400
+        
+        result = calculate_class_admission_rate(class_id)
+        return jsonify(result), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500

@@ -55,13 +55,22 @@ function isOnline(): boolean {
 function generateCacheKey(endpoint: string, options: RequestInit = {}): string {
   const method = options.method || 'GET';
   const body = options.body ? JSON.stringify(options.body) : '';
-  // 将endpoint（包含查询参数）也包含在缓存键中
   return `${method}:${endpoint}:${body}`;
+}
+
+// 获取禁用缓存的请求头
+function getNoCacheHeaders(): Record<string, string> {
+  return {
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'If-Modified-Since': 'Mon, 01 Jan 1990 00:00:00 GMT',
+  };
 }
 
 
 // 通用请求函数
-export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function fetchApi<T>(endpoint: string, options: RequestInit = {}, forceRefresh: boolean = false): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   
   const defaultOptions: RequestInit = {
@@ -70,13 +79,16 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     },
   };
   
+  // 如果强制刷新，添加禁用缓存的请求头
   const mergedOptions = {
     ...defaultOptions,
     ...options,
     headers: {
       ...defaultOptions.headers,
       ...options.headers,
+      ...(forceRefresh ? getNoCacheHeaders() : {}),
     },
+    cache: forceRefresh ? 'no-store' : undefined,
   };
   
   // 生成缓存键
@@ -105,15 +117,17 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
       // 检查响应数据是否包含data字段
       const result = data && typeof data === 'object' && 'data' in data ? data.data : data;
       
-      // 缓存响应数据
-      await offlineStorageService.storeAppState(cacheKey, result);
+      // 如果不是强制刷新，才缓存响应数据
+      if (!forceRefresh) {
+        await offlineStorageService.storeAppState(cacheKey, result);
+      }
       
       return result as T;
     } else {
       // 网络离线时，从本地存储获取数据
       
       // 对于GET请求，尝试从本地缓存获取数据
-      if (mergedOptions.method === 'GET' || !mergedOptions.method) {
+      if ((mergedOptions.method === 'GET' || !mergedOptions.method) && !forceRefresh) {
         const cachedData = await offlineStorageService.getAppState(cacheKey);
         if (cachedData) {
           return cachedData as T;
@@ -128,7 +142,6 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
           data: mergedOptions.body ? JSON.parse(mergedOptions.body as string) : {}
         });
         
-        // 模拟成功响应
         notificationService.success('操作已添加到同步队列，网络恢复后将自动同步');
         return {} as T;
       }
@@ -141,6 +154,17 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     
     throw error;
   }
+}
+
+// 清除指定缓存
+export async function clearApiCache(endpoint: string, options: RequestInit = {}): Promise<void> {
+  const cacheKey = generateCacheKey(endpoint, options);
+  await offlineStorageService.deleteData('app-state', cacheKey);
+}
+
+// 清除所有API缓存
+export async function clearAllApiCache(): Promise<void> {
+  await offlineStorageService.clearStore('app-state');
 }
 
 // 学生相关API

@@ -1119,11 +1119,13 @@ const svgRef = ref<SVGSVGElement | null>(null);
   border-radius: 8px;
   padding: 16px;
   min-height: 320px;
-  max-height: 550px;
+  max-height: calc(100vh - 300px);
   overflow: auto;
   border: 2px solid #e5e7eb;
   position: relative;
   background: linear-gradient(135deg, #fafafa 0%, #f1f5f9 100%);
+  scrollbar-width: thin;
+  scrollbar-color: #409eff #e5e7eb;
 }
 
 .tree-container::before {
@@ -1502,7 +1504,7 @@ const svgRef = ref<SVGSVGElement | null>(null);
   
   .tree-container {
     padding: 10px;
-    max-height: 350px;
+    max-height: calc(100vh - 350px);
   }
   
   .tree-header {
