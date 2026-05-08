@@ -49,7 +49,7 @@
             <button class="btn btn-secondary" @click="$emit('editProgress', progress)">
               编辑
             </button>
-            <button class="btn btn-danger" @click="$emit('deleteProgress', progress.id)">
+            <button class="btn btn-danger" @click="confirmDelete(progress)">
               删除
             </button>
           </div>
@@ -85,12 +85,30 @@
         </button>
       </div>
     </div>
+
+    <!-- 删除确认对话框 -->
+    <ConfirmDialog
+      :visible="showDeleteConfirm"
+      title="删除教学进度"
+      :message="`确定要删除章节「${deleteProgressItem?.chapter}」吗？`"
+      :details="deleteProgressItem ? {
+        '章节': deleteProgressItem.chapter,
+        '课时': `${deleteProgressItem.hours}课时`,
+        '进度': `${deleteProgressItem.progress}%`
+      } : undefined"
+      type="warning"
+      confirm-text="确认删除"
+      cancel-text="取消"
+      @confirm="performDelete"
+      @cancel="cancelDelete"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { courseApi } from '@/services/api/apiService';
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 
 const props = defineProps<{
   progressSubject: string;
@@ -123,6 +141,15 @@ const localProgressGrade = ref(props.progressGrade);
 const subjects = ref<string[]>([]);
 const loadingSubjects = ref(false);
 
+// 删除确认对话框状态
+const showDeleteConfirm = ref(false);
+const deleteProgressItem = ref<{
+  id: number;
+  chapter: string;
+  hours: number;
+  progress: number;
+} | null>(null);
+
 // 加载科目列表
 const loadSubjects = async () => {
   console.log('开始加载科目列表');
@@ -130,18 +157,15 @@ const loadSubjects = async () => {
     loadingSubjects.value = true;
     console.log('调用courseApi.getSubjects()');
     
-    // 使用courseApi.getSubjects()方法获取科目列表
     const subjectList = await courseApi.getSubjects();
     console.log('courseApi.getSubjects()获取到的科目列表:', subjectList);
     console.log('科目数量:', subjectList.length);
     
-    // 确保subjectList是数组
     if (Array.isArray(subjectList)) {
       subjects.value = subjectList;
       console.log('subjects.value设置后:', subjects.value);
       console.log('subjects.value长度:', subjects.value.length);
       
-      // 如果有科目且当前没有选中科目，默认选择第一个
       if (subjectList.length > 0 && !localProgressSubject.value) {
         localProgressSubject.value = subjectList[0];
         emit('update:progressSubject', subjectList[0]);
@@ -149,13 +173,11 @@ const loadSubjects = async () => {
       }
     } else {
       console.error('科目列表不是数组:', subjectList);
-      // 使用默认科目
       subjects.value = ['语文', '数学', '英语', '物理', '化学', '生物'];
       console.log('使用默认科目:', subjects.value);
     }
   } catch (error) {
     console.error('获取科目列表失败:', error);
-    // 失败时使用默认科目
     subjects.value = ['语文', '数学', '英语', '物理', '化学', '生物'];
     console.log('使用默认科目:', subjects.value);
   } finally {
@@ -183,6 +205,27 @@ const handleGradeChange = () => {
   emit('update:progressGrade', localProgressGrade.value);
 };
 
+// 确认删除
+const confirmDelete = (progress: { id: number; chapter: string; hours: number; progress: number }) => {
+  deleteProgressItem.value = progress;
+  showDeleteConfirm.value = true;
+};
+
+// 取消删除
+const cancelDelete = () => {
+  showDeleteConfirm.value = false;
+  deleteProgressItem.value = null;
+};
+
+// 执行删除
+const performDelete = () => {
+  if (deleteProgressItem.value) {
+    emit('deleteProgress', deleteProgressItem.value.id);
+    showDeleteConfirm.value = false;
+    deleteProgressItem.value = null;
+  }
+};
+
 // 初始化数据
 onMounted(() => {
   console.log('ProgressTab组件挂载，调用loadSubjects()');
@@ -191,6 +234,5 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 引用共享样式 */
 @import '@/styles/course/CourseManage.css';
 </style>

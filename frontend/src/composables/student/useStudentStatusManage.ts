@@ -81,8 +81,9 @@ export function useStudentStatusManage() {
     try {
       loading.value = true;
       error.value = null;
-      // 调用API添加学生
+      // 调用API添加学生，需要传递id字段供后端映射为student_id
       const newStudent = await studentApi.addStudent({
+        id: student.id,
         name: student.name,
         gender: student.gender,
         grade: student.grade,

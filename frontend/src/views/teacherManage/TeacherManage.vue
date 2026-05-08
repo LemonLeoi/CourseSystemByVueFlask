@@ -210,6 +210,24 @@
         </BaseModal>
       </template>
     </BaseManagePage>
+
+    <!-- 删除确认对话框 -->
+    <ConfirmDialog
+      :visible="showDeleteConfirm"
+      title="删除教师"
+      :message="`确定要删除教师「${deleteTeacherItem?.name}」吗？`"
+      :details="deleteTeacherItem ? {
+        '工号': deleteTeacherItem.teacher_id,
+        '姓名': deleteTeacherItem.name,
+        '学科': deleteTeacherItem.subject,
+        '职称': deleteTeacherItem.title
+      } : undefined"
+      type="error"
+      confirm-text="确认删除"
+      cancel-text="取消"
+      @confirm="performDelete"
+      @cancel="cancelDelete"
+    />
   </Layout>
 </template>
 
@@ -218,6 +236,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue';
 import Layout from '@/components/layout/Layout.vue';
 import BaseManagePage from '@/components/business/BaseManagePage.vue';
 import BaseModal from '@/components/business/BaseModal.vue';
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 import { useTeacherManage } from '@/composables/teacher/useTeacherManage';
 import type { Teacher } from '@/types';
 
@@ -285,6 +304,11 @@ const {
 // 模态框相关
 const showModal = ref(false);
 const editingTeacher = ref<Teacher | null>(null);
+
+// 删除确认对话框状态
+const showDeleteConfirm = ref(false);
+const deleteTeacherItem = ref<Teacher | null>(null);
+
 const formData = ref<Teacher>({
   id: '',
   teacher_id: '',
@@ -370,11 +394,28 @@ const saveTeacher = async () => {
   currentPage.value = 1;
 };
 
-// 处理删除操作，添加二次确认
-const handleDelete = async (teacher: any) => {
-  if (confirm(`确定要删除教师 ${teacher.name} 吗？此操作不可恢复。`)) {
-    await deleteTeacher(teacher.teacher_id);
+// 处理删除操作，显示确认对话框
+const handleDelete = (teacher: Teacher) => {
+  deleteTeacherItem.value = teacher;
+  showDeleteConfirm.value = true;
+};
+
+// 执行删除
+const performDelete = async () => {
+  if (!deleteTeacherItem.value) return;
+  
+  try {
+    await deleteTeacher(deleteTeacherItem.value.teacher_id);
+  } finally {
+    showDeleteConfirm.value = false;
+    deleteTeacherItem.value = null;
   }
+};
+
+// 取消删除
+const cancelDelete = () => {
+  showDeleteConfirm.value = false;
+  deleteTeacherItem.value = null;
 };
 
 // 监听筛选条件变化

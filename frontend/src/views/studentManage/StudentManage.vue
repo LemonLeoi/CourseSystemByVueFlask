@@ -5,16 +5,14 @@
       :show-search="true"
       :show-filter="true"
       :show-pagination="true"
-      :show-add-button="true"
+      :show-add-button="false"
       :search-placeholder="'搜索学生姓名或学号'"
       :search-button-text="'搜索'"
-      :add-button-text="'添加学生'"
       :total-items="totalStudents"
       :items-per-page="itemsPerPage"
       :current-page="currentPage"
       @search="handleSearch"
       @pageChange="handlePageChange"
-      @add="openAddModal"
     >
 
       <!-- 筛选区域 -->
@@ -57,7 +55,7 @@
           <div v-else-if="paginatedStudents.length === 0" class="empty-container">
             <div class="empty-icon">📋</div>
             <p>暂无学生数据</p>
-            <button class="btn btn-primary" @click="openAddModal">添加学生</button>
+            <button class="btn btn-primary" @click="goToStudentStatus">前往学籍管理添加学生</button>
           </div>
           
           <!-- 学生表格 -->
@@ -81,7 +79,6 @@
                 <td>{{ student.class }}</td>
                 <td>
                   <button class="btn btn-primary btn-sm mr-2" @click="editStudent(student)">编辑</button>
-                  <button class="btn btn-error btn-sm mr-2" @click="handleDelete(student)">删除</button>
                   <button class="btn btn-secondary btn-sm" @click="manageScores(student)">成绩</button>
                 </td>
               </tr>
@@ -295,16 +292,78 @@
         </BaseModal>
       </template>
     </BaseManagePage>
+
+    <!-- 删除学生确认对话框 -->
+    <ConfirmDialog
+      :visible="showDeleteStudentConfirm"
+      title="删除学生"
+      :message="`确定要删除学生「${deleteStudentItem?.name}」吗？`"
+      :details="deleteStudentItem ? {
+        '学号': deleteStudentItem.id,
+        '姓名': deleteStudentItem.name,
+        '年级': deleteStudentItem.grade,
+        '班级': deleteStudentItem.class
+      } : undefined"
+      type="error"
+      confirm-text="确认删除"
+      cancel-text="取消"
+      @confirm="performDeleteStudent"
+      @cancel="cancelDeleteStudent"
+    />
+
+    <!-- 删除科目成绩确认对话框 -->
+    <ConfirmDialog
+      :visible="showDeleteScoreConfirm"
+      title="删除成绩"
+      :message="`确定要删除 ${selectedStudent?.name} 的 ${deleteScoreItem?.subject} 成绩吗？`"
+      :details="deleteScoreItem && selectedStudent && selectedExam ? {
+        '学生': selectedStudent.name,
+        '考试': selectedExam.name,
+        '科目': deleteScoreItem.subject,
+        '当前分数': deleteScoreItem.score
+      } : undefined"
+      type="warning"
+      confirm-text="确认删除"
+      cancel-text="取消"
+      @confirm="performDeleteScore"
+      @cancel="cancelDeleteScore"
+    />
+
+    <!-- 删除考试所有成绩确认对话框 -->
+    <ConfirmDialog
+      :visible="showDeleteExamScoresConfirm"
+      title="删除考试成绩"
+      :message="`确定要删除 ${selectedStudent?.name} 在 ${selectedExam?.name} 中的所有成绩吗？`"
+      :details="selectedStudent && selectedExam ? {
+        '学生': selectedStudent.name,
+        '学号': selectedStudent.id,
+        '考试': selectedExam.name,
+        '考试代码': selectedExam.code
+      } : undefined"
+      type="error"
+      confirm-text="确认删除"
+      cancel-text="取消"
+      @confirm="performDeleteExamScores"
+      @cancel="cancelDeleteExamScores"
+    />
   </Layout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import Layout from '@/components/layout/Layout.vue';
 import BaseManagePage from '@/components/business/BaseManagePage.vue';
 import BaseModal from '@/components/business/BaseModal.vue';
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 import { useStudentManage } from '@/composables/student/useStudentManage';
 import type { Student, Score } from '@/types';
+
+const router = useRouter();
+
+const goToStudentStatus = () => {
+  router.push('/student-status');
+};
 
 // 班级和年级列表（从后端API获取）
 const grades = ref<string[]>([]);
@@ -424,6 +483,13 @@ const studentScores = ref<Score[]>([]);
 const exams = ref<any[]>([]);
 const selectedExam = ref<any>(null);
 const isLoadingExams = ref(false);
+
+// 删除确认对话框状态
+const showDeleteStudentConfirm = ref(false);
+const deleteStudentItem = ref<Student | null>(null);
+const showDeleteScoreConfirm = ref(false);
+const deleteScoreItem = ref<Score | null>(null);
+const showDeleteExamScoresConfirm = ref(false);
 
 // 成绩分级设置相关
 const showGradeSettingsModal = ref(false);
@@ -797,80 +863,113 @@ const saveAllScores = async () => {
   }
 };
 
-// 删除单个科目成绩
-const deleteScore = async (score: any) => {
+// 删除单个科目成绩 - 显示确认对话框
+const deleteScore = (score: Score) => {
   if (!selectedStudent.value || !selectedExam.value) {
     alert('请先选择考试');
     return;
   }
+  deleteScoreItem.value = score;
+  showDeleteScoreConfirm.value = true;
+};
+
+// 执行删除科目成绩
+const performDeleteScore = async () => {
+  if (!deleteScoreItem.value || !selectedStudent.value || !selectedExam.value) return;
   
-  if (confirm(`确定要删除 ${selectedStudent.value.name} 的 ${score.subject} 成绩吗？此操作不可恢复。`)) {
-    try {
-      const { default: apiService } = await import('@/services/api/apiService');
-      await apiService.student.deleteStudentGrade(
-        selectedStudent.value.id,
-        selectedExam.value.code,
-        score.subject
-      );
-      
-      // 从studentScores中移除该科目
-      studentScores.value = studentScores.value.filter(s => s.subject !== score.subject);
-      
-      // 重新加载学生数据
-      await loadStudents();
-      const updatedStudent = await getStudentById(selectedStudent.value.id);
-      if (updatedStudent) {
-        selectedStudent.value = updatedStudent;
-      }
-      
-      alert('删除成功！');
-    } catch (error) {
-      console.error('删除成绩失败:', error);
-      alert('删除失败，请重试');
+  try {
+    const { default: apiService } = await import('@/services/api/apiService');
+    await apiService.student.deleteStudentGrade(
+      selectedStudent.value.id,
+      selectedExam.value.code,
+      deleteScoreItem.value.subject
+    );
+    
+    studentScores.value = studentScores.value.filter(s => s.subject !== deleteScoreItem.value.subject);
+    
+    await loadStudents();
+    const updatedStudent = await getStudentById(selectedStudent.value.id);
+    if (updatedStudent) {
+      selectedStudent.value = updatedStudent;
     }
+  } catch (error) {
+    console.error('删除成绩失败:', error);
+    alert('删除失败，请重试');
+  } finally {
+    showDeleteScoreConfirm.value = false;
+    deleteScoreItem.value = null;
   }
 };
 
-// 删除当前考试的所有成绩
-const deleteCurrentExamScores = async () => {
+// 取消删除科目成绩
+const cancelDeleteScore = () => {
+  showDeleteScoreConfirm.value = false;
+  deleteScoreItem.value = null;
+};
+
+// 删除当前考试的所有成绩 - 显示确认对话框
+const deleteCurrentExamScores = () => {
   if (!selectedStudent.value || !selectedExam.value) {
     alert('请先选择考试');
     return;
   }
+  showDeleteExamScoresConfirm.value = true;
+};
+
+// 执行删除考试所有成绩
+const performDeleteExamScores = async () => {
+  if (!selectedStudent.value || !selectedExam.value) return;
   
-  if (confirm(`确定要删除 ${selectedStudent.value.name} 在 ${selectedExam.value.name} 中的所有成绩吗？此操作不可恢复。`)) {
-    try {
-      const { default: apiService } = await import('@/services/api/apiService');
-      await apiService.student.deleteStudentExamGrades(
-        selectedStudent.value.id,
-        selectedExam.value.code
-      );
-      
-      // 清空studentScores
-      studentScores.value = [];
-      
-      // 重新加载学生数据
-      await loadStudents();
-      const updatedStudent = await getStudentById(selectedStudent.value.id);
-      if (updatedStudent) {
-        selectedStudent.value = updatedStudent;
-        // 重新初始化成绩数据
-        onExamChange();
-      }
-      
-      alert('删除成功！');
-    } catch (error) {
-      console.error('删除考试成绩失败:', error);
-      alert('删除失败，请重试');
+  try {
+    const { default: apiService } = await import('@/services/api/apiService');
+    await apiService.student.deleteStudentExamGrades(
+      selectedStudent.value.id,
+      selectedExam.value.code
+    );
+    
+    studentScores.value = [];
+    
+    await loadStudents();
+    const updatedStudent = await getStudentById(selectedStudent.value.id);
+    if (updatedStudent) {
+      selectedStudent.value = updatedStudent;
+      onExamChange();
     }
+  } catch (error) {
+    console.error('删除考试成绩失败:', error);
+    alert('删除失败，请重试');
+  } finally {
+    showDeleteExamScoresConfirm.value = false;
   }
 };
 
-// 处理删除操作，添加二次确认
-const handleDelete = async (student: any) => {
-  if (confirm(`确定要删除学生 ${student.name} 吗？此操作不可恢复。`)) {
-    await deleteStudent(student.id);
+// 取消删除考试所有成绩
+const cancelDeleteExamScores = () => {
+  showDeleteExamScoresConfirm.value = false;
+};
+
+// 处理删除学生操作 - 显示确认对话框
+const handleDelete = (student: Student) => {
+  deleteStudentItem.value = student;
+  showDeleteStudentConfirm.value = true;
+};
+
+// 执行删除学生
+const performDeleteStudent = async () => {
+  if (!deleteStudentItem.value) return;
+  
+  try {
+    await deleteStudent(deleteStudentItem.value.id);
+  } finally {
+    showDeleteStudentConfirm.value = false;
+    deleteStudentItem.value = null;
   }
+};
+
+// 取消删除学生
+const cancelDeleteStudent = () => {
+  showDeleteStudentConfirm.value = false;
+  deleteStudentItem.value = null;
 };
 
 // 处理筛选变化

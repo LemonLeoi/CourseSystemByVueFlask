@@ -72,17 +72,17 @@
                 <td>
                   <button class="btn btn-primary btn-sm mr-2" @click="editStudent(student)">编辑</button>
                   <button class="btn btn-secondary btn-sm mr-2" @click="viewStudent(student)">查看详情</button>
-                  <button class="btn btn-error btn-sm mr-2" @click="deleteStudent(student.id)">删除</button>
+                  <button class="btn btn-error btn-sm mr-2" @click="confirmDeleteStudent(student)">删除</button>
                   <button 
                     class="btn btn-warning btn-sm" 
-                    @click="archiveStudent(student)"
+                    @click="confirmArchiveStudent(student)"
                     v-if="student.status !== 'graduated'"
                   >
                     归档
                   </button>
                   <button 
                     class="btn btn-success btn-sm" 
-                    @click="unarchiveStudent(student)"
+                    @click="confirmUnarchiveStudent(student)"
                     v-else
                   >
                     取消归档
@@ -189,6 +189,58 @@
         </BaseModal>
       </template>
     </BaseManagePage>
+
+    <!-- 删除确认对话框 -->
+    <ConfirmDialog
+      :visible="showDeleteConfirm"
+      title="删除学生"
+      :message="`确定要删除学生「${deleteStudentItem?.name}」吗？`"
+      :details="deleteStudentItem ? {
+        '学号': deleteStudentItem.id,
+        '姓名': deleteStudentItem.name,
+        '年级': deleteStudentItem.grade,
+        '班级': deleteStudentItem.class
+      } : undefined"
+      type="error"
+      confirm-text="确认删除"
+      cancel-text="取消"
+      @confirm="performDeleteStudent"
+      @cancel="cancelDeleteStudent"
+    />
+
+    <!-- 归档确认对话框 -->
+    <ConfirmDialog
+      :visible="showArchiveConfirm"
+      title="归档学生"
+      :message="`确定要将学生「${archiveStudentItem?.name}」归档吗？归档后学生状态将变为毕业。`"
+      :details="archiveStudentItem ? {
+        '学号': archiveStudentItem.id,
+        '姓名': archiveStudentItem.name,
+        '当前状态': archiveStudentItem.statusText
+      } : undefined"
+      type="warning"
+      confirm-text="确认归档"
+      cancel-text="取消"
+      @confirm="performArchiveStudent"
+      @cancel="cancelArchiveStudent"
+    />
+
+    <!-- 取消归档确认对话框 -->
+    <ConfirmDialog
+      :visible="showUnarchiveConfirm"
+      title="取消归档学生"
+      :message="`确定要取消学生「${unarchiveStudentItem?.name}」的归档状态吗？`"
+      :details="unarchiveStudentItem ? {
+        '学号': unarchiveStudentItem.id,
+        '姓名': unarchiveStudentItem.name,
+        '当前状态': unarchiveStudentItem.statusText
+      } : undefined"
+      type="info"
+      confirm-text="确认取消归档"
+      cancel-text="取消"
+      @confirm="performUnarchiveStudent"
+      @cancel="cancelUnarchiveStudent"
+    />
   </Layout>
 </template>
 
@@ -197,6 +249,7 @@ import { ref, onMounted } from 'vue';
 import Layout from '@/components/layout/Layout.vue';
 import BaseManagePage from '@/components/business/BaseManagePage.vue';
 import BaseModal from '@/components/business/BaseModal.vue';
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 import { useStudentStatusManage } from '@/composables/student/useStudentStatusManage';
 import type { StudentStatus } from '@/types';
 
@@ -230,6 +283,18 @@ const showModal = ref(false);
 const showDetailModal = ref(false);
 const isEditMode = ref(false);
 const selectedStudent = ref<StudentStatus | null>(null);
+
+// 删除确认对话框状态
+const showDeleteConfirm = ref(false);
+const deleteStudentItem = ref<StudentStatus | null>(null);
+
+// 归档确认对话框状态
+const showArchiveConfirm = ref(false);
+const archiveStudentItem = ref<StudentStatus | null>(null);
+
+// 取消归档确认对话框状态
+const showUnarchiveConfirm = ref(false);
+const unarchiveStudentItem = ref<StudentStatus | null>(null);
 
 // 表单数据
 const formData = ref<StudentStatus>({
@@ -292,7 +357,6 @@ const closeDetailModal = () => {
 
 // 保存学生
 const saveStudent = async () => {
-  // 根据状态值更新状态文本
   const statusMap: { [key: string]: string } = {
     'active': '在校',
     'suspended': '休学',
@@ -302,13 +366,68 @@ const saveStudent = async () => {
   formData.value.statusText = statusMap[formData.value.status] || '在校';
   
   if (isEditMode.value) {
-    // 编辑现有学生
     await updateStudent(formData.value);
   } else {
-    // 添加新学生
     await addStudent(formData.value);
   }
   closeModal();
+};
+
+// 删除学生相关
+const confirmDeleteStudent = (student: StudentStatus) => {
+  deleteStudentItem.value = student;
+  showDeleteConfirm.value = true;
+};
+
+const cancelDeleteStudent = () => {
+  showDeleteConfirm.value = false;
+  deleteStudentItem.value = null;
+};
+
+const performDeleteStudent = async () => {
+  if (deleteStudentItem.value) {
+    await deleteStudent(deleteStudentItem.value.id);
+    showDeleteConfirm.value = false;
+    deleteStudentItem.value = null;
+  }
+};
+
+// 归档学生相关
+const confirmArchiveStudent = (student: StudentStatus) => {
+  archiveStudentItem.value = student;
+  showArchiveConfirm.value = true;
+};
+
+const cancelArchiveStudent = () => {
+  showArchiveConfirm.value = false;
+  archiveStudentItem.value = null;
+};
+
+const performArchiveStudent = async () => {
+  if (archiveStudentItem.value) {
+    await archiveStudent(archiveStudentItem.value);
+    showArchiveConfirm.value = false;
+    archiveStudentItem.value = null;
+  }
+};
+
+// 取消归档学生相关
+const confirmUnarchiveStudent = (student: StudentStatus) => {
+  unarchiveStudentItem.value = student;
+  showUnarchiveConfirm.value = true;
+};
+
+const cancelUnarchiveStudent = () => {
+  showUnarchiveConfirm.value = false;
+  unarchiveStudentItem.value = null;
+};
+
+const performUnarchiveStudent = async () => {
+  if (unarchiveStudentItem.value) {
+    await unarchiveStudent(unarchiveStudentItem.value);
+    showUnarchiveConfirm.value = false;
+    unarchiveStudentItem.value = null;
+  }
 };
 
 // 初始化数据

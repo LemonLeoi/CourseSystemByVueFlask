@@ -85,11 +85,11 @@ def create_student():
     """创建新学生"""
     data = request.get_json()
     
-    # 验证数据
-    # 支持前端的id字段和后端的student_id字段
+    # 先支持前端的id字段和后端的student_id字段映射
     if 'id' in data:
         data['student_id'] = data['id']
     
+    # 验证数据
     required_fields = ['name', 'student_id', 'gender', 'class', 'grade']
     for field in required_fields:
         if field not in data:
