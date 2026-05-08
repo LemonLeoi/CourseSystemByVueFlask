@@ -1,0 +1,852 @@
+from flask import Blueprint, request, jsonify
+from app import db
+from app.models import Course, StudentCourse, TeacherCourse, TeachingProgress, Classroom, CourseSchedule
+from app.services.sync_service import SyncService
+from app.services.conflict_service import ConflictService
+
+# 创建Blueprint
+bp = Blueprint('courses', __name__)
+
+# 年级到代码的映射
+GRADE_CODES = {
+    '高一': '10',
+    '高二': '20',
+    '高三': '30'
+}
+
+# 特殊科目年级代码映射
+SPECIAL_GRADE_SUBJECT_CODES = {
+    ('高一', '体育'): '11',
+    ('高二', '体育'): '21',
+    ('高三', '体育'): '31',
+    ('高一', '美术'): '12',
+    ('高二', '美术'): '22',
+    ('高三', '美术'): '32'
+}
+
+# 科目到代码的映射
+SUBJECT_CODES = {
+    '语文': '01',
+    '数学': '02',
+    '英语': '03',
+    '物理': '14',
+    '化学': '15',
+    '生物': '16',
+    '历史': '24',
+    '政治': '25',
+    '地理': '26'
+}
+
+# 课程管理API
+@bp.route('/', methods=['GET'])
+def get_courses():
+    """获取所有课程数据，支持搜索和筛选"""
+    # 获取查询参数
+    search = request.args.get('search', '')
+    status = request.args.get('status', '')
+    semester = request.args.get('semester', '')
+    year = request.args.get('year', '')
+    teacher_id = request.args.get('teacher_id', '')
+    
+    # 构建查询
+    query = Course.query
+    
+    # 应用筛选条件
+    if search:
+        query = query.filter(
+            (Course.course_name.ilike(f'%{search}%')) |
+            (Course.course_code.ilike(f'%{search}%'))
+        )
+    
+    if status:
+        query = query.filter(Course.status == status)
+    
+    if semester:
+        query = query.filter(Course.semester == semester)
+    
+    if year:
+        try:
+            query = query.filter(Course.year == int(year))
+        except ValueError:
+            pass
+    
+    if teacher_id:
+        query = query.filter(Course.teacher_id == teacher_id)
+    
+    # 执行查询
+    courses = query.all()
+    
+    # 返回结果
+    return jsonify([course.to_dict() for course in courses])
+
+@bp.route('/<int:id>', methods=['GET'])
+def get_course(id):
+    """获取单个课程数据"""
+    course = Course.query.get(id)
+    if not course:
+        return jsonify({'error': '课程不存在'}), 404
+    return jsonify(course.to_dict())
+
+@bp.route('/', methods=['POST'])
+def create_course():
+    """创建新课程"""
+    data = request.get_json()
+    
+    # 验证数据
+    required_fields = ['course_name', 'teacher_id', 'subject', 'grade', 'semester', 'year']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'error': f'缺少必填字段: {field}'}), 400
+    
+    # 生成课程代码
+    grade = data['grade']
+    subject = data['subject']
+    
+    # 检查年级是否有效
+    if grade not in GRADE_CODES:
+        return jsonify({'error': '无效的年级'}), 400
+    
+    # 检查科目是否有效
+    if subject not in SUBJECT_CODES and subject not in ['体育', '美术']:
+        return jsonify({'error': '无效的科目'}), 400
+    
+    # 生成前两位代码
+    if (grade, subject) in SPECIAL_GRADE_SUBJECT_CODES:
+        # 特殊科目（体育、美术）
+        first_two = SPECIAL_GRADE_SUBJECT_CODES[(grade, subject)]
+        # 特殊科目不需要后两位代码
+        course_code = first_two
+    else:
+        # 普通科目
+        first_two = GRADE_CODES[grade]
+        second_two = SUBJECT_CODES.get(subject, '')
+        if not second_two:
+            return jsonify({'error': '无效的科目'}), 400
+        course_code = first_two + second_two
+    
+    # 检查课程代码是否已存在
+    existing_course = Course.query.filter_by(course_code=course_code).first()
+    if existing_course:
+        return jsonify({'error': '课程代码已存在'}), 400
+    
+    # 创建课程
+    new_course = Course(
+        course_name=data['course_name'],
+        course_code=course_code,
+        teacher_id=data['teacher_id'],
+        subject=data['subject'],
+        grade=data['grade'],
+        semester=data['semester'],
+        year=data['year']
+    )
+    
+    # 保存到数据库
+    db.session.add(new_course)
+    db.session.commit()
+    
+    # 重新查询以获取关联数据
+    new_course = Course.query.get(new_course.id)
+    
+    return jsonify(new_course.to_dict()), 201
+
+@bp.route('/<int:id>', methods=['PUT'])
+def update_course(id):
+    """更新课程数据"""
+    course = Course.query.get(id)
+    if not course:
+        return jsonify({'error': '课程不存在'}), 404
+    
+    data = request.get_json()
+    
+    # 更新字段
+    if 'course_name' in data:
+        course.course_name = data['course_name']
+    if 'course_code' in data:
+        course.course_code = data['course_code']
+    if 'teacher_id' in data:
+        course.teacher_id = data['teacher_id']
+    if 'subject' in data:
+        course.subject = data['subject']
+    if 'grade' in data:
+        course.grade = data['grade']
+    if 'semester' in data:
+        course.semester = data['semester']
+    if 'year' in data:
+        course.year = data['year']
+    
+    # 保存更改
+    db.session.commit()
+    
+    # 重新查询以获取关联数据
+    course = Course.query.get(id)
+    
+    return jsonify(course.to_dict())
+
+@bp.route('/<int:id>', methods=['DELETE'])
+def delete_course(id):
+    """删除课程"""
+    course = Course.query.get(id)
+    if not course:
+        return jsonify({'error': '课程不存在'}), 404
+    
+    # 从数据库中删除
+    db.session.delete(course)
+    db.session.commit()
+    
+    return jsonify({'message': '课程删除成功'})
+
+# 学生课程表API
+@bp.route('/student-courses', methods=['GET'])
+def get_student_courses():
+    """获取学生课程表数据"""
+    # 获取查询参数
+    grade = request.args.get('grade', '')
+    class_name = request.args.get('class', '')
+    
+    # 构建查询
+    query = StudentCourse.query
+    
+    # 应用筛选条件
+    if class_name:
+        query = query.filter(StudentCourse.class_ == class_name)
+    
+    if grade:
+        query = query.filter(StudentCourse.grade == grade)
+    
+    # 执行查询
+    courses = query.all()
+    
+    # 返回结果
+    return jsonify([course.to_dict() for course in courses])
+
+@bp.route('/student-courses/<int:id>', methods=['GET'])
+def get_student_course(id):
+    """获取单个学生课程数据"""
+    course = StudentCourse.query.get(id)
+    if not course:
+        return jsonify({'error': '课程不存在'}), 404
+    return jsonify(course.to_dict())
+
+@bp.route('/student-courses', methods=['POST'])
+def create_student_course():
+    """创建新学生课程"""
+    data = request.get_json()
+    
+    # 验证数据
+    required_fields = ['name', 'teacher_id', 'day_of_week', 'period', 'room_id']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'error': f'缺少必填字段: {field}'}), 400
+    
+    # 处理className字段，从其中提取年级和班级
+    grade = data.get('grade')
+    class_ = data.get('class')
+    
+    # 如果提供了className，则从其中提取年级和班级
+    if 'className' in data:
+        class_name = data['className']
+        # 提取年级（如"高一"、"高二"、"高三"）
+        if '高一' in class_name:
+            grade = '高一'
+            class_ = class_name.replace('高一', '')
+        elif '高二' in class_name:
+            grade = '高二'
+            class_ = class_name.replace('高二', '')
+        elif '高三' in class_name:
+            grade = '高三'
+            class_ = class_name.replace('高三', '')
+    
+    # 验证年级和班级
+    if not grade:
+        return jsonify({'error': '缺少必填字段: grade'}), 400
+    if not class_:
+        return jsonify({'error': '缺少必填字段: class'}), 400
+    
+    # 验证room_id是否存在
+    room = db.session.query(Classroom).filter_by(room_id=data['room_id']).first()
+    if not room:
+        return jsonify({'error': '教室ID不存在'}), 400
+    
+    # 创建学生课程
+    new_course = StudentCourse(
+        grade=grade,
+        class_=class_,
+        course_code=data.get('course_code'),
+        teacher_id=data['teacher_id'],
+        day_of_week=data['day_of_week'],
+        period=data['period'],
+        classroom=room.room_id,  # 使用room_id作为classroom字段的值
+        room_id=data['room_id'],  # 设置新的room_id字段
+        status=data.get('status', 'active')
+    )
+    
+    # 保存到数据库
+    db.session.add(new_course)
+    
+    # 同时创建或更新教师课程
+    teacher_course = TeacherCourse.query.filter_by(
+        teacher_id=data['teacher_id'],
+        grade=grade,
+        class_=class_,
+        day_of_week=data['day_of_week'],
+        period=data['period']
+    ).first()
+    
+    if not teacher_course:
+        # 创建新的教师课程
+        teacher_course = TeacherCourse(
+            teacher_id=data['teacher_id'],
+            course_code=data.get('course_code'),
+            grade=grade,
+            class_=class_,
+            day_of_week=data['day_of_week'],
+            period=data['period'],
+            classroom=room.room_id,
+            status=data.get('status', 'active')
+        )
+        db.session.add(teacher_course)
+    else:
+        # 更新现有的教师课程
+        teacher_course.course_code = data.get('course_code')
+        teacher_course.classroom = room.room_id
+        teacher_course.status = data.get('status', 'active')
+    
+    db.session.commit()
+    
+    return jsonify(new_course.to_dict()), 201
+
+@bp.route('/student-courses/<int:id>', methods=['PUT'])
+def update_student_course(id):
+    """更新学生课程数据"""
+    course = StudentCourse.query.get(id)
+    if not course:
+        return jsonify({'error': '课程不存在'}), 404
+    
+    data = request.get_json()
+    
+    # 保存原始值，用于后续更新教师课程
+    original_teacher_id = course.teacher_id
+    original_grade = course.grade
+    original_class = course.class_
+    original_day_of_week = course.day_of_week
+    original_period = course.period
+    
+    # 更新字段
+    if 'grade' in data:
+        course.grade = data['grade']
+    if 'class' in data:
+        course.class_ = data['class']
+    if 'course_code' in data:
+        course.course_code = data['course_code']
+    if 'teacher_id' in data:
+        course.teacher_id = data['teacher_id']
+    if 'day_of_week' in data:
+        course.day_of_week = data['day_of_week']
+    if 'period' in data:
+        course.period = data['period']
+    if 'room_id' in data:
+        # 验证room_id是否存在
+        room = db.session.query(Classroom).filter_by(room_id=data['room_id']).first()
+        if not room:
+            return jsonify({'error': '教室ID不存在'}), 400
+        course.room_id = data['room_id']
+        course.classroom = room.room_id  # 更新classroom字段为room_id
+    if 'status' in data:
+        course.status = data['status']
+    
+    # 保存更改
+    db.session.commit()
+    
+    # 更新或创建教师课程
+    # 首先删除可能存在的旧教师课程（如果教师、班级或时间发生了变化）
+    if (original_teacher_id != course.teacher_id or 
+        original_grade != course.grade or 
+        original_class != course.class_ or 
+        original_day_of_week != course.day_of_week or 
+        original_period != course.period):
+        old_teacher_course = TeacherCourse.query.filter_by(
+            teacher_id=original_teacher_id,
+            grade=original_grade,
+            class_=original_class,
+            day_of_week=original_day_of_week,
+            period=original_period
+        ).first()
+        if old_teacher_course:
+            db.session.delete(old_teacher_course)
+    
+    # 查找或创建新的教师课程
+    teacher_course = TeacherCourse.query.filter_by(
+        teacher_id=course.teacher_id,
+        grade=course.grade,
+        class_=course.class_,
+        day_of_week=course.day_of_week,
+        period=course.period
+    ).first()
+    
+    if not teacher_course:
+        # 创建新的教师课程
+        teacher_course = TeacherCourse(
+            teacher_id=course.teacher_id,
+            course_code=course.course_code,
+            grade=course.grade,
+            class_=course.class_,
+            day_of_week=course.day_of_week,
+            period=course.period,
+            classroom=course.classroom,
+            status=course.status
+        )
+        db.session.add(teacher_course)
+    else:
+        # 更新现有的教师课程
+        teacher_course.course_code = course.course_code
+        teacher_course.classroom = course.classroom
+        teacher_course.status = course.status
+    
+    db.session.commit()
+    
+    return jsonify(course.to_dict())
+
+@bp.route('/student-courses/<int:id>', methods=['DELETE'])
+def delete_student_course(id):
+    """删除学生课程"""
+    course = StudentCourse.query.get(id)
+    if not course:
+        return jsonify({'error': '课程不存在'}), 404
+    
+    # 保存课程信息，用于删除对应的教师课程
+    teacher_id = course.teacher_id
+    grade = course.grade
+    class_ = course.class_
+    day_of_week = course.day_of_week
+    period = course.period
+    
+    # 从数据库中删除学生课程
+    db.session.delete(course)
+    
+    # 同时删除对应的教师课程
+    teacher_course = TeacherCourse.query.filter_by(
+        teacher_id=teacher_id,
+        grade=grade,
+        class_=class_,
+        day_of_week=day_of_week,
+        period=period
+    ).first()
+    
+    if teacher_course:
+        db.session.delete(teacher_course)
+    
+    db.session.commit()
+    
+    return jsonify({'message': '课程删除成功'})
+
+# 教师课程表API
+@bp.route('/teacher-courses', methods=['GET'])
+def get_teacher_courses():
+    """获取教师课程表数据"""
+    # 获取查询参数
+    teacher_id = request.args.get('teacher_id', '')
+    
+    # 构建查询
+    query = TeacherCourse.query
+    
+    # 应用筛选条件
+    if teacher_id:
+        query = query.filter(TeacherCourse.teacher_id == teacher_id)
+    
+    # 执行查询
+    courses = query.all()
+    
+    # 返回结果
+    return jsonify([course.to_dict() for course in courses])
+
+@bp.route('/teacher-courses/<int:id>', methods=['GET'])
+def get_teacher_course(id):
+    """获取单个教师课程数据"""
+    course = TeacherCourse.query.get(id)
+    if not course:
+        return jsonify({'error': '课程不存在'}), 404
+    return jsonify(course.to_dict())
+
+@bp.route('/teacher-courses', methods=['POST'])
+def create_teacher_course():
+    """创建新教师课程"""
+    data = request.get_json()
+    
+    # 验证数据
+    required_fields = ['teacher', 'day_of_week', 'period', 'classroom', 'className']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'error': f'缺少必填字段: {field}'}), 400
+    
+    # 处理className字段，从其中提取年级和班级
+    class_name = data['className']
+    grade = ''
+    class_ = ''
+    
+    # 提取年级（如“高一”、“高二”、“高三”）
+    if '高一' in class_name:
+        grade = '高一'
+        class_ = class_name.replace('高一', '')
+    elif '高二' in class_name:
+        grade = '高二'
+        class_ = class_name.replace('高二', '')
+    elif '高三' in class_name:
+        grade = '高三'
+        class_ = class_name.replace('高三', '')
+    
+    # 验证年级和班级
+    if not grade:
+        return jsonify({'error': '缺少必填字段: grade'}), 400
+    if not class_:
+        return jsonify({'error': '缺少必填字段: class'}), 400
+    
+    # 创建教师课程
+    new_course = TeacherCourse(
+        teacher_id=data['teacher'],
+        course_code=data.get('course_code'),
+        grade=grade,
+        class_=class_,
+        day_of_week=data['day_of_week'],
+        period=data['period'],
+        classroom=data['classroom'],
+        status=data.get('status', 'active')
+    )
+    
+    # 保存到数据库
+    db.session.add(new_course)
+    db.session.commit()
+    
+    return jsonify(new_course.to_dict()), 201
+
+@bp.route('/teacher-courses/<int:id>', methods=['PUT'])
+def update_teacher_course(id):
+    """更新教师课程数据"""
+    course = TeacherCourse.query.get(id)
+    if not course:
+        return jsonify({'error': '课程不存在'}), 404
+    
+    data = request.get_json()
+    
+    # 更新字段
+    if 'teacher_id' in data:
+        course.teacher_id = data['teacher_id']
+    if 'course_code' in data:
+        course.course_code = data['course_code']
+    if 'grade' in data:
+        course.grade = data['grade']
+    if 'class' in data:
+        course.class_ = data['class']
+    if 'day_of_week' in data:
+        course.day_of_week = data['day_of_week']
+    if 'period' in data:
+        course.period = data['period']
+    if 'classroom' in data:
+        course.classroom = data['classroom']
+    if 'status' in data:
+        course.status = data['status']
+    
+    # 保存更改
+    db.session.commit()
+    
+    return jsonify(course.to_dict())
+
+@bp.route('/teacher-courses/<int:id>', methods=['DELETE'])
+def delete_teacher_course(id):
+    """删除教师课程"""
+    course = TeacherCourse.query.get(id)
+    if not course:
+        return jsonify({'error': '课程不存在'}), 404
+    
+    # 从数据库中删除
+    db.session.delete(course)
+    db.session.commit()
+    
+    return jsonify({'message': '课程删除成功'})
+
+# 教室API
+@bp.route('/classrooms', methods=['GET'])
+def get_classrooms():
+    """获取教室列表数据"""
+    # 构建查询
+    query = Classroom.query
+    
+    # 执行查询
+    classrooms = query.all()
+    
+    # 返回结果
+    return jsonify([classroom.to_dict() for classroom in classrooms])
+
+# 科目API
+@bp.route('/subjects', methods=['GET'])
+def get_subjects():
+    """获取所有唯一的科目列表"""
+    # 查询所有不同的科目
+    subjects = db.session.query(Course.subject).distinct().all()
+    # 提取科目名称
+    subject_list = [subject[0] for subject in subjects]
+    return jsonify(subject_list)
+
+# 教学进度API
+@bp.route('/teaching-progress', methods=['GET'])
+def get_teaching_progress():
+    """获取教学进度数据"""
+    # 获取查询参数
+    course_id = request.args.get('course_id', '')
+    subject = request.args.get('subject', '')
+    grade = request.args.get('grade', '')
+    
+    # 构建查询
+    query = TeachingProgress.query
+    
+    # 应用筛选条件
+    if course_id:
+        try:
+            query = query.filter(TeachingProgress.course_id == int(course_id))
+        except ValueError:
+            pass
+    elif subject or grade:
+        # 通过科目和年级筛选
+        course_query = Course.query
+        if subject:
+            course_query = course_query.filter(Course.subject == subject)
+        if grade:
+            course_query = course_query.filter(Course.grade == grade)
+        
+        # 获取符合条件的课程ID列表
+        course_ids = [course.id for course in course_query.all()]
+        if course_ids:
+            query = query.filter(TeachingProgress.course_id.in_(course_ids))
+    
+    # 执行查询
+    progress = query.all()
+    
+    # 返回结果
+    return jsonify([p.to_dict() for p in progress])
+
+@bp.route('/teaching-progress/<int:id>', methods=['GET'])
+def get_teaching_progress_item(id):
+    """获取单个教学进度数据"""
+    progress = TeachingProgress.query.get(id)
+    if not progress:
+        return jsonify({'error': '进度不存在'}), 404
+    return jsonify(progress.to_dict())
+
+@bp.route('/teaching-progress', methods=['POST'])
+def create_teaching_progress():
+    """创建新教学进度"""
+    data = request.get_json()
+    
+    # 验证数据
+    required_fields = ['course_id', 'chapter', 'hours', 'objective', 'progress', 'status']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'error': f'缺少必填字段: {field}'}), 400
+    
+    # 创建教学进度
+    new_progress = TeachingProgress(
+        course_id=data['course_id'],
+        chapter=data['chapter'],
+        hours=data['hours'],
+        objective=data['objective'],
+        progress=data['progress'],
+        status=data['status']
+    )
+    
+    # 保存到数据库
+    db.session.add(new_progress)
+    db.session.commit()
+    
+    return jsonify(new_progress.to_dict()), 201
+
+@bp.route('/teaching-progress/<int:id>', methods=['PUT'])
+def update_teaching_progress(id):
+    """更新教学进度数据"""
+    progress = TeachingProgress.query.get(id)
+    if not progress:
+        return jsonify({'error': '进度不存在'}), 404
+    
+    data = request.get_json()
+    
+    # 更新字段
+    if 'chapter' in data:
+        progress.chapter = data['chapter']
+    if 'hours' in data:
+        progress.hours = data['hours']
+    if 'objective' in data:
+        progress.objective = data['objective']
+    if 'progress' in data:
+        progress.progress = data['progress']
+    if 'status' in data:
+        progress.status = data['status']
+    
+    # 保存更改
+    db.session.commit()
+    
+    return jsonify(progress.to_dict())
+
+@bp.route('/teaching-progress/<int:id>', methods=['DELETE'])
+def delete_teaching_progress(id):
+    """删除教学进度"""
+    progress = TeachingProgress.query.get(id)
+    if not progress:
+        return jsonify({'error': '进度不存在'}), 404
+    
+    # 从数据库中删除
+    db.session.delete(progress)
+    db.session.commit()
+    
+    return jsonify({'message': '进度删除成功'})
+
+@bp.route('/schedules', methods=['GET'])
+def get_course_schedules():
+    """获取所有课程安排"""
+    class_id = request.args.get('class_id', '')
+    teacher_id = request.args.get('teacher_id', '')
+    
+    query = CourseSchedule.query
+    
+    if class_id:
+        query = query.filter(CourseSchedule.class_id == class_id)
+    if teacher_id:
+        query = query.filter(CourseSchedule.teacher_id == teacher_id)
+    
+    schedules = query.all()
+    return jsonify([schedule.to_dict() for schedule in schedules])
+
+@bp.route('/schedules/<int:id>', methods=['GET'])
+def get_course_schedule(id):
+    """获取单个课程安排"""
+    schedule = CourseSchedule.query.get(id)
+    if not schedule:
+        return jsonify({'error': '课程安排不存在'}), 404
+    return jsonify(schedule.to_dict())
+
+@bp.route('/schedules', methods=['POST'])
+def create_course_schedule():
+    """创建新课程安排"""
+    data = request.get_json()
+    
+    required_fields = ['class_id', 'course_code', 'day_of_week', 'period_start', 'period_end']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'error': f'缺少必填字段: {field}'}), 400
+    
+    schedule = CourseSchedule(
+        class_id=data['class_id'],
+        course_code=data['course_code'],
+        teacher_id=data.get('teacher_id'),
+        day_of_week=data['day_of_week'],
+        period_start=data['period_start'],
+        period_end=data['period_end'],
+        classroom_id=data.get('classroom_id')
+    )
+    
+    validation = ConflictService.validate_schedule(schedule)
+    if not validation['valid']:
+        return jsonify({'error': '冲突检测失败', 'details': validation['errors']}), 400
+    
+    db.session.add(schedule)
+    db.session.commit()
+    
+    SyncService.sync_to_teacher_courses(schedule)
+    SyncService.sync_to_student_courses(schedule)
+    
+    return jsonify(schedule.to_dict()), 201
+
+@bp.route('/schedules/<int:id>', methods=['PUT'])
+def update_course_schedule(id):
+    """更新课程安排"""
+    schedule = CourseSchedule.query.get(id)
+    if not schedule:
+        return jsonify({'error': '课程安排不存在'}), 404
+    
+    data = request.get_json()
+    
+    if 'class_id' in data:
+        schedule.class_id = data['class_id']
+    if 'course_code' in data:
+        schedule.course_code = data['course_code']
+    if 'teacher_id' in data:
+        schedule.teacher_id = data['teacher_id']
+    if 'day_of_week' in data:
+        schedule.day_of_week = data['day_of_week']
+    if 'period_start' in data:
+        schedule.period_start = data['period_start']
+    if 'period_end' in data:
+        schedule.period_end = data['period_end']
+    if 'classroom_id' in data:
+        schedule.classroom_id = data['classroom_id']
+    
+    validation = ConflictService.validate_schedule(schedule, id)
+    if not validation['valid']:
+        return jsonify({'error': '冲突检测失败', 'details': validation['errors']}), 400
+    
+    db.session.commit()
+    
+    SyncService.sync_to_teacher_courses(schedule)
+    SyncService.sync_to_student_courses(schedule)
+    
+    return jsonify(schedule.to_dict())
+
+@bp.route('/schedules/<int:id>', methods=['DELETE'])
+def delete_course_schedule(id):
+    """删除课程安排"""
+    schedule = CourseSchedule.query.get(id)
+    if not schedule:
+        return jsonify({'error': '课程安排不存在'}), 404
+    
+    teacher_id = schedule.teacher_id
+    class_id = schedule.class_id
+    day_of_week = schedule.day_of_week
+    period_start = schedule.period_start
+    period_end = schedule.period_end
+    
+    db.session.delete(schedule)
+    
+    grade = class_id[:2]
+    class_ = class_id[2:] if len(class_id) > 2 else ''
+    
+    TeacherCourse.query.filter(
+        TeacherCourse.teacher_id == teacher_id,
+        TeacherCourse.grade == grade,
+        TeacherCourse.class_ == class_,
+        TeacherCourse.day_of_week == day_of_week,
+        TeacherCourse.period >= period_start,
+        TeacherCourse.period <= period_end
+    ).delete()
+    
+    StudentCourse.query.filter(
+        StudentCourse.grade == grade,
+        StudentCourse.class_ == class_,
+        StudentCourse.day_of_week == day_of_week,
+        StudentCourse.period >= period_start,
+        StudentCourse.period <= period_end
+    ).delete()
+    
+    db.session.commit()
+    
+    return jsonify({'message': '课程安排删除成功'})
+
+@bp.route('/schedules/validate', methods=['POST'])
+def validate_course_schedule():
+    """验证课程安排（不保存）"""
+    data = request.get_json()
+    
+    schedule = CourseSchedule(
+        class_id=data.get('class_id', ''),
+        course_code=data.get('course_code', ''),
+        teacher_id=data.get('teacher_id'),
+        day_of_week=data.get('day_of_week', 0),
+        period_start=data.get('period_start', 0),
+        period_end=data.get('period_end', 0),
+        classroom_id=data.get('classroom_id')
+    )
+    
+    validation = ConflictService.validate_schedule(schedule)
+    return jsonify(validation)
+
+@bp.route('/schedules/sync-all', methods=['POST'])
+def sync_all_schedules():
+    """同步所有课程安排到关联表"""
+    count = SyncService.sync_all()
+    return jsonify({'message': f'成功同步{count}条课程安排'})
