@@ -266,6 +266,8 @@ def get_feature_importance():
         algorithm: 算法类型（可选，ID3或C4.5，默认为C4.5）
     """
     try:
+        from app.data_access.grade_data_access import GradeDataAccess
+        
         class_id = request.args.get('class_id')
         analysis_type = request.args.get('analysis_type', 'class')
         algorithm = request.args.get('algorithm', 'C4.5')
@@ -1417,6 +1419,8 @@ def get_class_teachers():
         class_id: 班级ID（必填）
     """
     try:
+        from app.data_access.grade_data_access import GradeDataAccess
+        
         class_id = request.args.get('class_id')
         
         if not class_id:
@@ -1456,6 +1460,8 @@ def get_class_grade_detail():
         display_mode: 显示模式（可选，'score'表示具体分数模式，'percentage'表示得分率模式，默认使用系统配置）
     """
     try:
+        from app.data_access.grade_data_access import GradeDataAccess
+        
         class_id = request.args.get('class_id')
         subject = request.args.get('subject')
         exam_id = request.args.get('exam_id')
@@ -1535,13 +1541,17 @@ def get_class_grade_detail():
                 elif subject in ['物理', '化学', '生物', '历史', '地理', '政治']:
                     full_score = 100
 
+                # 从数据库动态获取百分比规则设置（带缓存机制）
+                from app.data_access.grade_data_access import GradeDataAccess
+                percentage_rules = GradeDataAccess.get_percentage_rules()
+
                 # 根据规则类型计算分级阈值（用于实际统计）
                 if effective_rule_type == 'percentage':
                     # 按得分率计算
-                    excellent_threshold = (settings.percentage_rule_a / 100) * full_score
-                    good_threshold = (settings.percentage_rule_b / 100) * full_score
-                    average_threshold = (settings.percentage_rule_c / 100) * full_score
-                    pass_threshold = (settings.percentage_rule_d / 100) * full_score
+                    excellent_threshold = (percentage_rules['percentage_rule_a'] / 100) * full_score
+                    good_threshold = (percentage_rules['percentage_rule_b'] / 100) * full_score
+                    average_threshold = (percentage_rules['percentage_rule_c'] / 100) * full_score
+                    pass_threshold = (percentage_rules['percentage_rule_d'] / 100) * full_score
                 else:
                     # 按具体分数计算
                     excellent_threshold = settings.score_rule_a
@@ -1551,10 +1561,10 @@ def get_class_grade_detail():
 
                 # 计算百分比阈值（用于前端显示）
                 percentage_thresholds = {
-                    'excellent': settings.percentage_rule_a,
-                    'good': settings.percentage_rule_b,
-                    'average': settings.percentage_rule_c,
-                    'pass': settings.percentage_rule_d
+                    'excellent': percentage_rules['percentage_rule_a'],
+                    'good': percentage_rules['percentage_rule_b'],
+                    'average': percentage_rules['percentage_rule_c'],
+                    'pass': percentage_rules['percentage_rule_d']
                 }
 
                 # 计算及格率和优秀率（基于学生人数）
@@ -1948,6 +1958,7 @@ def get_decision_tree_visualization():
     """
     try:
         from app.analysis.decision_tree import preprocess_data, build_tree_with_params, visualize_tree
+        from app.data_access.grade_data_access import GradeDataAccess
         
         data = request.get_json()
         class_id = data.get('class_id')

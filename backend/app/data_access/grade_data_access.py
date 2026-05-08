@@ -1,7 +1,151 @@
-from ..models import Grade, Student, Exam, Teacher, TeacherCourse, StudentCourse, Course
+from ..models import Grade, Student, Exam, Teacher, TeacherCourse, StudentCourse, Course, GradeSettings
 from .. import db
+import logging
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 class GradeDataAccess:
+    # 缓存百分比规则设置，有效期5分钟
+    _cached_percentage_rules = None
+    _cache_timestamp = None
+    _cache_expire_seconds = 300  # 5分钟缓存
+    
+    @staticmethod
+    def _get_cached_percentage_rules():
+        """获取缓存的百分比规则，如果缓存过期则返回None"""
+        import time
+        if GradeDataAccess._cached_percentage_rules is not None:
+            if GradeDataAccess._cache_timestamp is not None:
+                if (time.time() - GradeDataAccess._cache_timestamp) < GradeDataAccess._cache_expire_seconds:
+                    return GradeDataAccess._cached_percentage_rules
+        return None
+    
+    @staticmethod
+    def _set_cached_percentage_rules(rules):
+        """设置百分比规则缓存"""
+        import time
+        GradeDataAccess._cached_percentage_rules = rules
+        GradeDataAccess._cache_timestamp = time.time()
+    
+    @staticmethod
+    def _clear_percentage_rules_cache():
+        """清除百分比规则缓存"""
+        GradeDataAccess._cached_percentage_rules = None
+        GradeDataAccess._cache_timestamp = None
+    
+    @staticmethod
+    def get_percentage_rules():
+        """
+        从数据库动态获取百分比规则设置
+        
+        Returns:
+            dict: 包含百分比规则的字典，键为规则名称，值为规则值
+                  包含以下字段: percentage_rule_a, percentage_rule_b, 
+                  percentage_rule_c, percentage_rule_d, percentage_rule_e
+        
+        Raises:
+            Exception: 当数据库查询失败时抛出异常
+        """
+        # 先检查缓存
+        cached_rules = GradeDataAccess._get_cached_percentage_rules()
+        if cached_rules is not None:
+            logger.debug("使用缓存的百分比规则")
+            return cached_rules
+        
+        try:
+            # 查询数据库获取最新设置
+            settings = GradeSettings.query.first()
+            
+            if settings is None:
+                # 如果没有找到设置记录，使用默认值
+                logger.warning("grade_settings表中未找到记录，使用默认值")
+                rules = {
+                    'percentage_rule_a': 90,
+                    'percentage_rule_b': 85,
+                    'percentage_rule_c': 75,
+                    'percentage_rule_d': 60,
+                    'percentage_rule_e': 50
+                }
+            else:
+                # 从数据库获取值，缺失字段使用默认值
+                rules = {
+                    'percentage_rule_a': GradeDataAccess._validate_percentage_value(
+                        getattr(settings, 'percentage_rule_a', None), 90, 'percentage_rule_a'
+                    ),
+                    'percentage_rule_b': GradeDataAccess._validate_percentage_value(
+                        getattr(settings, 'percentage_rule_b', None), 85, 'percentage_rule_b'
+                    ),
+                    'percentage_rule_c': GradeDataAccess._validate_percentage_value(
+                        getattr(settings, 'percentage_rule_c', None), 75, 'percentage_rule_c'
+                    ),
+                    'percentage_rule_d': GradeDataAccess._validate_percentage_value(
+                        getattr(settings, 'percentage_rule_d', None), 60, 'percentage_rule_d'
+                    ),
+                    'percentage_rule_e': GradeDataAccess._validate_percentage_value(
+                        getattr(settings, 'percentage_rule_e', None), 50, 'percentage_rule_e'
+                    )
+                }
+            
+            # 设置缓存
+            GradeDataAccess._set_cached_percentage_rules(rules)
+            logger.info("成功获取百分比规则: %s", rules)
+            
+            return rules
+            
+        except Exception as e:
+            logger.error("获取百分比规则失败: %s", str(e))
+            # 返回默认值作为降级方案
+            return {
+                'percentage_rule_a': 90,
+                'percentage_rule_b': 85,
+                'percentage_rule_c': 75,
+                'percentage_rule_d': 60,
+                'percentage_rule_e': 50
+            }
+    
+    @staticmethod
+    def _validate_percentage_value(value, default, field_name):
+        """
+        验证百分比规则值的有效性
+        
+        Args:
+            value: 待验证的值
+            default: 默认值
+            field_name: 字段名称，用于日志记录
+        
+        Returns:
+            float: 验证后的有效百分比值
+        """
+        # 检查值是否存在
+        if value is None:
+            logger.warning("字段 %s 为None，使用默认值 %d", field_name, default)
+            return default
+        
+        # 尝试转换为数值类型
+        try:
+            num_value = float(value)
+        except (ValueError, TypeError):
+            logger.warning("字段 %s 值 %s 不是有效数值，使用默认值 %d", field_name, str(value), default)
+            return default
+        
+        # 验证数值范围（0-100）
+        if num_value < 0 or num_value > 100:
+            logger.warning("字段 %s 值 %.2f 超出有效范围(0-100)，使用默认值 %d", field_name, num_value, default)
+            return default
+        
+        return num_value
+    
+    @staticmethod
+    def refresh_percentage_rules():
+        """
+        强制刷新百分比规则缓存，从数据库重新获取最新值
+        
+        Returns:
+            dict: 最新的百分比规则
+        """
+        GradeDataAccess._clear_percentage_rules_cache()
+        return GradeDataAccess.get_percentage_rules()
     @staticmethod
     def get_student_grades(student_id):
         """获取学生个人成绩"""
@@ -650,10 +794,6 @@ class GradeDataAccess:
         match = re.search(r'(\d+)', class_name)
         class_num = int(match.group(1)) if match else 1
         
-        # 获取grade settings
-        from .grade_settings_data_access import GradeSettingsDataAccess
-        settings = GradeSettingsDataAccess.get_settings()
-        
         if subject:
             # ====================
             # 情况1：指定了学科
@@ -794,9 +934,14 @@ class GradeDataAccess:
         variance = sum((s - avg_score) ** 2 for s in scores) / n
         std_dev = variance ** 0.5
         
-        # 使用percentage rule计算及格率和优秀率
-        excellent_threshold = (settings.percentage_rule_a / 100) * full_score
-        pass_threshold = (settings.percentage_rule_d / 100) * full_score
+        # 从数据库动态获取百分比规则设置
+        rules = GradeDataAccess.get_percentage_rules()
+        
+        # 使用动态获取的percentage rule计算及格率和优秀率
+        excellent_threshold = (rules['percentage_rule_a'] / 100) * full_score
+        pass_threshold = (rules['percentage_rule_d'] / 100) * full_score
+        good_threshold = (rules['percentage_rule_b'] / 100) * full_score
+        average_threshold = (rules['percentage_rule_c'] / 100) * full_score
         
         excellent_count = sum(1 for s in scores if s >= excellent_threshold)
         pass_count = sum(1 for s in scores if s >= pass_threshold)
@@ -807,9 +952,9 @@ class GradeDataAccess:
         # 计算分数分布
         distribution = {
             'excellent': excellent_count,
-            'good': sum(1 for s in scores if (settings.percentage_rule_b / 100 * full_score) <= s < excellent_threshold),
-            'average': sum(1 for s in scores if (settings.percentage_rule_c / 100 * full_score) <= s < (settings.percentage_rule_b / 100 * full_score)),
-            'pass': sum(1 for s in scores if pass_threshold <= s < (settings.percentage_rule_c / 100 * full_score)),
+            'good': sum(1 for s in scores if good_threshold <= s < excellent_threshold),
+            'average': sum(1 for s in scores if average_threshold <= s < good_threshold),
+            'pass': sum(1 for s in scores if pass_threshold <= s < average_threshold),
             'fail': sum(1 for s in scores if s < pass_threshold)
         }
         
