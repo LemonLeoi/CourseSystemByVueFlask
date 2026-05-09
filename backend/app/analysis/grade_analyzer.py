@@ -184,15 +184,18 @@ def analyze_student_performance(student_id, analysis_id=None):
     return result
 
 # 分析班级成绩
-def analyze_class_performance(class_name, grade, analysis_id=None):
+def analyze_class_performance(class_name, grade, exam_code=None, analysis_id=None):
     # 记录分析开始
     if analysis_id:
-        logger.log('class', 'analysis_start', f'开始分析班级 {grade}{class_name} 的成绩', {'class_name': class_name, 'grade': grade})
+        logger.log('class', 'analysis_start', f'开始分析班级 {grade}{class_name} 的成绩', {'class_name': class_name, 'grade': grade, 'exam_code': exam_code})
     
     # 直接使用传入的班级名称和年级进行查询
     
-    # 查询班级所有成绩
-    grades = GradeDataAccess.get_class_grades(class_name, grade)
+    # 根据是否有考试代码，选择查询所有考试数据或特定考试数据
+    if exam_code and exam_code != 'all':
+        grades = GradeDataAccess.get_class_grades_by_exam(class_name, grade, exam_code)
+    else:
+        grades = GradeDataAccess.get_class_grades(class_name, grade)
     
     # 如果没有成绩记录，返回班级信息和错误消息
     if not grades:
@@ -513,7 +516,7 @@ def analyze_student_subject(student_id, subject):
     return result
 
 # 分析班级科目成绩
-def analyze_class_subject(class_name, grade, subject):
+def analyze_class_subject(class_name, grade, subject, exam_code=None):
     # 处理班级格式
     if class_name.isdigit():
         class_name = f"{class_name}班"
@@ -524,8 +527,11 @@ def analyze_class_subject(class_name, grade, subject):
     if not students:
         return {"error": f"未找到 {grade}{class_name} 班级的学生"}
     
-    # 查询班级该科目成绩
-    grades = GradeDataAccess.get_class_subject_grades(class_name, grade, subject)
+    # 根据是否有考试代码，选择查询所有考试数据或特定考试数据
+    if exam_code and exam_code != 'all':
+        grades = GradeDataAccess.get_class_subject_grades_by_exam(class_name, grade, subject, exam_code)
+    else:
+        grades = GradeDataAccess.get_class_subject_grades(class_name, grade, subject)
     
     if not grades:
         return {"error": f"{grade}{class_name} 班级暂无{subject}科目成绩记录"}
@@ -990,7 +996,7 @@ def analyze_student_schedule(student_id):
     return result
 
 # 分析班级课程安排与成绩关系
-def analyze_class_schedule(class_name, grade):
+def analyze_class_schedule(class_name, grade, exam_code=None):
     # 处理班级格式
     if class_name.isdigit():
         class_name = f"{class_name}班"
@@ -1001,6 +1007,41 @@ def analyze_class_schedule(class_name, grade):
     if not students:
         return {"error": f"未找到 {grade}{class_name} 班级的学生"}
     
+    # 根据是否有考试代码，选择使用相应的数据访问方法
+    if exam_code and exam_code != 'all':
+        # 使用按考试过滤的统计数据来构建分析结果
+        schedule_analysis = {}
+        try:
+            # 获取节次统计数据
+            period_stats = GradeDataAccess.calculate_period_statistics_by_exam(class_name, grade, exam_code)
+            if period_stats:
+                for stat in period_stats:
+                    period = stat['period']
+                    key = f"1-{period}"  # 默认周一
+                    schedule_analysis[key] = {
+                        "day_of_week": 1,
+                        "period": period,
+                        "subject": "综合",
+                        "teacher": "未知",
+                        "scores": [],
+                        "average_score": stat['average_score']
+                    }
+        except Exception as e:
+            print(f"获取按考试过滤的排课数据时出错: {e}")
+        
+        if schedule_analysis:
+            # 构建结果
+            result = {
+                "class_info": {
+                    "class_name": f"{grade}{class_name}",
+                    "grade": grade,
+                    "student_count": len(students)
+                },
+                "schedule_analysis": schedule_analysis
+            }
+            return result
+    
+    # 如果没有考试代码，使用原来的方法
     # 获取班级课程安排和成绩
     schedule_grades = GradeDataAccess.get_class_schedule_grades(class_name, grade)
     

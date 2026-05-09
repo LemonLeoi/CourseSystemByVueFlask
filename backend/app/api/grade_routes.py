@@ -38,6 +38,9 @@ def get_class_analysis(class_name):
         import urllib.parse
         class_name = urllib.parse.unquote_plus(class_name)
         
+        # 获取exam查询参数
+        exam_code = request.args.get('exam')
+        
         # 直接打印解码后的班级名称，用于调试
         print(f"解码后的班级名称: {class_name}")
         
@@ -53,9 +56,9 @@ def get_class_analysis(class_name):
         class_name = f"{class_num}班"
         
         # 添加调试信息
-        print(f"使用的班级名称: {class_name}, 年级: {grade}")
+        print(f"使用的班级名称: {class_name}, 年级: {grade}, 考试代码: {exam_code}")
         
-        result = analyze_class_performance(class_name, grade)
+        result = analyze_class_performance(class_name, grade, exam_code)
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -90,6 +93,9 @@ def get_class_subject_analysis(class_name, subject):
         import urllib.parse
         class_name = urllib.parse.unquote_plus(class_name)
         
+        # 获取exam查询参数
+        exam_code = request.args.get('exam')
+        
         # 从班级名称中提取年级和班级数字
         import re
         # 更宽松的正则表达式，匹配中文年级 + 数字 + 可选的"班"字
@@ -100,7 +106,7 @@ def get_class_subject_analysis(class_name, subject):
         grade = match.group(1)
         class_num = match.group(2)
         
-        result = analyze_class_subject(class_num, grade, subject)
+        result = analyze_class_subject(class_num, grade, subject, exam_code)
         if "error" in result:
             return jsonify(result), 404
         return jsonify(result), 200
@@ -199,6 +205,9 @@ def get_class_schedule_analysis(class_name):
         import urllib.parse
         class_name = urllib.parse.unquote_plus(class_name)
         
+        # 获取exam查询参数
+        exam_code = request.args.get('exam')
+        
         # 从班级名称中提取年级和班级数字
         import re
         # 更宽松的正则表达式，匹配中文年级 + 数字 + 可选的"班"字
@@ -209,7 +218,7 @@ def get_class_schedule_analysis(class_name):
         grade = match.group(1)
         class_num = match.group(2)
         
-        result = analyze_class_schedule(class_num, grade)
+        result = analyze_class_schedule(class_num, grade, exam_code)
         # 即使没有课程安排，也返回 200 状态码，因为这是正常的业务情况
         return jsonify(result), 200
     except Exception as e:

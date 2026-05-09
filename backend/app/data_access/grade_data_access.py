@@ -1408,4 +1408,479 @@ class GradeDataAccess:
         except Exception as e:
             logger.error(f"获取排课成绩分析失败: {str(e)}")
             return {'day_of_week_scores': {}, 'period_scores': {}}
+    
+    @staticmethod
+    def get_class_subject_statistics_by_exam(class_name, grade, exam_code, subject=None):
+        """获取指定考试的班级学科成绩统计（按学生去重）
+        
+        Args:
+            class_name: 班级名称（如'1班'）
+            grade: 年级（如'高一'）
+            exam_code: 考试代码
+            subject: 学科名称（可选，如None则获取所有学科）
+        
+        Returns:
+            dict: 学科统计信息
+        """
+        from sqlalchemy import func
+        
+        # 子查询：获取每个学生该科在指定考试中的最高分
+        max_score_subq = db.session.query(
+            Grade.student_id,
+            Grade.subject,
+            func.max(Grade.score).label('max_score')
+        ).filter(
+            Grade.exam_code == exam_code,
+            (Grade.subject == subject) if subject else True
+        ).group_by(
+            Grade.student_id,
+            Grade.subject
+        ).subquery()
+        
+        # 连接学生表，获取对应班级的学生
+        query = db.session.query(
+            max_score_subq.c.subject,
+            max_score_subq.c.max_score
+        ).join(
+            Student, Student.student_id == max_score_subq.c.student_id
+        ).filter(
+            Student.class_ == class_name,
+            Student.grade == grade
+        )
+        
+        results = query.all()
+        
+        # 按学科分组统计
+        subject_stats = {}
+        for subj, score in results:
+            if subj not in subject_stats:
+                subject_stats[subj] = []
+            subject_stats[subj].append(score)
+        
+        # 计算各学科的统计指标
+        stats_result = {}
+        for subj, scores in subject_stats.items():
+            n = len(scores)
+            if n == 0:
+                continue
+            
+            avg_score = sum(scores) / n
+            max_score = max(scores)
+            min_score = min(scores)
+            
+            # 计算中位数
+            sorted_scores = sorted(scores)
+            if n % 2 == 1:
+                median = sorted_scores[n // 2]
+            else:
+                median = (sorted_scores[n // 2 - 1] + sorted_scores[n // 2]) / 2
+            
+            # 计算标准差
+            variance = sum((s - avg_score) ** 2 for s in scores) / n
+            std_dev = variance ** 0.5
+            
+            # 计算优秀率和及格率
+            full_score = GradeDataAccess.get_subject_full_score(subj)
+            rules = GradeDataAccess.get_percentage_rules()
+            excellent_threshold = (rules['percentage_rule_a'] / 100) * full_score
+            pass_threshold = (rules['percentage_rule_d'] / 100) * full_score
+            
+            excellent_count = sum(1 for s in scores if s >= excellent_threshold)
+            pass_count = sum(1 for s in scores if s >= pass_threshold)
+            excellent_rate = (excellent_count / n) * 100
+            pass_rate = (pass_count / n) * 100
+            
+            stats_result[subj] = {
+                'subject': subj,
+                'average_score': round(avg_score, 2),
+                'excellent_rate': round(excellent_rate, 2),
+                'pass_rate': round(pass_rate, 2),
+                'std_deviation': round(std_dev, 2),
+                'max_score': max_score,
+                'min_score': min_score,
+                'median': round(median, 2),
+                'student_count': n
+            }
+        
+        return stats_result
+    
+    @staticmethod
+    def calculate_period_statistics_by_exam(class_name, grade, exam_code):
+        """
+        按课程节次统计指定考试的成绩数据
+        
+        Args:
+            class_name: 班级名称（如'1班'）
+            grade: 年级（如'高一'）
+            exam_code: 考试代码
+            
+        Returns:
+            list: 按节次分组的统计数据
+        """
+        try:
+            course_schedules = db.session.query(
+                StudentCourse.period,
+                StudentCourse.course_code
+            ).filter(
+                StudentCourse.grade == grade,
+                StudentCourse.class_ == class_name
+            ).all()
+            
+            students = Student.query.filter(Student.grade == grade, Student.class_ == class_name).all()
+            
+            if not course_schedules or not students:
+                return []
+            
+            course_code_to_name = {}
+            for course_code in set(c.course_code for c in course_schedules):
+                course = Course.query.filter_by(course_code=course_code).first()
+                if course:
+                    base_name = course.course_name
+                    for keyword in ['高一', '高二', '高三']:
+                        if keyword in base_name:
+                            idx = base_name.find(keyword)
+                            base_name = base_name[:idx]
+                            break
+                    course_code_to_name[course_code] = base_name
+            
+            # 获取指定考试的学生成绩
+            student_grades = {}
+            for student in students:
+                grades = Grade.query.filter_by(student_id=student.student_id, exam_code=exam_code).all()
+                for g in grades:
+                    if g.score is not None:
+                        if student.student_id not in student_grades:
+                            student_grades[student.student_id] = {}
+                        student_grades[student.student_id][g.subject] = g.score
+            
+            period_data = {}
+            period_scores = []
+            
+            for period, course_code in course_schedules:
+                subject_name = course_code_to_name.get(course_code)
+                if subject_name:
+                    for student_id, subject_scores in student_grades.items():
+                        if subject_name in subject_scores:
+                            if period not in period_data:
+                                period_data[period] = []
+                            period_data[period].append(subject_scores[subject_name])
+                            period_scores.append(subject_scores[subject_name])
+            
+            if not period_scores:
+                return []
+            
+            overall_avg = sum(period_scores) / len(period_scores)
+            
+            result = []
+            for period, scores in sorted(period_data.items()):
+                if scores:
+                    avg_score = sum(scores) / len(scores)
+                    score_impact = avg_score - overall_avg
+                
+                result.append({
+                    'period': f"第{period}节",
+                    'average_score': round(avg_score, 2),
+                    'student_count': len(scores),
+                    'score_impact': round(score_impact, 2),
+                    'description': f"第{period}节平均成绩"
+                })
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"计算节次统计(按考试)失败: {str(e)}")
+            return []
+    
+    @staticmethod
+    def calculate_double_class_statistics_by_exam(class_name, grade, exam_code):
+        """
+        分析指定考试中连堂课对成绩的影响
+        
+        Args:
+            class_name: 班级名称（如'1班'）
+            grade: 年级（如'高一'）
+            exam_code: 考试代码
+            
+        Returns:
+            list: 连堂课统计数据
+        """
+        try:
+            course_schedules = db.session.query(
+                StudentCourse.day_of_week,
+                StudentCourse.period,
+                StudentCourse.course_code
+            ).filter(
+                StudentCourse.grade == grade,
+                StudentCourse.class_ == class_name
+            ).order_by(
+                StudentCourse.day_of_week,
+                StudentCourse.period
+            ).all()
+            
+            students = Student.query.filter(Student.grade == grade, Student.class_ == class_name).all()
+            
+            if not course_schedules or not students:
+                return []
+            
+            course_code_to_name = {}
+            for course_code in set(c.course_code for c in course_schedules):
+                course = Course.query.filter_by(course_code=course_code).first()
+                if course:
+                    base_name = course.course_name
+                    for keyword in ['高一', '高二', '高三']:
+                        if keyword in base_name:
+                            idx = base_name.find(keyword)
+                            base_name = base_name[:idx]
+                            break
+                    course_code_to_name[course_code] = base_name
+            
+            # 获取指定考试的学生成绩
+            student_grades = {}
+            for student in students:
+                grades = Grade.query.filter_by(student_id=student.student_id, exam_code=exam_code).all()
+                for g in grades:
+                    if g.score is not None:
+                        if student.student_id not in student_grades:
+                            student_grades[student.student_id] = {}
+                        student_grades[student.student_id][g.subject] = g.score
+            
+            day_course_scores = {}
+            all_scores = []
+            
+            for day, period, course_code in course_schedules:
+                subject_name = course_code_to_name.get(course_code)
+                if subject_name:
+                    for student_id, subject_scores in student_grades.items():
+                        if subject_name in subject_scores:
+                            key = (day, subject_name)
+                            if key not in day_course_scores:
+                                day_course_scores[key] = {'periods': [], 'scores': []}
+                            day_course_scores[key]['periods'].append(period)
+                            day_course_scores[key]['scores'].append(subject_scores[subject_name])
+                            all_scores.append(subject_scores[subject_name])
+            
+            if not all_scores:
+                return []
+            
+            double_class_data = {}
+            for key, data in day_course_scores.items():
+                periods = sorted(data['periods'])
+                consecutive_count = 1
+                max_consecutive = 1
+                for i in range(1, len(periods)):
+                    if periods[i] == periods[i-1] + 1:
+                        consecutive_count += 1
+                        max_consecutive = max(max_consecutive, consecutive_count)
+                    else:
+                        consecutive_count = 1
+                
+                double_class_count = max_consecutive
+                
+                if double_class_count not in double_class_data:
+                    double_class_data[double_class_count] = []
+                double_class_data[double_class_count].extend(data['scores'])
+            
+            overall_avg = sum(all_scores) / len(all_scores)
+            
+            result = []
+            for double_class, scores in sorted(double_class_data.items()):
+                avg_score = sum(scores) / len(scores)
+                score_impact = avg_score - overall_avg
+                
+                result.append({
+                    'double_class': f"{double_class}节",
+                    'average_score': round(avg_score, 2),
+                    'student_count': len(scores),
+                    'score_impact': round(score_impact, 2),
+                    'description': f"{double_class}节连堂"
+                })
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"计算连堂统计(按考试)失败: {str(e)}")
+            return []
+    
+    @staticmethod
+    def calculate_gender_statistics_by_exam(class_name, grade, exam_code):
+        """
+        按性别和学科统计指定考试的成绩差异
+        
+        Args:
+            class_name: 班级名称（如'1班'）
+            grade: 年级（如'高一'）
+            exam_code: 考试代码
+            
+        Returns:
+            list: 性别×学科的统计数据
+        """
+        try:
+            gender_subject_scores = db.session.query(
+                Student.gender,
+                Grade.subject,
+                Grade.score
+            ).join(
+                Student, Grade.student_id == Student.student_id
+            ).filter(
+                Student.class_ == class_name,
+                Student.grade == grade,
+                Student.gender.isnot(None),
+                Grade.score.isnot(None),
+                Grade.exam_code == exam_code
+            ).all()
+            
+            if not gender_subject_scores:
+                return []
+            
+            subject_gender_data = {}
+            for gender, subject, score in gender_subject_scores:
+                if subject not in subject_gender_data:
+                    subject_gender_data[subject] = {'男': [], '女': []}
+                if gender in subject_gender_data[subject]:
+                    subject_gender_data[subject][gender].append(score)
+            
+            result = []
+            for subject, gender_scores in subject_gender_data.items():
+                male_scores = gender_scores['男']
+                female_scores = gender_scores['女']
+                
+                male_avg = sum(male_scores) / len(male_scores) if male_scores else None
+                female_avg = sum(female_scores) / len(female_scores) if female_scores else None
+                
+                result.append({
+                    'subject': subject,
+                    'male_avg': round(male_avg, 2) if male_scores else None,
+                    'female_avg': round(female_avg, 2) if female_scores else None,
+                    'diff': round(male_avg - female_avg, 2) if (male_scores and female_scores) else None,
+                    'male_count': len(male_scores),
+                    'female_count': len(female_scores)
+                })
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"计算性别统计(按考试)失败: {str(e)}")
+            return []
+    
+    @staticmethod
+    def get_schedule_grade_analysis_by_exam(class_name, grade, exam_code):
+        """
+        获取指定考试的排课和成绩联合分析数据
+        
+        Args:
+            class_name: 班级名称（如'1班'）
+            grade: 年级（如'高一'）
+            exam_code: 考试代码
+            
+        Returns:
+            dict: 包含day_of_week_scores, period_scores等分析数据
+        """
+        try:
+            course_schedules = db.session.query(
+                StudentCourse.day_of_week,
+                StudentCourse.period,
+                StudentCourse.course_code
+            ).filter(
+                StudentCourse.grade == grade,
+                StudentCourse.class_ == class_name
+            ).all()
+            
+            students = Student.query.filter(Student.grade == grade, Student.class_ == class_name).all()
+            
+            if not course_schedules or not students:
+                return {'day_of_week_scores': {}, 'period_scores': {}}
+            
+            course_code_to_name = {}
+            for course_code in set(c.course_code for c in course_schedules):
+                course = Course.query.filter_by(course_code=course_code).first()
+                if course:
+                    base_name = course.course_name
+                    for keyword in ['高一', '高二', '高三']:
+                        if keyword in base_name:
+                            idx = base_name.find(keyword)
+                            base_name = base_name[:idx]
+                            break
+                    course_code_to_name[course_code] = base_name
+            
+            # 获取指定考试的学生成绩
+            student_grades = {}
+            for student in students:
+                grades = Grade.query.filter_by(student_id=student.student_id, exam_code=exam_code).all()
+                for g in grades:
+                    if g.score is not None:
+                        if student.student_id not in student_grades:
+                            student_grades[student.student_id] = {}
+                        student_grades[student.student_id][g.subject] = g.score
+            
+            day_scores = {}
+            period_scores = {}
+            
+            for day, period, course_code in course_schedules:
+                subject_name = course_code_to_name.get(course_code)
+                if subject_name:
+                    for student_id, subject_scores in student_grades.items():
+                        if subject_name in subject_scores:
+                            if day not in day_scores:
+                                day_scores[day] = []
+                            day_scores[day].append(subject_scores[subject_name])
+                            
+                            if period not in period_scores:
+                                period_scores[period] = []
+                            period_scores[period].append(subject_scores[subject_name])
+            
+            day_of_week_stats = {}
+            day_names = {1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五', 6: '周六', 7: '周日'}
+            for day, scores in day_scores.items():
+                day_name = day_names.get(day, f"周{day}")
+                day_of_week_stats[day] = {
+                    'day_name': day_name,
+                    'average_score': round(sum(scores) / len(scores), 2),
+                    'count': len(scores)
+                }
+            
+            period_stats = {}
+            for period, scores in period_scores.items():
+                period_stats[period] = {
+                    'average_score': round(sum(scores) / len(scores), 2),
+                    'count': len(scores)
+                }
+            
+            return {
+                'day_of_week_scores': day_of_week_stats,
+                'period_scores': period_stats
+            }
+            
+        except Exception as e:
+            logger.error(f"获取排课成绩分析(按考试)失败: {str(e)}")
+            return {'day_of_week_scores': {}, 'period_scores': {}}
+    
+    @staticmethod
+    def get_class_average_by_exam(class_name, grade, exam_code):
+        """
+        获取指定考试的班级平均成绩
+        
+        Args:
+            class_name: 班级名称（如'1班'）
+            grade: 年级（如'高一'）
+            exam_code: 考试代码
+            
+        Returns:
+            float: 班级平均分
+        """
+        try:
+            subject_stats = GradeDataAccess.get_class_subject_statistics_by_exam(
+                class_name, grade, exam_code
+            )
+            
+            if not subject_stats:
+                return None
+            
+            subject_avg_scores = [stats['average_score'] for stats in subject_stats.values()]
+            avg_score = sum(subject_avg_scores) / len(subject_avg_scores)
+            
+            return round(avg_score, 2)
+            
+        except Exception as e:
+            logger.error(f"获取班级平均分(按考试)失败: {str(e)}")
+            return None
 

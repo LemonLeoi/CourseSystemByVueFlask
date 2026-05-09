@@ -264,6 +264,7 @@ def get_feature_importance():
         class_id: 班级ID（可选）
         analysis_type: 分析类型（可选，如'personal', 'class', 'grade'）
         algorithm: 算法类型（可选，ID3或C4.5，默认为C4.5）
+        exam_code: 考试代码（可选）
     """
     try:
         from app.data_access.grade_data_access import GradeDataAccess
@@ -271,6 +272,7 @@ def get_feature_importance():
         class_id = request.args.get('class_id')
         analysis_type = request.args.get('analysis_type', 'class')
         algorithm = request.args.get('algorithm', 'C4.5')
+        exam_code = request.args.get('exam_code')
         
         # ID3使用信息增益，C4.5使用信息增益比
         # 信息增益比 = 信息增益 / 熵值，通常比信息增益略小
@@ -295,7 +297,10 @@ def get_feature_importance():
             grade = class_id[:2]
             class_name = class_id[2:]
             
-            grade_data = GradeDataAccess.get_class_grades(class_name, grade)
+            if exam_code and exam_code != 'all':
+                grade_data = GradeDataAccess.get_class_grades_by_exam(class_name, grade, exam_code)
+            else:
+                grade_data = GradeDataAccess.get_class_grades(class_name, grade)
             
             if grade_data:
                 # 根据算法类型计算特征重要性
@@ -367,6 +372,7 @@ def get_decision_tree_path():
         class_id: 班级ID（可选）
         student_id: 学生ID（可选）
         analysis_type: 分析类型
+        exam_code: 考试代码（可选）
         params: 决策树参数配置（maxDepth, minSamplesSplit, threshold, algorithm, confidenceThreshold, minInfoGain, splitDirection, stopCriteria, missingValueStrategy, minConfidence）
     """
     try:
@@ -374,6 +380,7 @@ def get_decision_tree_path():
         class_id = data.get('class_id')
         student_id = data.get('student_id')
         analysis_type = data.get('analysis_type', 'class')
+        exam_code = data.get('exam_code')
         params = data.get('params', {})
         
         max_depth = params.get('maxDepth', 5)
@@ -400,7 +407,8 @@ def get_decision_tree_path():
             split_direction,
             stop_criteria,
             missing_value_strategy,
-            min_confidence
+            min_confidence,
+            exam_code
         )
         
         # 获取班级类型配置信息
@@ -419,7 +427,7 @@ def get_decision_tree_path():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-def get_class_average_score(class_id):
+def get_class_average_score(class_id, exam_code=None):
     """获取班级平均分"""
     if not class_id:
         return 0.0
@@ -445,14 +453,18 @@ def get_class_average_score(class_id):
             if match:
                 class_name = match.group(1)
         
-        class_avgs = GradeDataAccess.get_class_average(class_name, grade)
-        
-        if class_avgs:
-            # 计算所有学科的平均分
-            total = sum(class_avgs.values())
-            count = len(class_avgs)
-            if count > 0:
-                return total / count
+        if exam_code and exam_code != 'all':
+            class_avg = GradeDataAccess.get_class_average_by_exam(class_name, grade, exam_code)
+            if class_avg:
+                return class_avg
+        else:
+            class_avgs = GradeDataAccess.get_class_average(class_name, grade)
+            if class_avgs:
+                # 计算所有学科的平均分
+                total = sum(class_avgs.values())
+                count = len(class_avgs)
+                if count > 0:
+                    return total / count
         
         return 0.0
     except Exception as e:
@@ -500,12 +512,12 @@ def calculate_confidence_from_data(sample_size, effect_size, base_confidence=85)
 
 def generate_decision_tree_paths(class_id, student_id, analysis_type, max_depth, min_samples_split, threshold, algorithm,
                                 confidence_threshold=0.7, min_info_gain=0.01, split_direction='max_gain',
-                                stop_criteria='all', missing_value_strategy='mean_mode', min_confidence=0.6):
+                                stop_criteria='all', missing_value_strategy='mean_mode', min_confidence=0.6, exam_code=None):
     """根据参数生成决策树路径"""
     paths = []
     
     # 获取班级平均分和班级类型
-    class_avg_score = get_class_average_score(class_id)
+    class_avg_score = get_class_average_score(class_id, exam_code)
     class_type = determine_class_type(class_avg_score)
     
     # 解析班级信息
@@ -531,10 +543,16 @@ def generate_decision_tree_paths(class_id, student_id, analysis_type, max_depth,
     schedule_grade_analysis = {'day_of_week_scores': {}, 'period_scores': {}}
     
     try:
-        period_analysis = GradeDataAccess.calculate_period_statistics(class_name, grade)
-        double_class_analysis = GradeDataAccess.calculate_double_class_statistics(class_name, grade)
-        gender_analysis = GradeDataAccess.calculate_gender_statistics(class_name, grade)
-        schedule_grade_analysis = GradeDataAccess.get_schedule_grade_analysis(class_name, grade)
+        if exam_code and exam_code != 'all':
+            period_analysis = GradeDataAccess.calculate_period_statistics_by_exam(class_name, grade, exam_code)
+            double_class_analysis = GradeDataAccess.calculate_double_class_statistics_by_exam(class_name, grade, exam_code)
+            gender_analysis = GradeDataAccess.calculate_gender_statistics_by_exam(class_name, grade, exam_code)
+            schedule_grade_analysis = GradeDataAccess.get_schedule_grade_analysis_by_exam(class_name, grade, exam_code)
+        else:
+            period_analysis = GradeDataAccess.calculate_period_statistics(class_name, grade)
+            double_class_analysis = GradeDataAccess.calculate_double_class_statistics(class_name, grade)
+            gender_analysis = GradeDataAccess.calculate_gender_statistics(class_name, grade)
+            schedule_grade_analysis = GradeDataAccess.get_schedule_grade_analysis(class_name, grade)
     except Exception as e:
         print(f"获取统计数据失败: {e}")
     
@@ -937,10 +955,12 @@ def get_factor_impact():
     Query参数:
         class_id: 班级ID（可选）
         analysis_type: 分析类型（可选）
+        exam_code: 考试代码（可选）
     """
     try:
         class_id = request.args.get('class_id')
         analysis_type = request.args.get('analysis_type', 'class')
+        exam_code = request.args.get('exam_code')
         
         # 解析班级信息
         grade = ''
@@ -963,10 +983,16 @@ def get_factor_impact():
         
         try:
             # 获取各种统计数据
-            period_stats = GradeDataAccess.calculate_period_statistics(class_name, grade) if (class_name and grade) else []
-            double_class_stats = GradeDataAccess.calculate_double_class_statistics(class_name, grade) if (class_name and grade) else []
-            gender_stats = GradeDataAccess.calculate_gender_statistics(class_name, grade) if (class_name and grade) else []
-            schedule_analysis = GradeDataAccess.get_schedule_grade_analysis(class_name, grade) if (class_name and grade) else {'day_of_week_scores': {}, 'period_scores': {}}
+            if exam_code and exam_code != 'all':
+                period_stats = GradeDataAccess.calculate_period_statistics_by_exam(class_name, grade, exam_code) if (class_name and grade) else []
+                double_class_stats = GradeDataAccess.calculate_double_class_statistics_by_exam(class_name, grade, exam_code) if (class_name and grade) else []
+                gender_stats = GradeDataAccess.calculate_gender_statistics_by_exam(class_name, grade, exam_code) if (class_name and grade) else []
+                schedule_analysis = GradeDataAccess.get_schedule_grade_analysis_by_exam(class_name, grade, exam_code) if (class_name and grade) else {'day_of_week_scores': {}, 'period_scores': {}}
+            else:
+                period_stats = GradeDataAccess.calculate_period_statistics(class_name, grade) if (class_name and grade) else []
+                double_class_stats = GradeDataAccess.calculate_double_class_statistics(class_name, grade) if (class_name and grade) else []
+                gender_stats = GradeDataAccess.calculate_gender_statistics(class_name, grade) if (class_name and grade) else []
+                schedule_analysis = GradeDataAccess.get_schedule_grade_analysis(class_name, grade) if (class_name and grade) else {'day_of_week_scores': {}, 'period_scores': {}}
             
             # 计算排课时间因素
             if period_stats and len(period_stats) > 1:

@@ -229,8 +229,13 @@ export class GradeService {
     return await fetchApi<StudentAnalysisData>(`/grades/analysis/${studentId}`);
   }
 
-  async getClassAnalysis(className: string): Promise<ClassAnalysisData> {
-    return await fetchApi<ClassAnalysisData>(`/grades/analysis/class/${encodeURIComponent(className)}`);
+  async getClassAnalysis(className: string, examCode?: string): Promise<ClassAnalysisData> {
+    const params = new URLSearchParams();
+    if (examCode && examCode !== 'all') {
+      params.append('exam', examCode);
+    }
+    const queryString = params.toString();
+    return await fetchApi<ClassAnalysisData>(`/grades/analysis/class/${encodeURIComponent(className)}${queryString ? '?' + queryString : ''}`);
   }
 
   async getGradeAnalysis(gradeName: string): Promise<GradeAnalysisData> {
@@ -241,8 +246,13 @@ export class GradeService {
     return await fetchApi<StudentAnalysisData>(`/grades/analysis/subject/${studentId}/${encodeURIComponent(subject)}`);
   }
 
-  async getClassSubjectAnalysis(className: string, subject: string): Promise<ClassAnalysisData> {
-    return await fetchApi<ClassAnalysisData>(`/grades/analysis/class/${encodeURIComponent(className)}/${encodeURIComponent(subject)}`);
+  async getClassSubjectAnalysis(className: string, subject: string, examCode?: string): Promise<ClassAnalysisData> {
+    const params = new URLSearchParams();
+    if (examCode && examCode !== 'all') {
+      params.append('exam', examCode);
+    }
+    const queryString = params.toString();
+    return await fetchApi<ClassAnalysisData>(`/grades/analysis/class/${encodeURIComponent(className)}/${encodeURIComponent(subject)}${queryString ? '?' + queryString : ''}`);
   }
 
   async getGradeSubjectAnalysis(gradeName: string, subject: string): Promise<SubjectAnalysisData> {
@@ -287,8 +297,13 @@ export class GradeService {
     return await fetchApi<Record<string, unknown>>(`/grades/analysis/schedule/${studentId}`);
   }
 
-  async getClassScheduleAnalysis(className: string): Promise<Record<string, unknown>> {
-    return await fetchApi<Record<string, unknown>>(`/grades/analysis/class/schedule/${encodeURIComponent(className)}`);
+  async getClassScheduleAnalysis(className: string, examCode?: string): Promise<Record<string, unknown>> {
+    const params = new URLSearchParams();
+    if (examCode && examCode !== 'all') {
+      params.append('exam', examCode);
+    }
+    const queryString = params.toString();
+    return await fetchApi<Record<string, unknown>>(`/grades/analysis/class/schedule/${encodeURIComponent(className)}${queryString ? '?' + queryString : ''}`);
   }
 
   async getIntermediateResults(analysisId: string, step?: string): Promise<IntermediateResult[]> {
@@ -366,7 +381,7 @@ export class GradeService {
     return await fetchApi<KnowledgeDiscoveryResponse>(`/analysis/knowledge-discoveries?${params.toString()}`);
   }
 
-  async getFeatureImportance(classId?: string, analysisType?: string, algorithm?: string, forceRefresh: boolean = false): Promise<FeatureImportanceResponse> {
+  async getFeatureImportance(classId?: string, analysisType?: string, algorithm?: string, examCode?: string, forceRefresh: boolean = false): Promise<FeatureImportanceResponse> {
     const params = new URLSearchParams();
     if (classId) {
       params.append('class_id', classId);
@@ -377,10 +392,13 @@ export class GradeService {
     if (algorithm) {
       params.append('algorithm', algorithm);
     }
+    if (examCode && examCode !== 'all') {
+      params.append('exam_code', examCode);
+    }
     return await fetchApi<FeatureImportanceResponse>(`/analysis/feature-importance?${params.toString()}`, {}, forceRefresh);
   }
 
-  async getDecisionTreePath(classId?: string, studentId?: string, analysisType?: string, params?: DecisionTreeParams, forceRefresh: boolean = false): Promise<DecisionTreePathResponse> {
+  async getDecisionTreePath(classId?: string, studentId?: string, analysisType?: string, examCode?: string, params?: DecisionTreeParams, forceRefresh: boolean = false): Promise<DecisionTreePathResponse> {
     return await fetchApi<DecisionTreePathResponse>('/analysis/decision-tree-path', {
       method: 'POST',
       headers: {
@@ -390,6 +408,7 @@ export class GradeService {
         class_id: classId,
         student_id: studentId,
         analysis_type: analysisType || 'class',
+        exam_code: examCode,
         params: params
       })
     }, forceRefresh);
@@ -413,13 +432,16 @@ export class GradeService {
     });
   }
 
-  async getFactorImpact(classId?: string, analysisType?: string, forceRefresh: boolean = false): Promise<FactorImpactResponse> {
+  async getFactorImpact(classId?: string, analysisType?: string, examCode?: string, forceRefresh: boolean = false): Promise<FactorImpactResponse> {
     const params = new URLSearchParams();
     if (classId) {
       params.append('class_id', classId);
     }
     if (analysisType) {
       params.append('analysis_type', analysisType);
+    }
+    if (examCode && examCode !== 'all') {
+      params.append('exam_code', examCode);
     }
     return await fetchApi<FactorImpactResponse>(`/analysis/factor-impact?${params.toString()}`, {}, forceRefresh);
   }

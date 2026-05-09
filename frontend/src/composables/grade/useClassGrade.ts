@@ -14,11 +14,11 @@ export function useClassGrade() {
   const error = ref('')
   
   // 获取班级成绩分析
-  const getClassAnalysis = async (className: string) => {
+  const getClassAnalysis = async (className: string, examCode?: string) => {
     loading.value = true
     error.value = ''
     try {
-      const response = await gradeService.getClassAnalysis(className)
+      const response = await gradeService.getClassAnalysis(className, examCode)
       if (response.error) {
         throw new Error(response.error)
       }
@@ -35,11 +35,11 @@ export function useClassGrade() {
   }
   
   // 获取班级科目分析
-  const getClassSubjectAnalysis = async (className: string, subject: string) => {
+  const getClassSubjectAnalysis = async (className: string, subject: string, examCode?: string) => {
     loading.value = true
     error.value = ''
     try {
-      const response = await gradeService.getClassSubjectAnalysis(className, subject)
+      const response = await gradeService.getClassSubjectAnalysis(className, subject, examCode)
       if (response.error) {
         throw new Error(response.error)
       }
@@ -71,11 +71,11 @@ export function useClassGrade() {
   }
   
   // 获取班级课程安排与成绩关系
-  const getClassScheduleAnalysis = async (className: string) => {
+  const getClassScheduleAnalysis = async (className: string, examCode?: string) => {
     loading.value = true
     error.value = ''
     try {
-      const response = await gradeService.getClassScheduleAnalysis(className)
+      const response = await gradeService.getClassScheduleAnalysis(className, examCode)
       if (response.error) {
         throw new Error(response.error)
       }

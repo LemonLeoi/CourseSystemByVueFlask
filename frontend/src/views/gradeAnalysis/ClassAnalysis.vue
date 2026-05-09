@@ -646,31 +646,33 @@ export default {
     };
     
     // 获取分析数据（从API）
-    const fetchAnalysisData = async (classId) => {
+    const fetchAnalysisData = async (classId, examCode) => {
       try {
         // 获取决策树配置
         const configResponse = await gradeService.getDecisionTreeConfig();
         currentDecisionTreeConfig.value = configResponse.params;
         
-        // 获取特征重要性（传递当前算法类型）
+        // 获取特征重要性（传递当前算法类型和考试代码）
         const featureImportanceResponse = await gradeService.getFeatureImportance(
           classId,
           'class',
-          configResponse.params.algorithm
+          configResponse.params.algorithm,
+          examCode
         );
         featureImportanceData.value = featureImportanceResponse.feature_importance || [];
         
-        // 获取决策树路径
+        // 获取决策树路径（传递考试代码）
         const decisionTreeResponse = await gradeService.getDecisionTreePath(
           classId,
           undefined,
           'class',
+          examCode,
           configResponse.params
         );
         decisionTreePathsData.value = decisionTreeResponse.paths || [];
         
-        // 获取因素影响分析
-        const factorImpactResponse = await gradeService.getFactorImpact(classId, undefined, true);
+        // 获取因素影响分析（传递考试代码）
+        const factorImpactResponse = await gradeService.getFactorImpact(classId, undefined, examCode, true);
         factorImpactAnalysisData.value = factorImpactResponse.factor_impact || [];
         
         // 获取挖掘发现
@@ -692,12 +694,13 @@ export default {
           className.value,
           undefined,
           'class',
+          selectedExam.value,
           configResponse.params,
           true
         );
         decisionTreePathsData.value = decisionTreeResponse.paths || [];
         
-        const factorImpactResponse = await gradeService.getFactorImpact(className.value, undefined, true);
+        const factorImpactResponse = await gradeService.getFactorImpact(className.value, undefined, selectedExam.value, true);
         factorImpactAnalysisData.value = factorImpactResponse.factor_impact || [];
       } catch (error) {
         console.error('重新分析决策路径失败:', error);
@@ -747,6 +750,7 @@ export default {
             className.value,
             undefined,
             'class',
+            selectedExam.value,
             params,
             true
           );
@@ -758,6 +762,7 @@ export default {
             className.value,
             'class',
             algorithm,
+            selectedExam.value,
             true
           );
           featureImportanceData.value = featureImportanceResponse.feature_importance || [];
@@ -1061,7 +1066,7 @@ export default {
         // 步骤1：数据获取
         loadingStep.value = '正在获取班级基本信息和学生成绩数据...';
         currentAnalysisStep.value = 0;
-        await getClassAnalysis(className.value);
+        await getClassAnalysis(className.value, selectedExam.value);
         
         // 步骤2：数据预处理
         loadingStep.value = '正在预处理数据，确保数据质量...';
@@ -1083,12 +1088,12 @@ export default {
         // 步骤5：趋势分析
         loadingStep.value = '正在分析班级历次考试的成绩变化趋势...';
         currentAnalysisStep.value = 4;
-        await getClassTrend(className.value, selectedTrendSubject.value);
+        await getClassTrend(className.value, selectedTrendSubject.value, selectedExam.value);
         
         // 步骤6：获取决策分析数据
         loadingStep.value = '正在获取决策分析数据...';
         currentAnalysisStep.value = 5;
-        await fetchAnalysisData(className.value);
+        await fetchAnalysisData(className.value, selectedExam.value);
         
         // 步骤7：获取详细成绩分析数据
         loadingStep.value = '正在获取详细成绩分析数据...';
@@ -1111,7 +1116,7 @@ export default {
     // 分析学科成绩
     const analyzeSubject = async () => {
       if (className.value && selectedSubject.value) {
-        await getClassSubjectAnalysis(className.value, selectedSubject.value);
+        await getClassSubjectAnalysis(className.value, selectedSubject.value, selectedExam.value);
         // 获取详细成绩分析数据
         await fetchGradeDetail(className.value, selectedSubject.value);
       } else if (className.value && !selectedSubject.value && analysisType.value === 'all') {
