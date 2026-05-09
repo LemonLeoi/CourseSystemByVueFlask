@@ -61,17 +61,20 @@
         <span class="panel-icon">⏰</span>
         <span class="panel-title">节次影响分析</span>
       </div>
-      <div class="analysis-grid">
+      <div class="analysis-grid two-column">
         <div 
           v-for="item in currentPath.periodAnalysis" 
           :key="item.period"
           class="analysis-card"
         >
-          <span class="analysis-label">{{ item.period }}</span>
-          <span :class="['analysis-impact', item.scoreImpact >= 0 ? 'positive' : 'negative']">
-            {{ item.scoreImpact >= 0 ? '+' : '' }}{{ item.scoreImpact }}%
-          </span>
-          <span class="analysis-desc">{{ item.description }}</span>
+          <div class="card-left">
+            <span class="analysis-label">{{ item.period }}</span>
+          </div>
+          <div class="card-right">
+            <span :class="['analysis-impact', item.scoreImpact >= 0 ? 'positive' : 'negative']">
+              {{ item.scoreImpact >= 0 ? '+' : '' }}{{ item.scoreImpact }}%
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -88,11 +91,14 @@
           :key="item.doubleClass"
           class="analysis-card"
         >
-          <span class="analysis-label">{{ item.doubleClass }}</span>
-          <span :class="['analysis-impact', item.scoreImpact >= 0 ? 'positive' : 'negative']">
-            {{ item.scoreImpact >= 0 ? '+' : '' }}{{ item.scoreImpact }}%
-          </span>
-          <span class="analysis-desc">{{ item.description }}</span>
+          <div class="card-left">
+            <span class="analysis-label">{{ item.doubleClass }}</span>
+          </div>
+          <div class="card-right">
+            <span :class="['analysis-impact', item.scoreImpact >= 0 ? 'positive' : 'negative']">
+              {{ item.scoreImpact >= 0 ? '+' : '' }}{{ item.scoreImpact }}%
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -127,68 +133,13 @@
       </div>
     </div>
     
-    <!-- 节次详细分析面板 -->
-    <div v-if="currentPath?.periodDetailAnalysis" class="analysis-panel period-detail-analysis">
-      <div class="panel-header">
-        <span class="panel-icon">⏳</span>
-        <span class="panel-title">节次详细分析</span>
-      </div>
-      <div class="period-chart">
-        <div 
-          v-for="item in currentPath.periodDetailAnalysis" 
-          :key="item.period"
-          class="period-bar-item"
-        >
-          <span class="period-number">{{ item.name }}</span>
-          <div class="bar-container">
-            <div 
-              class="attention-bar" 
-              :style="{ width: item.attention + '%' }"
-              :title="`注意力: ${item.attention}%`"
-            ></div>
-            <div 
-              class="performance-bar" 
-              :style="{ width: item.performance + '%' }"
-              :title="`表现: ${item.performance}%`"
-            ></div>
-          </div>
-          <span class="period-recommendation">{{ item.recommendation }}</span>
-        </div>
-      </div>
-    </div>
-    
-    <!-- 缩放控制栏 -->
-    <div class="zoom-controls">
-      <span class="zoom-label">缩放:</span>
-      <input 
-        type="range" 
-        class="zoom-slider" 
-        :min="MIN_SCALE * 100" 
-        :max="MAX_SCALE * 100" 
-        :step="SCALE_STEP * 100"
-        :value="scale * 100"
-        @input="handleZoomSliderChange"
-      />
-      <span class="zoom-level">{{ Math.round(scale * 100) }}%</span>
-      <button class="zoom-btn" @click="resetZoom">
-        <span>⟲</span>
-      </button>
-    </div>
-    
     <!-- 响应式SVG容器 -->
     <div 
       ref="containerRef"
       class="tree-container"
       @resize="handleContainerResize"
     >
-      <div 
-        class="tree-content"
-        :style="{
-          transform: `scale(${scale})`,
-          transformOrigin: 'center center',
-          transition: 'transform 0.1s ease-out'
-        }"
-      >
+      <div class="tree-content">
         <svg 
           ref="svgRef" 
           class="tree-svg"
@@ -493,14 +444,9 @@ const emit = defineEmits<{
 
 const selectedPathId = ref<string | null>(null);
 const hoveredNode = ref<number | null>(null);
-const scale = ref(1);
 const containerWidth = ref(800);
 const containerHeight = ref(600);
 const isRefreshing = ref(false);
-
-const MIN_SCALE = 0.4;
-const MAX_SCALE = 2.5;
-const SCALE_STEP = 0.1;
 
 const handleRefresh = () => {
   isRefreshing.value = true;
@@ -693,7 +639,6 @@ const branchOptionsGroups = computed(() => {
 
 const selectPath = (pathId: string) => {
   selectedPathId.value = pathId;
-  scale.value = 1;
 };
 
 const selectBranchOption = (groupIndex: number, value: string) => {
@@ -722,27 +667,6 @@ const getSignificanceClass = (significance: string) => {
   if (significance.includes('< 0.01')) return 'significant';
   if (significance.includes('< 0.05')) return 'moderate';
   return 'not-significant';
-};
-
-const zoomIn = () => {
-  if (scale.value < MAX_SCALE) {
-    scale.value = Math.min(MAX_SCALE, scale.value + SCALE_STEP);
-  }
-};
-
-const zoomOut = () => {
-  if (scale.value > MIN_SCALE) {
-    scale.value = Math.max(MIN_SCALE, scale.value - SCALE_STEP);
-  }
-};
-
-const resetZoom = () => {
-  scale.value = 1;
-};
-
-const handleZoomSliderChange = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  scale.value = parseFloat(target.value) / 100;
 };
 
 const tooltip = reactive({
@@ -1019,122 +943,112 @@ const svgRef = ref<SVGSVGElement | null>(null);
   font-weight: 500;
 }
 
-.zoom-controls {
+/* 分析面板样式 */
+.analysis-panel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid #e5e7eb;
+}
+
+.panel-header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 8px;
   margin-bottom: 12px;
-  padding: 8px 12px;
-  background: #f8fafc;
-  border-radius: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
 }
 
-.zoom-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #6b7280;
-  margin-right: 8px;
+.panel-icon {
+  font-size: 18px;
 }
 
-.zoom-slider {
-  flex: 1;
-  max-width: 200px;
-  height: 6px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: #e5e7eb;
-  border-radius: 3px;
-  cursor: pointer;
+.panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
 }
 
-.zoom-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  background: #667eea;
-  border-radius: 50%;
-  cursor: pointer;
-  border: 2px solid #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  transition: all 0.2s ease;
+.analysis-grid {
+  display: grid;
+  gap: 8px;
 }
 
-.zoom-slider::-webkit-slider-thumb:hover {
-  background: #7c3aed;
-  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+.analysis-grid.two-column {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
 }
 
-.zoom-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  background: #667eea;
-  border-radius: 50%;
-  cursor: pointer;
-  border: 2px solid #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  transition: all 0.2s ease;
-}
-
-.zoom-slider::-moz-range-thumb:hover {
-  background: #7c3aed;
-  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
-}
-
-.zoom-level {
-  font-size: 12px;
-  font-weight: 500;
-  color: #6b7280;
-  min-width: 50px;
-  text-align: center;
-  margin-left: 8px;
-}
-
-.zoom-btn {
-  width: 28px;
-  height: 28px;
+.analysis-card {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 600;
-  color: #4b5563;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #f8fafc 0%, #fff 100%);
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
   transition: all 0.2s ease;
-  margin-left: 8px;
 }
 
-.zoom-btn:hover {
-  background: #667eea;
-  border-color: #667eea;
-  color: #fff;
+.analysis-card:hover {
+  border-color: #c4b5fd;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+  transform: translateY(-1px);
+}
+
+.card-left {
+  display: flex;
+  align-items: center;
+}
+
+.analysis-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.card-right {
+  display: flex;
+  align-items: center;
+}
+
+.analysis-impact {
+  font-size: 14px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  min-width: 70px;
+  text-align: right;
+}
+
+.analysis-impact.positive {
+  color: #059669;
+  background: rgba(5, 150, 105, 0.1);
+}
+
+.analysis-impact.negative {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.1);
 }
 
 .tree-container {
   background: #fafafa;
   border-radius: 8px;
-  padding: 16px;
-  min-height: 320px;
-  max-height: calc(100vh - 300px);
-  overflow: auto;
-  border: 2px solid #e5e7eb;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
   position: relative;
   background: linear-gradient(135deg, #fafafa 0%, #f1f5f9 100%);
-  scrollbar-width: thin;
-  scrollbar-color: #409eff #e5e7eb;
 }
 
 .tree-container::before {
   content: '';
   position: absolute;
-  top: 4px;
-  left: 4px;
-  right: 4px;
-  bottom: 4px;
+  top: 6px;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
   border: 1px dashed #d1d5db;
   border-radius: 4px;
   pointer-events: none;
@@ -1144,14 +1058,12 @@ const svgRef = ref<SVGSVGElement | null>(null);
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  min-height: 280px;
-  padding: 20px 0;
 }
 
 .tree-svg {
   width: 100%;
   height: auto;
-  min-width: 100%;
+  max-width: 100%;
 }
 
 .connection-line {
@@ -1504,7 +1416,6 @@ const svgRef = ref<SVGSVGElement | null>(null);
   
   .tree-container {
     padding: 10px;
-    max-height: calc(100vh - 350px);
   }
   
   .tree-header {
@@ -1524,8 +1435,12 @@ const svgRef = ref<SVGSVGElement | null>(null);
     flex-wrap: wrap;
   }
   
-  .zoom-controls {
-    justify-content: center;
+  .analysis-grid.two-column {
+    grid-template-columns: 1fr;
+  }
+  
+  .analysis-card {
+    padding: 8px 12px;
   }
 }
 

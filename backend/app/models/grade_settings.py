@@ -23,6 +23,13 @@ class GradeSettings(db.Model):
     dt_max_depth = db.Column(db.Integer, nullable=False, default=5)
     dt_threshold = db.Column(db.FLOAT, nullable=False, default=0.0001)
     dt_algorithm = db.Column(db.VARCHAR(20), nullable=False, default='C4.5')
+    # 新增决策树参数
+    dt_confidence_threshold = db.Column(db.FLOAT, nullable=False, default=0.7)
+    dt_min_info_gain = db.Column(db.FLOAT, nullable=False, default=0.01)
+    dt_split_direction = db.Column(db.VARCHAR(20), nullable=False, default='max_gain')
+    dt_stop_criteria = db.Column(db.VARCHAR(20), nullable=False, default='all')
+    dt_missing_value_strategy = db.Column(db.VARCHAR(20), nullable=False, default='mean_mode')
+    dt_min_confidence = db.Column(db.FLOAT, nullable=False, default=0.6)
     
     # 班级类型分类配置
     class_type_threshold_low = db.Column(db.DECIMAL(5,2), nullable=False, default=60)
@@ -63,7 +70,13 @@ class GradeSettings(db.Model):
                 'minSamplesSplit': self.dt_min_samples_split,
                 'maxDepth': self.dt_max_depth,
                 'threshold': self.dt_threshold,
-                'algorithm': self.dt_algorithm
+                'algorithm': self.dt_algorithm,
+                'confidenceThreshold': self.dt_confidence_threshold,
+                'minInfoGain': self.dt_min_info_gain,
+                'splitDirection': self.dt_split_direction,
+                'stopCriteria': self.dt_stop_criteria,
+                'missingValueStrategy': self.dt_missing_value_strategy,
+                'minConfidence': self.dt_min_confidence
             },
             'classTypeConfig': {
                 'thresholdLow': float(self.class_type_threshold_low),

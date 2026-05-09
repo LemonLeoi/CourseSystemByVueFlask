@@ -222,6 +222,283 @@
         <li><strong>算法选择</strong>：C4.5对特征值较多的数据集更稳定</li>
       </ul>
     </div>
+
+    <!-- 置信度与信息增益 -->
+    <div class="section">
+      <div class="section-header">
+        <h4 class="section-title">
+          <span class="section-icon">🎯</span>
+          置信度与信息增益
+        </h4>
+        <span class="section-hint">控制分析结果的置信度和信息增益</span>
+      </div>
+      
+      <!-- 置信度阈值 -->
+      <div class="param-item" :class="{ 'has-error': validationErrors.confidenceThreshold }">
+        <div class="param-header">
+          <label class="param-label">置信度阈值</label>
+          <div class="param-value-wrapper">
+            <span class="param-value">{{ config.confidenceThreshold }}</span>
+          </div>
+          <span class="tooltip-wrapper">
+            <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"></path>
+              <path d="M12 8h.01"></path>
+            </svg>
+            <span class="tooltip-text">低于此置信度的结论将被忽略</span>
+          </span>
+        </div>
+        <div class="param-controls">
+          <input 
+            type="number" 
+            v-model.number="config.confidenceThreshold" 
+            :min="0" 
+            :max="1" 
+            step="0.01"
+            class="number-input-small"
+          />
+          <input 
+            type="range" 
+            v-model.number="config.confidenceThreshold" 
+            :min="0" 
+            :max="1" 
+            step="0.01"
+            class="slider"
+          />
+        </div>
+        <div class="range-labels">
+          <span>0</span>
+          <span>1</span>
+        </div>
+        <div v-if="validationErrors.confidenceThreshold" class="error-message">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          {{ validationErrors.confidenceThreshold }}
+        </div>
+      </div>
+      
+      <!-- 最小置信度要求 -->
+      <div class="param-item" :class="{ 'has-error': validationErrors.minConfidence }">
+        <div class="param-header">
+          <label class="param-label">最小置信度要求</label>
+          <div class="param-value-wrapper">
+            <span class="param-value">{{ config.minConfidence }}</span>
+          </div>
+          <span class="tooltip-wrapper">
+            <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"></path>
+              <path d="M12 8h.01"></path>
+            </svg>
+            <span class="tooltip-text">分析结果的最小置信度要求</span>
+          </span>
+        </div>
+        <div class="param-controls">
+          <input 
+            type="number" 
+            v-model.number="config.minConfidence" 
+            :min="0" 
+            :max="1" 
+            step="0.01"
+            class="number-input-small"
+          />
+          <input 
+            type="range" 
+            v-model.number="config.minConfidence" 
+            :min="0" 
+            :max="1" 
+            step="0.01"
+            class="slider"
+          />
+        </div>
+        <div class="range-labels">
+          <span>0</span>
+          <span>1</span>
+        </div>
+        <div v-if="validationErrors.minConfidence" class="error-message">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          {{ validationErrors.minConfidence }}
+        </div>
+      </div>
+      
+      <!-- 最小信息增益要求 -->
+      <div class="param-item" :class="{ 'has-error': validationErrors.minInfoGain }">
+        <div class="param-header">
+          <label class="param-label">最小信息增益要求</label>
+          <div class="param-value-wrapper">
+            <span class="param-value">{{ config.minInfoGain }}</span>
+          </div>
+          <span class="tooltip-wrapper">
+            <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"></path>
+              <path d="M12 8h.01"></path>
+            </svg>
+            <span class="tooltip-text">节点分裂所需的最小信息增益</span>
+          </span>
+        </div>
+        <div class="param-controls">
+          <input 
+            type="number" 
+            v-model.number="config.minInfoGain" 
+            :min="0" 
+            :max="1" 
+            step="0.01"
+            class="number-input-small"
+          />
+          <input 
+            type="range" 
+            v-model.number="config.minInfoGain" 
+            :min="0" 
+            :max="1" 
+            step="0.01"
+            class="slider"
+          />
+        </div>
+        <div class="range-labels">
+          <span>0</span>
+          <span>1</span>
+        </div>
+        <div v-if="validationErrors.minInfoGain" class="error-message">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          {{ validationErrors.minInfoGain }}
+        </div>
+      </div>
+    </div>
+
+    <!-- 节点分裂与停止条件 -->
+    <div class="section">
+      <div class="section-header">
+        <h4 class="section-title">
+          <span class="section-icon">⚙️</span>
+          节点分裂与停止条件
+        </h4>
+        <span class="section-hint">控制决策树分裂和停止的策略</span>
+      </div>
+      
+      <!-- 分裂方向策略 -->
+      <div class="param-item">
+        <div class="param-header">
+          <label class="param-label">分裂方向策略</label>
+          <span class="tooltip-wrapper">
+            <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"></path>
+              <path d="M12 8h.01"></path>
+            </svg>
+            <span class="tooltip-text">选择节点分裂时的方向策略</span>
+          </span>
+        </div>
+        <div class="radio-group">
+          <label class="radio-label" :class="{ active: config.splitDirection === 'max_gain' }">
+            <input type="radio" v-model="config.splitDirection" value="max_gain" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">最大增益</span>
+            <span class="radio-desc">总是选择信息增益最大的方向</span>
+          </label>
+          <label class="radio-label" :class="{ active: config.splitDirection === 'balanced' }">
+            <input type="radio" v-model="config.splitDirection" value="balanced" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">平衡</span>
+            <span class="radio-desc">平衡考虑各分支的样本数</span>
+          </label>
+          <label class="radio-label" :class="{ active: config.splitDirection === 'random' }">
+            <input type="radio" v-model="config.splitDirection" value="random" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">随机</span>
+            <span class="radio-desc">随机选择分裂方向</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- 停止条件 -->
+      <div class="param-item">
+        <div class="param-header">
+          <label class="param-label">停止条件</label>
+          <span class="tooltip-wrapper">
+            <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"></path>
+              <path d="M12 8h.01"></path>
+            </svg>
+            <span class="tooltip-text">决策树停止生长的条件</span>
+          </span>
+        </div>
+        <div class="radio-group">
+          <label class="radio-label" :class="{ active: config.stopCriteria === 'all' }">
+            <input type="radio" v-model="config.stopCriteria" value="all" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">全部</span>
+            <span class="radio-desc">所有条件都满足时停止</span>
+          </label>
+          <label class="radio-label" :class="{ active: config.stopCriteria === 'max_depth' }">
+            <input type="radio" v-model="config.stopCriteria" value="max_depth" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">最大深度</span>
+            <span class="radio-desc">仅根据最大深度停止</span>
+          </label>
+          <label class="radio-label" :class="{ active: config.stopCriteria === 'min_samples' }">
+            <input type="radio" v-model="config.stopCriteria" value="min_samples" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">最小样本</span>
+            <span class="radio-desc">仅根据最小样本数停止</span>
+          </label>
+          <label class="radio-label" :class="{ active: config.stopCriteria === 'info_gain' }">
+            <input type="radio" v-model="config.stopCriteria" value="info_gain" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">信息增益</span>
+            <span class="radio-desc">仅根据信息增益停止</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- 缺失值处理策略 -->
+      <div class="param-item">
+        <div class="param-header">
+          <label class="param-label">缺失值处理策略</label>
+          <span class="tooltip-wrapper">
+            <svg class="tooltip-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"></path>
+              <path d="M12 8h.01"></path>
+            </svg>
+            <span class="tooltip-text">数据存在缺失值时的处理方式</span>
+          </span>
+        </div>
+        <div class="radio-group">
+          <label class="radio-label" :class="{ active: config.missingValueStrategy === 'mean_mode' }">
+            <input type="radio" v-model="config.missingValueStrategy" value="mean_mode" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">均值/众数</span>
+            <span class="radio-desc">用均值或众数填充缺失值</span>
+          </label>
+          <label class="radio-label" :class="{ active: config.missingValueStrategy === 'drop' }">
+            <input type="radio" v-model="config.missingValueStrategy" value="drop" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">删除</span>
+            <span class="radio-desc">删除包含缺失值的样本</span>
+          </label>
+          <label class="radio-label" :class="{ active: config.missingValueStrategy === 'ignore' }">
+            <input type="radio" v-model="config.missingValueStrategy" value="ignore" />
+            <span class="radio-circle"></span>
+            <span class="radio-text">忽略</span>
+            <span class="radio-desc">忽略缺失值继续处理</span>
+          </label>
+        </div>
+      </div>
+    </div>
     
     <!-- 得分率配置区 -->
     <div class="section">
@@ -531,7 +808,14 @@ const config = reactive<DecisionTreeParams>({
   maxDepth: 5,
   minSamplesSplit: 2,
   threshold: 0.0001,
-  algorithm: 'C4.5'
+  algorithm: 'C4.5',
+  // 新增参数
+  confidenceThreshold: 0.7,
+  minInfoGain: 0.01,
+  splitDirection: 'max_gain',
+  stopCriteria: 'all',
+  missingValueStrategy: 'mean_mode',
+  minConfidence: 0.6
 });
 
 const classTypeConfig = reactive<ClassTypeConfig>({
@@ -560,7 +844,14 @@ const defaultConfig = {
   maxDepth: 5,
   minSamplesSplit: 2,
   threshold: 0.0001,
-  algorithm: 'C4.5' as const
+  algorithm: 'C4.5' as const,
+  // 新增参数
+  confidenceThreshold: 0.7,
+  minInfoGain: 0.01,
+  splitDirection: 'max_gain' as const,
+  stopCriteria: 'all' as const,
+  missingValueStrategy: 'mean_mode' as const,
+  minConfidence: 0.6
 };
 
 const defaultClassTypeConfig = {
@@ -578,7 +869,10 @@ const defaultScoreRateConfig = {
 const validationErrors = reactive({
   maxDepth: '',
   minSamplesSplit: '',
-  threshold: ''
+  threshold: '',
+  confidenceThreshold: '',
+  minInfoGain: '',
+  minConfidence: ''
 });
 
 const classTypeErrors = reactive({
@@ -628,6 +922,30 @@ const validateParams = (): boolean => {
     validationErrors.threshold = '';
   }
   
+  // 验证置信度阈值
+  if (config.confidenceThreshold < 0 || config.confidenceThreshold > 1) {
+    validationErrors.confidenceThreshold = '请输入0-1之间的数值';
+    isValid = false;
+  } else {
+    validationErrors.confidenceThreshold = '';
+  }
+  
+  // 验证最小置信度
+  if (config.minConfidence < 0 || config.minConfidence > 1) {
+    validationErrors.minConfidence = '请输入0-1之间的数值';
+    isValid = false;
+  } else {
+    validationErrors.minConfidence = '';
+  }
+  
+  // 验证最小信息增益
+  if (config.minInfoGain < 0 || config.minInfoGain > 1) {
+    validationErrors.minInfoGain = '请输入0-1之间的数值';
+    isValid = false;
+  } else {
+    validationErrors.minInfoGain = '';
+  }
+  
   // 验证班级类型配置
   if (classTypeConfig.thresholdLow < 0 || classTypeConfig.thresholdLow > 100) {
     classTypeErrors.thresholdLow = '请输入0-100之间的整数';
@@ -666,6 +984,13 @@ const loadConfig = async () => {
       config.minSamplesSplit = dtResponse.params.minSamplesSplit;
       config.threshold = dtResponse.params.threshold;
       config.algorithm = dtResponse.params.algorithm;
+      // 加载新增参数，使用默认值作为后备
+      config.confidenceThreshold = dtResponse.params.confidenceThreshold ?? 0.7;
+      config.minInfoGain = dtResponse.params.minInfoGain ?? 0.01;
+      config.splitDirection = dtResponse.params.splitDirection ?? 'max_gain';
+      config.stopCriteria = dtResponse.params.stopCriteria ?? 'all';
+      config.missingValueStrategy = dtResponse.params.missingValueStrategy ?? 'mean_mode';
+      config.minConfidence = dtResponse.params.minConfidence ?? 0.6;
     }
     
     if (classTypeResponse.config) {
@@ -693,9 +1018,18 @@ const resetConfig = () => {
   config.minSamplesSplit = defaultConfig.minSamplesSplit;
   config.threshold = defaultConfig.threshold;
   config.algorithm = defaultConfig.algorithm;
+  config.confidenceThreshold = defaultConfig.confidenceThreshold;
+  config.minInfoGain = defaultConfig.minInfoGain;
+  config.splitDirection = defaultConfig.splitDirection;
+  config.stopCriteria = defaultConfig.stopCriteria;
+  config.missingValueStrategy = defaultConfig.missingValueStrategy;
+  config.minConfidence = defaultConfig.minConfidence;
   validationErrors.maxDepth = '';
   validationErrors.minSamplesSplit = '';
   validationErrors.threshold = '';
+  validationErrors.confidenceThreshold = '';
+  validationErrors.minInfoGain = '';
+  validationErrors.minConfidence = '';
   
   classTypeConfig.thresholdLow = defaultClassTypeConfig.thresholdLow;
   classTypeConfig.thresholdHigh = defaultClassTypeConfig.thresholdHigh;
@@ -724,7 +1058,13 @@ const saveConfig = async () => {
       maxDepth: config.maxDepth,
       minSamplesSplit: config.minSamplesSplit,
       threshold: config.threshold,
-      algorithm: config.algorithm
+      algorithm: config.algorithm,
+      confidenceThreshold: config.confidenceThreshold,
+      minInfoGain: config.minInfoGain,
+      splitDirection: config.splitDirection,
+      stopCriteria: config.stopCriteria,
+      missingValueStrategy: config.missingValueStrategy,
+      minConfidence: config.minConfidence
     });
     
     // 保存班级类型配置

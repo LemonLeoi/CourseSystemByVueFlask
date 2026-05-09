@@ -46,7 +46,13 @@ class GradeSettingsDataAccess:
             'minSamplesSplit': settings.dt_min_samples_split,
             'maxDepth': settings.dt_max_depth,
             'threshold': settings.dt_threshold,
-            'algorithm': settings.dt_algorithm
+            'algorithm': settings.dt_algorithm,
+            'confidenceThreshold': settings.dt_confidence_threshold,
+            'minInfoGain': settings.dt_min_info_gain,
+            'splitDirection': settings.dt_split_direction,
+            'stopCriteria': settings.dt_stop_criteria,
+            'missingValueStrategy': settings.dt_missing_value_strategy,
+            'minConfidence': settings.dt_min_confidence
         }
     
     @staticmethod
@@ -80,6 +86,42 @@ class GradeSettingsDataAccess:
                 if algorithm not in ['ID3', 'C4.5']:
                     validation_errors.append("算法类型必须是'ID3'或'C4.5'")
             
+            # 验证置信度阈值
+            if 'confidenceThreshold' in params:
+                confidence = params['confidenceThreshold']
+                if not isinstance(confidence, (int, float)) or confidence < 0 or confidence > 1:
+                    validation_errors.append('置信度阈值必须是0-1之间的数值')
+            
+            # 验证最小信息增益
+            if 'minInfoGain' in params:
+                min_gain = params['minInfoGain']
+                if not isinstance(min_gain, (int, float)) or min_gain < 0 or min_gain > 1:
+                    validation_errors.append('最小信息增益必须是0-1之间的数值')
+            
+            # 验证分裂方向策略
+            if 'splitDirection' in params:
+                split_dir = params['splitDirection']
+                if split_dir not in ['max_gain', 'balanced', 'random']:
+                    validation_errors.append("分裂方向策略必须是'max_gain', 'balanced'或'random'")
+            
+            # 验证停止条件
+            if 'stopCriteria' in params:
+                stop_criteria = params['stopCriteria']
+                if stop_criteria not in ['max_depth', 'min_samples', 'info_gain', 'all']:
+                    validation_errors.append("停止条件必须是'max_depth', 'min_samples', 'info_gain'或'all'")
+            
+            # 验证缺失值处理策略
+            if 'missingValueStrategy' in params:
+                strategy = params['missingValueStrategy']
+                if strategy not in ['drop', 'mean_mode', 'ignore']:
+                    validation_errors.append("缺失值处理策略必须是'drop', 'mean_mode'或'ignore'")
+            
+            # 验证最小置信度
+            if 'minConfidence' in params:
+                min_conf = params['minConfidence']
+                if not isinstance(min_conf, (int, float)) or min_conf < 0 or min_conf > 1:
+                    validation_errors.append('最小置信度必须是0-1之间的数值')
+            
             # 如果有验证错误，返回错误信息
             if validation_errors:
                 return False, None, '参数验证失败: ' + '; '.join(validation_errors)
@@ -95,6 +137,18 @@ class GradeSettingsDataAccess:
                 settings.dt_threshold = params['threshold']
             if 'algorithm' in params:
                 settings.dt_algorithm = params['algorithm']
+            if 'confidenceThreshold' in params:
+                settings.dt_confidence_threshold = params['confidenceThreshold']
+            if 'minInfoGain' in params:
+                settings.dt_min_info_gain = params['minInfoGain']
+            if 'splitDirection' in params:
+                settings.dt_split_direction = params['splitDirection']
+            if 'stopCriteria' in params:
+                settings.dt_stop_criteria = params['stopCriteria']
+            if 'missingValueStrategy' in params:
+                settings.dt_missing_value_strategy = params['missingValueStrategy']
+            if 'minConfidence' in params:
+                settings.dt_min_confidence = params['minConfidence']
             
             db.session.commit()
             return True, settings.to_dict(), "更新成功"

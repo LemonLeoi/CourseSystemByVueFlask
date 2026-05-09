@@ -545,7 +545,13 @@ def build_tree_with_params(data, attr_names=None, params=None):
         'min_samples_split': 2,
         'max_depth': 5,
         'threshold': 0.0001,
-        'algorithm': 'C4.5'
+        'algorithm': 'C4.5',
+        'confidenceThreshold': 0.7,
+        'minInfoGain': 0.01,
+        'splitDirection': 'max_gain',
+        'stopCriteria': 'all',
+        'missingValueStrategy': 'mean_mode',
+        'minConfidence': 0.6
     }
     
     # 合并用户参数和默认参数

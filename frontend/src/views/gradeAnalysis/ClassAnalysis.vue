@@ -205,41 +205,9 @@
           </div>
         </div>
         
-        <!-- 决策逻辑链条 -->
-        <div class="decision-chain">
-          <div class="chain-item">
-            <div class="chain-node">
-              <span class="node-icon">📊</span>
-              <span class="node-label">数据输入</span>
-            </div>
-          </div>
-          <div class="chain-arrow">→</div>
-          <div class="chain-item">
-            <div class="chain-node highlight">
-              <span class="node-icon">🌳</span>
-              <span class="node-label">C4.5算法运算</span>
-            </div>
-          </div>
-          <div class="chain-arrow">→</div>
-          <div class="chain-item">
-            <div class="chain-node">
-              <span class="node-icon">📈</span>
-              <span class="node-label">信息增益比排序</span>
-            </div>
-          </div>
-          <div class="chain-arrow">→</div>
-          <div class="chain-item">
-            <div class="chain-node">
-              <span class="node-icon">💡</span>
-              <span class="node-label">决策规则输出</span>
-            </div>
-          </div>
-        </div>
-        
         <!-- 特征重要性分析 -->
         <CollapsibleSection 
           title="特征重要性分析" 
-          icon="📊"
           :default-collapsed="false"
           storage-key="feature_importance"
         >
@@ -249,7 +217,6 @@
         <!-- 决策路径分析 -->
         <CollapsibleSection 
           title="决策路径分析" 
-          icon="🌳"
           :default-collapsed="true"
           storage-key="decision_path"
         >
@@ -264,7 +231,6 @@
         <!-- 挖掘发现 -->
         <CollapsibleSection 
           title="挖掘发现" 
-          icon="💡"
           :default-collapsed="false"
           storage-key="knowledge_discovery"
         >
@@ -284,7 +250,6 @@
         
         <CollapsibleSection 
           title="学科优劣势分析" 
-          icon="📊"
           :default-collapsed="false"
           storage-key="subject_strength_analysis"
         >
@@ -298,7 +263,6 @@
         <!-- 学科对比分析 -->
         <CollapsibleSection 
           title="学科对比分析" 
-          icon="🔄"
           :default-collapsed="true"
           storage-key="subject_comparison"
         >
@@ -2017,103 +1981,14 @@ h3 {
   color: #64748b;
 }
 
-/* 决策逻辑链条样式 */
-.decision-chain {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 16px;
-  background: #fff;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.chain-item {
-  display: flex;
-  align-items: center;
-}
-
-.chain-node {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-  border-radius: 8px;
-  min-width: 100px;
-  transition: all 0.3s ease;
-}
-
-.chain-node:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.chain-node.highlight {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.chain-node.highlight .node-label {
-  color: #fff;
-}
-
-.node-icon {
-  font-size: 20px;
-  margin-bottom: 4px;
-}
-
-.node-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #475569;
-  text-align: center;
-}
-
-.chain-arrow {
-  font-size: 20px;
-  color: #94a3b8;
-  margin: 0 4px;
-}
-
 /* 响应式设计 */
 @media (max-width: 1200px) {
-  .decision-chain {
-    flex-wrap: wrap;
-  }
-  
-  .chain-node {
-    min-width: 80px;
-    padding: 10px 16px;
-  }
+  /* 决策链条已移除 */
 }
 
 @media (max-width: 768px) {
   .decision-visualization-section {
     padding: 16px;
-  }
-  
-  .decision-chain {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .chain-arrow {
-    transform: rotate(90deg);
-    margin: 8px 0;
-  }
-  
-  .chain-node {
-    min-width: 100%;
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 10px;
-  }
-  
-  .node-icon {
-    margin-bottom: 0;
   }
   
   .section-main-title {
@@ -2124,14 +1999,6 @@ h3 {
 @media (max-width: 480px) {
   .decision-visualization-section {
     padding: 12px;
-  }
-  
-  .chain-node {
-    padding: 8px 12px;
-  }
-  
-  .node-label {
-    font-size: 11px;
   }
 }
 

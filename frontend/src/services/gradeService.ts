@@ -884,6 +884,13 @@ export interface DecisionTreeParams {
   maxDepth: number;
   threshold: number;
   algorithm: string;
+  // 新增参数
+  confidenceThreshold: number; // 置信度阈值 (0-1)
+  minInfoGain: number; // 最小信息增益
+  splitDirection: 'max_gain' | 'balanced' | 'random'; // 分裂方向策略
+  stopCriteria: 'max_depth' | 'min_samples' | 'info_gain' | 'all'; // 停止条件
+  missingValueStrategy: 'drop' | 'mean_mode' | 'ignore'; // 缺失值处理
+  minConfidence: number; // 最小置信度要求
 }
 
 export interface DecisionTreeConfigResponse {
