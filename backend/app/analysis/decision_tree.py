@@ -1,5 +1,11 @@
 # Decision tree analysis module
 
+# 导入必要的模块
+import logging
+from app.data_access.grade_settings_data_access import GradeSettingsDataAccess
+
+logger = logging.getLogger(__name__)
+
 class Node:
     '''''Represents a decision tree node. 
     
@@ -694,37 +700,121 @@ def visualize_tree(Tree, attr_names=None):
     return build_visualization(Tree)
 
 # 数据预处理
-def preprocess_data(data):
-    # 定义属性名称
+def preprocess_data(data, use_database_rules=True):
+    """预处理数据，将原始分数转换为基于得分率的等级
+
+    Args:
+        data: 原始数据列表，每个元素为 [学号, 性别, 班级, 年级, 考试类型, 学科, 分数]
+        use_database_rules: 是否使用数据库中的规则（默认True），False则使用硬编码的绝对分数规则
+
+    Returns:
+        tuple: (processed_data, attr_names)
+            - processed_data: 处理后的数据列表
+            - attr_names: 属性名称列表
+    """
     attr_names = ['学号', '性别', '班级', '年级', '考试类型', '学科', '分数范围']
-    
-    # 转换数据格式
-    processed_data = []
-    for row in data:
-        # 转换分数为离散值
-        score = row[6]
-        score_range = ''
-        if score >= 90:
-            score_range = '优秀'
-        elif score >= 80:
-            score_range = '良好'
-        elif score >= 70:
-            score_range = '中等'
-        elif score >= 60:
-            score_range = '及格'
-        else:
-            score_range = '不及格'
-        
-        # 构建数据行
-        processed_row = [
-            row[0],        # 学号
-            row[1],        # 性别
-            row[2],        # 班级
-            row[3],        # 年级
-            row[4],        # 考试类型
-            row[5],        # 学科
-            score_range    # 分数范围（目标变量）
-        ]
-        processed_data.append(processed_row)
-    
-    return processed_data, attr_names
+
+    if not use_database_rules:
+        processed_data = []
+        for row in data:
+            score = row[6]
+            score_range = ''
+            if score >= 90:
+                score_range = '优秀'
+            elif score >= 80:
+                score_range = '良好'
+            elif score >= 70:
+                score_range = '中等'
+            elif score >= 60:
+                score_range = '及格'
+            else:
+                score_range = '不及格'
+
+            processed_row = [
+                row[0],
+                row[1],
+                row[2],
+                row[3],
+                row[4],
+                row[5],
+                score_range
+            ]
+            processed_data.append(processed_row)
+        return processed_data, attr_names
+
+    try:
+        from app.data_access.grade_settings_data_access import GradeSettingsDataAccess
+        rules = GradeSettingsDataAccess.get_decision_tree_grading_rules()
+        percentage_rules = rules['percentage_rules']
+        score_rate_config = rules['score_rate_config']
+        language_subjects = rules['language_subjects']
+
+        processed_data = []
+        for row in data:
+            score = row[6]
+            subject = row[5]
+
+            if subject in language_subjects:
+                total_score = score_rate_config['language_total']
+            else:
+                total_score = score_rate_config['science_total']
+
+            if total_score <= 0:
+                score_range = '不及格'
+                logger.warning("科目 %s 满分值为0或负数，分数 %s 标记为不及格", subject, score)
+            else:
+                score_rate = (score / total_score) * 100
+
+                if score_rate >= percentage_rules['percentage_rule_a']:
+                    score_range = '优秀'
+                elif score_rate >= percentage_rules['percentage_rule_b']:
+                    score_range = '良好'
+                elif score_rate >= percentage_rules['percentage_rule_c']:
+                    score_range = '中等'
+                elif score_rate >= percentage_rules['percentage_rule_d']:
+                    score_range = '及格'
+                else:
+                    score_range = '不及格'
+
+            processed_row = [
+                row[0],
+                row[1],
+                row[2],
+                row[3],
+                row[4],
+                row[5],
+                score_range
+            ]
+            processed_data.append(processed_row)
+
+        logger.info("使用数据库规则预处理数据，百分比规则: %s", percentage_rules)
+        return processed_data, attr_names
+
+    except Exception as e:
+        logger.error("从数据库获取评分规则失败: %s，使用硬编码绝对分数规则", str(e))
+        processed_data = []
+        for row in data:
+            score = row[6]
+            score_range = ''
+            if score >= 90:
+                score_range = '优秀'
+            elif score >= 80:
+                score_range = '良好'
+            elif score >= 70:
+                score_range = '中等'
+            elif score >= 60:
+                score_range = '及格'
+            else:
+                score_range = '不及格'
+
+            processed_row = [
+                row[0],
+                row[1],
+                row[2],
+                row[3],
+                row[4],
+                row[5],
+                score_range
+            ]
+            processed_data.append(processed_row)
+        return processed_data, attr_names

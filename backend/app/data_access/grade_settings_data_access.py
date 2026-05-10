@@ -1,5 +1,8 @@
 from ..models import GradeSettings
 from .. import db
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class GradeSettingsDataAccess:
@@ -300,3 +303,27 @@ class GradeSettingsDataAccess:
         except Exception as e:
             db.session.rollback()
             return False, None, f"更新失败: {str(e)}"
+    
+    @staticmethod
+    def get_decision_tree_grading_rules():
+        """获取决策树评分所需的完整规则集合
+        
+        Returns:
+            dict: 包含百分比规则、得分率配置和语言科目列表
+        """
+        settings = GradeSettingsDataAccess.get_settings()
+        
+        return {
+            'percentage_rules': {
+                'percentage_rule_a': settings.percentage_rule_a,
+                'percentage_rule_b': settings.percentage_rule_b,
+                'percentage_rule_c': settings.percentage_rule_c,
+                'percentage_rule_d': settings.percentage_rule_d,
+                'percentage_rule_e': settings.percentage_rule_e
+            },
+            'score_rate_config': {
+                'language_total': settings.language_total,
+                'science_total': settings.science_total
+            },
+            'language_subjects': ['语文', '数学', '英语']
+        }
