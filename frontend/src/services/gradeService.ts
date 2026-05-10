@@ -225,8 +225,13 @@ export interface RealtimeDiscoveriesResponse {
 }
 
 export class GradeService {
-  async getStudentAnalysis(studentId: string): Promise<StudentAnalysisData> {
-    return await fetchApi<StudentAnalysisData>(`/grades/analysis/${studentId}`);
+  async getStudentAnalysis(studentId: string, examCode?: string): Promise<StudentAnalysisData> {
+    const params = new URLSearchParams();
+    if (examCode && examCode !== 'all') {
+      params.append('exam', examCode);
+    }
+    const queryString = params.toString();
+    return await fetchApi<StudentAnalysisData>(`/grades/analysis/${studentId}${queryString ? '?' + queryString : ''}`);
   }
 
   async getClassAnalysis(className: string, examCode?: string): Promise<ClassAnalysisData> {
@@ -242,8 +247,13 @@ export class GradeService {
     return await fetchApi<GradeAnalysisData>(`/grades/analysis/grade/${encodeURIComponent(gradeName)}`);
   }
 
-  async getStudentSubjectAnalysis(studentId: string, subject: string): Promise<StudentAnalysisData> {
-    return await fetchApi<StudentAnalysisData>(`/grades/analysis/subject/${studentId}/${encodeURIComponent(subject)}`);
+  async getStudentSubjectAnalysis(studentId: string, subject: string, examCode?: string): Promise<StudentAnalysisData> {
+    const params = new URLSearchParams();
+    if (examCode && examCode !== 'all') {
+      params.append('exam', examCode);
+    }
+    const queryString = params.toString();
+    return await fetchApi<StudentAnalysisData>(`/grades/analysis/subject/${studentId}/${encodeURIComponent(subject)}${queryString ? '?' + queryString : ''}`);
   }
 
   async getClassSubjectAnalysis(className: string, subject: string, examCode?: string): Promise<ClassAnalysisData> {
@@ -532,6 +542,21 @@ export class GradeService {
       params.append('display_mode', displayMode);
     }
     return await fetchApi<ClassGradeDetailResponse>(`/analysis/class-grade-detail?${params.toString()}`);
+  }
+
+  async getStudentGradeDetail(studentId: string, subject?: string, examId?: string, displayMode?: string): Promise<ClassGradeDetailResponse> {
+    const params = new URLSearchParams();
+    params.append('student_id', studentId);
+    if (subject) {
+      params.append('subject', subject);
+    }
+    if (examId) {
+      params.append('exam_id', examId);
+    }
+    if (displayMode) {
+      params.append('display_mode', displayMode);
+    }
+    return await fetchApi<ClassGradeDetailResponse>(`/analysis/student-grade-detail?${params.toString()}`);
   }
 
   // 获取考试列表

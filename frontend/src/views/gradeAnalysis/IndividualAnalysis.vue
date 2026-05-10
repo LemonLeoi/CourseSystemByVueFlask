@@ -247,6 +247,7 @@ export default {
     const selectedSubject = ref('');
     const subjects = ref([]);
     const selectedExam = ref('');
+    const subjectGradeDetailData = ref(null);
     
     // 趋势分析相关
     const selectedTrendSubject = ref('all');
@@ -466,7 +467,7 @@ export default {
 
         loadingStep.value = '正在获取学生基本信息和成绩数据...';
         currentAnalysisStep.value = 0;
-        await getStudentAnalysis(studentId.value);
+        await getStudentAnalysis(studentId.value, selectedExam.value);
 
         loadingStep.value = '正在预处理数据，确保数据质量...';
         currentAnalysisStep.value = 1;
@@ -497,12 +498,14 @@ export default {
     // 分析学科成绩
     const analyzeSubject = async () => {
       if (studentId.value && selectedSubject.value) {
-        await getStudentSubjectAnalysis(studentId.value, selectedSubject.value);
+        await getStudentSubjectAnalysis(studentId.value, selectedSubject.value, selectedExam.value);
+        subjectGradeDetailData.value = await fetchGradeDetail(studentId.value, selectedSubject.value);
       }
     };
 
     // 计算属性：转换subjectAnalysis为GradeStatsPanel需要的格式
     const subjectGradeDetail = computed(() => {
+      if (subjectGradeDetailData.value) return subjectGradeDetailData.value;
       if (!subjectAnalysis.value || !subjectAnalysis.value.statistics) return null;
 
       const stats = subjectAnalysis.value.statistics;
@@ -1327,6 +1330,7 @@ export default {
       selectedSubject,
       subjects,
       selectedExam,
+      subjectGradeDetailData,
       studentClass,
       studentAnalysis,
       subjectAnalysis,

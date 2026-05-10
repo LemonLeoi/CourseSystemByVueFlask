@@ -1088,7 +1088,7 @@ export default {
         // 步骤5：趋势分析
         loadingStep.value = '正在分析班级历次考试的成绩变化趋势...';
         currentAnalysisStep.value = 4;
-        await getClassTrend(className.value, selectedTrendSubject.value, selectedExam.value);
+        await getClassTrend(className.value, selectedTrendSubject.value);
         
         // 步骤6：获取决策分析数据
         loadingStep.value = '正在获取决策分析数据...';

@@ -676,7 +676,7 @@ def generate_decision_tree_paths(class_id, student_id, analysis_type, max_depth,
     
     # 生成path-1的分支选项 - 支持周一至周五
     day_branch_options = []
-    day_names = ['周一', '周二', '周三', '周四', '周五']
+    day_names = ['周一', '周二', '周三', '周四', '周五', '周六']
     next_node_id = 1
     
     # 如果有真实数据，按成绩排序分支
@@ -687,7 +687,7 @@ def generate_decision_tree_paths(class_id, student_id, analysis_type, max_depth,
             reverse=True
         )
         for day_num, day_data in sorted_days:
-            day_name = day_data.get('day_name', day_names[day_num-1] if day_num <=5 else str(day_num))
+            day_name = day_data.get('day_name', day_names[day_num-1] if day_num <=6 else str(day_num))
             day_branch_options.append({"value": day_name, "nextNodeId": next_node_id})
             next_node_id += 1
     else:
@@ -1850,6 +1850,105 @@ def get_class_grade_detail():
                 'error': '暂无该班级或学科的成绩数据',
                 'generated_at': time.strftime('%Y-%m-%d %H:%M:%S')
             }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@analysis_bp.route('/analysis/student-grade-detail', methods=['GET'])
+def get_student_grade_detail():
+    """Get detailed grade statistics for one student."""
+    try:
+        student_id = request.args.get('student_id')
+        subject = request.args.get('subject')
+        exam_id = request.args.get('exam_id')
+        display_mode = request.args.get('display_mode')
+
+        if not student_id:
+            return jsonify({'error': 'missing student_id'}), 400
+
+        if exam_id:
+            student_info, grades = GradeDataAccess.get_student_grades_by_exam(student_id, exam_id)
+        else:
+            student_info, grades = GradeDataAccess.get_student_grades(student_id)
+
+        if not student_info:
+            return jsonify({'error': f'student {student_id} not found'}), 404
+
+        scores = [
+            score for _, _, _, _, _, grade_subject, score, _ in grades
+            if score is not None and (not subject or grade_subject == subject)
+        ]
+
+        if not scores:
+            return jsonify({
+                'detail': None,
+                'error': 'no valid grade data',
+                'generated_at': time.strftime('%Y-%m-%d %H:%M:%S')
+            }), 200
+
+        settings = GradeSettingsDataAccess.get_settings()
+        effective_rule_type = display_mode if display_mode else settings.rule_type
+        full_score = 150 if subject in ['语文', '数学', '英语'] else 100
+        percentage_rules = GradeDataAccess.get_percentage_rules()
+
+        if effective_rule_type == 'percentage':
+            excellent_threshold = (percentage_rules['percentage_rule_a'] / 100) * full_score
+            good_threshold = (percentage_rules['percentage_rule_b'] / 100) * full_score
+            average_threshold = (percentage_rules['percentage_rule_c'] / 100) * full_score
+            pass_threshold = (percentage_rules['percentage_rule_d'] / 100) * full_score
+        else:
+            excellent_threshold = settings.score_rule_a
+            good_threshold = settings.score_rule_b
+            average_threshold = settings.score_rule_c
+            pass_threshold = settings.score_rule_d
+
+        avg_score = sum(scores) / len(scores)
+        std_dev = (sum((score - avg_score) ** 2 for score in scores) / len(scores)) ** 0.5
+        sorted_scores = sorted(scores)
+        mid = len(sorted_scores) // 2
+        median = sorted_scores[mid] if len(sorted_scores) % 2 else (sorted_scores[mid - 1] + sorted_scores[mid]) / 2
+
+        distribution = {
+            'excellent': sum(1 for score in scores if score >= excellent_threshold),
+            'good': sum(1 for score in scores if good_threshold <= score < excellent_threshold),
+            'average': sum(1 for score in scores if average_threshold <= score < good_threshold),
+            'pass': sum(1 for score in scores if pass_threshold <= score < average_threshold),
+            'fail': sum(1 for score in scores if score < pass_threshold)
+        }
+
+        detail = {
+            'student_id': student_id,
+            'subject': subject or '综合',
+            'total_students': len(scores),
+            'total_scores': len(scores),
+            'average_score': round(avg_score, 2),
+            'max_score': round(max(scores), 2),
+            'min_score': round(min(scores), 2),
+            'median': round(median, 2),
+            'std_deviation': round(std_dev, 2),
+            'pass_rate': round((len(scores) - distribution['fail']) / len(scores) * 100, 2),
+            'excellent_rate': round(distribution['excellent'] / len(scores) * 100, 2),
+            'distribution': distribution,
+            'rule_type': effective_rule_type,
+            'full_score': full_score,
+            'thresholds': {
+                'excellent': round(excellent_threshold, 2),
+                'good': round(good_threshold, 2),
+                'average': round(average_threshold, 2),
+                'pass': round(pass_threshold, 2)
+            },
+            'percentage_thresholds': {
+                'excellent': percentage_rules['percentage_rule_a'],
+                'good': percentage_rules['percentage_rule_b'],
+                'average': percentage_rules['percentage_rule_c'],
+                'pass': percentage_rules['percentage_rule_d']
+            }
+        }
+
+        return jsonify({
+            'detail': detail,
+            'generated_at': time.strftime('%Y-%m-%d %H:%M:%S')
+        }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

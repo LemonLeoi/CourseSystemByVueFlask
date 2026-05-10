@@ -17,11 +17,11 @@ export function useIndividualGrade() {
   const error = ref('')
   
   // 获取个人成绩分析
-  const getStudentAnalysis = async (studentId: string) => {
+  const getStudentAnalysis = async (studentId: string, examCode?: string) => {
     loading.value = true
     error.value = ''
     try {
-      const response = await gradeService.getStudentAnalysis(studentId)
+      const response = await gradeService.getStudentAnalysis(studentId, examCode)
       if (response.error) {
         throw new Error(response.error)
       }
@@ -41,11 +41,11 @@ export function useIndividualGrade() {
   }
   
   // 获取个人科目分析
-  const getStudentSubjectAnalysis = async (studentId: string, subject: string) => {
+  const getStudentSubjectAnalysis = async (studentId: string, subject: string, examCode?: string) => {
     loading.value = true
     error.value = ''
     try {
-      const response = await gradeService.getStudentSubjectAnalysis(studentId, subject)
+      const response = await gradeService.getStudentSubjectAnalysis(studentId, subject, examCode)
       if (response.error) {
         throw new Error(response.error)
       }

@@ -9,26 +9,25 @@
 </template>
 
 <script setup lang="ts">
-// App.vue - 主应用组件
 import { onMounted } from 'vue';
 import Notification from '@/components/common/Notification.vue';
 import ErrorBoundary from '@/components/common/ErrorBoundary.vue';
 import OfflineNotification from '@/components/common/OfflineNotification.vue';
 import { clearAllApiCache } from '@/services/api/apiService';
 
-// 应用启动时清除所有API缓存
+// Clear API cache when the app starts.
 onMounted(async () => {
   try {
     await clearAllApiCache();
-    console.log('API缓存已清除');
+    console.log('API cache cleared');
   } catch (error) {
-    console.warn('清除缓存失败:', error);
+    console.warn('Failed to clear API cache:', error);
   }
 });
 </script>
 
 <style>
-/* 全局样式重置 */
+/* Global reset */
 * {
   margin: 0;
   padding: 0;

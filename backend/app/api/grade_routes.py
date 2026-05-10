@@ -23,7 +23,8 @@ bp = Blueprint('grade', __name__, url_prefix='/api/grades')
 @bp.route('/analysis/<student_id>', methods=['GET'])
 def get_student_analysis(student_id):
     try:
-        result = analyze_student_performance(student_id)
+        exam_code = request.args.get('exam')
+        result = analyze_student_performance(student_id, exam_code)
         if "error" in result:
             return jsonify(result), 404
         return jsonify(result), 200
@@ -78,7 +79,8 @@ def get_grade_analysis(grade_name):
 @bp.route('/analysis/subject/<student_id>/<subject>', methods=['GET'])
 def get_student_subject_analysis(student_id, subject):
     try:
-        result = analyze_student_subject(student_id, subject)
+        exam_code = request.args.get('exam')
+        result = analyze_student_subject(student_id, subject, exam_code)
         if "error" in result:
             return jsonify(result), 404
         return jsonify(result), 200

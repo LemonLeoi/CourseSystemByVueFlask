@@ -5,13 +5,16 @@ from .analysis_explainer import explainer
 from .analysis_logger import logger
 
 # 分析学生成绩
-def analyze_student_performance(student_id, analysis_id=None):
+def analyze_student_performance(student_id, exam_code=None, analysis_id=None):
     # 记录分析开始
     if analysis_id:
         logger.log('personal', 'analysis_start', f'开始分析学生 {student_id} 的成绩', {'student_id': student_id})
     
     # 获取学生信息和成绩
-    student_info, grades = GradeDataAccess.get_student_grades(student_id)
+    if exam_code and exam_code != 'all':
+        student_info, grades = GradeDataAccess.get_student_grades_by_exam(student_id, exam_code)
+    else:
+        student_info, grades = GradeDataAccess.get_student_grades(student_id)
     
     if not student_info:
         return {"error": f"未找到学号为 {student_id} 的学生"}
@@ -67,7 +70,18 @@ def analyze_student_performance(student_id, analysis_id=None):
         logger.log('personal', 'statistical_analysis', f'计算完成 {len(subject_averages)} 个学科的平均成绩', {'subject_count': len(subject_averages)})
     
     # 获取班级平均成绩
-    class_averages = GradeDataAccess.get_class_average(student_class, student_grade)
+    if exam_code and exam_code != 'all':
+        class_grades = GradeDataAccess.get_class_grades_by_exam(student_class, student_grade, exam_code)
+        class_subject_scores = {}
+        for _, _, _, _, _, subject, score, _ in class_grades:
+            class_subject_scores.setdefault(subject, []).append(score)
+        class_averages = {
+            subject: round(sum(scores) / len(scores), 2)
+            for subject, scores in class_subject_scores.items()
+            if scores
+        }
+    else:
+        class_averages = GradeDataAccess.get_class_average(student_class, student_grade)
     
     # 分析学科强弱项
     strengths = []
@@ -450,9 +464,12 @@ def analyze_grade_performance(grade, analysis_id=None):
     return result
 
 # 分析学生科目成绩
-def analyze_student_subject(student_id, subject):
+def analyze_student_subject(student_id, subject, exam_code=None):
     # 获取学生信息和成绩
-    student_info, grades = GradeDataAccess.get_student_grades(student_id)
+    if exam_code and exam_code != 'all':
+        student_info, grades = GradeDataAccess.get_student_grades_by_exam(student_id, exam_code)
+    else:
+        student_info, grades = GradeDataAccess.get_student_grades(student_id)
     
     if not student_info:
         return {"error": f"未找到学号为 {student_id} 的学生"}
@@ -486,8 +503,13 @@ def analyze_student_subject(student_id, subject):
     distribution = calculate_score_distribution(subject_grades)
     
     # 获取班级该科目平均成绩
-    class_averages = GradeDataAccess.get_class_average(student_class, student_grade)
-    class_subject_avg = class_averages.get(subject, 0)
+    if exam_code and exam_code != 'all':
+        class_subject_grades = GradeDataAccess.get_class_subject_grades_by_exam(student_class, student_grade, subject, exam_code)
+        class_subject_scores = [score for _, _, score in class_subject_grades if score is not None]
+        class_subject_avg = round(sum(class_subject_scores) / len(class_subject_scores), 2) if class_subject_scores else 0
+    else:
+        class_averages = GradeDataAccess.get_class_average(student_class, student_grade)
+        class_subject_avg = class_averages.get(subject, 0)
     
     # 构建结果
     result = {
